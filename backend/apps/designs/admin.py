@@ -2,9 +2,10 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
+from django.utils import timezone
 from .models import (
     DesignCategory, Design, DesignLicense, DesignUsage, DesignCollection,
-    Draft, DraftAsset, UploadSession
+    Draft, DraftAsset, UploadSession, MockupRender, ProductMockupTemplate
 )
 
 
@@ -451,6 +452,319 @@ class UploadSessionAdmin(admin.ModelAdmin):
         expired.delete()
         self.message_user(request, f'{count} expired sessions cleaned up.')
     cleanup_expired_sessions.short_description = "Clean up expired sessions"
+
+
+# Mockup Rendering Admin
+
+@admin.register(ProductMockupTemplate)
+class ProductMockupTemplateAdmin(admin.ModelAdmin):
+    """Admin configuration for ProductMockupTemplate model."""
+    
+    list_display = [
+        'name', 'product_type', 'product_variant', 'template_preview',
+        'design_area_info', 'is_active', 'sort_order', 'created_at'
+    ]
+    list_filter = [
+        'product_type', 'product_variant', 'is_active', 'created_at'
+    ]
+    search_fields = ['name', 'product_type__name', 'product_variant__name']
+    readonly_fields = [
+        'template_preview', 'template_url', 'created_at', 'updated_at'
+    ]
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'product_type', 'product_variant', 'template_s3_key')
+        }),
+        ('Template Preview', {
+            'fields': ('template_preview', 'template_url'),
+            'classes': ('collapse',)
+        }),
+        ('Design Area Configuration', {
+            'fields': (
+                'design_area_x', 'design_area_y',
+                'design_area_width', 'design_area_height',
+                'template_width', 'template_height'
+            )
+        }),
+        ('Advanced Settings', {
+            'fields': (
+                'design_rotation', 'design_opacity', 'perspective_matrix'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Display Settings', {
+            'fields': ('is_active', 'sort_order')
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def template_preview(self, obj):
+        """Show template image preview."""
+        if obj.template_s3_key:
+            url = obj.get_template_url()
+            if url:
+                return format_html(
+                    '<img src="{}" style="max-width: 200px; max-height: 150px;" />',
+                    url
+                )
+        return 'No image'
+    template_preview.short_description = 'Template Preview'
+    
+    def template_url(self, obj):
+        """Show template S3 URL."""
+        url = obj.get_template_url()
+        if url:
+            return format_html('<a href="{}" target="_blank">View Full Size</a>', url)
+        return 'No URL'
+    template_url.short_description = 'Template URL'
+    
+    def design_area_info(self, obj):
+        """Show design area information."""
+        return f'{obj.design_area_width}×{obj.design_area_height}px at ({obj.design_area_x}, {obj.design_area_y})'
+    design_area_info.short_description = 'Design Area'
+    
+    def get_queryset(self, request):
+        """Optimize queryset."""
+        return super().get_queryset(request).select_related('product_type', 'product_variant')
+
+
+@admin.register(MockupRender)
+class MockupRenderAdmin(admin.ModelAdmin):
+    """Admin configuration for MockupRender model."""
+    
+    list_display = [
+        'render_id', 'draft_info', 'template_info', 'user_info',
+        'status_badge', 'processing_info', 'file_info', 'created_at'
+    ]
+    list_filter = [
+        'status', 'mockup_template__product_type', 'created_at',
+        'processing_completed_at'
+    ]
+    search_fields = [
+        'render_id', 'draft__name', 'user__email', 'user__first_name',
+        'user__last_name', 'mockup_template__name'
+    ]
+    readonly_fields = [
+        'render_id', 'task_id', 'output_preview', 'thumbnail_preview',
+        'output_urls', 'processing_duration', 'created_at', 'updated_at'
+    ]
+    
+    fieldsets = (
+        ('Render Job Information', {
+            'fields': ('render_id', 'draft', 'mockup_template', 'user')
+        }),
+        ('Status & Processing', {
+            'fields': (
+                'status', 'task_id', 'error_message', 'retry_count',
+                'processing_started_at', 'processing_completed_at', 'processing_duration'
+            )
+        }),
+        ('Output Files', {
+            'fields': (
+                'output_image_s3_key', 'output_thumbnail_s3_key',
+                'output_preview', 'thumbnail_preview', 'output_urls'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('File Metadata', {
+            'fields': (
+                'output_width', 'output_height', 'output_file_size'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def draft_info(self, obj):
+        """Show draft information."""
+        draft_url = reverse('admin:designs_draft_change', args=[obj.draft.id])
+        return format_html(
+            '<a href="{}">{}</a>',
+            draft_url,
+            obj.draft.name or f'Draft {obj.draft.uuid}'
+        )
+    draft_info.short_description = 'Draft'
+    
+    def template_info(self, obj):
+        """Show template information."""
+        template_url = reverse('admin:designs_productmockuptemplate_change', args=[obj.mockup_template.id])
+        return format_html(
+            '<a href="{}">{}</a>',
+            template_url,
+            obj.mockup_template.name
+        )
+    template_info.short_description = 'Template'
+    
+    def user_info(self, obj):
+        """Show user information."""
+        user_url = reverse('admin:auth_user_change', args=[obj.user.id])
+        return format_html(
+            '<a href="{}">{}</a>',
+            user_url,
+            obj.user.get_full_name() or obj.user.username
+        )
+    user_info.short_description = 'User'
+    
+    def status_badge(self, obj):
+        """Display status with colored badge."""
+        status_colors = {
+            'pending': '#ffc107',      # Warning yellow
+            'processing': '#007bff',   # Primary blue
+            'completed': '#28a745',    # Success green
+            'failed': '#dc3545',       # Danger red
+            'cancelled': '#6c757d',    # Secondary gray
+        }
+        
+        color = status_colors.get(obj.status, '#6c757d')
+        
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">{}</span>',
+            color,
+            obj.get_status_display()
+        )
+    status_badge.short_description = 'Status'
+    
+    def processing_info(self, obj):
+        """Show processing time information."""
+        if obj.processing_duration:
+            return f'{obj.processing_duration.total_seconds():.1f}s'
+        elif obj.processing_started_at:
+            return 'In progress...'
+        return 'Not started'
+    processing_info.short_description = 'Processing Time'
+    
+    def file_info(self, obj):
+        """Show file size information."""
+        if obj.output_file_size:
+            if obj.output_file_size < 1024 * 1024:  # Less than 1MB
+                return f'{obj.output_file_size / 1024:.1f} KB'
+            else:
+                return f'{obj.output_file_size / (1024 * 1024):.1f} MB'
+        return 'No file'
+    file_info.short_description = 'File Size'
+    
+    def output_preview(self, obj):
+        """Show output image preview."""
+        if obj.output_image_s3_key:
+            url = obj.get_output_url()
+            if url:
+                return format_html(
+                    '<img src="{}" style="max-width: 200px; max-height: 150px;" />',
+                    url
+                )
+        return 'No output image'
+    output_preview.short_description = 'Output Preview'
+    
+    def thumbnail_preview(self, obj):
+        """Show thumbnail preview."""
+        if obj.output_thumbnail_s3_key:
+            url = obj.get_thumbnail_url()
+            if url:
+                return format_html(
+                    '<img src="{}" style="max-width: 100px; max-height: 75px;" />',
+                    url
+                )
+        return 'No thumbnail'
+    thumbnail_preview.short_description = 'Thumbnail'
+    
+    def output_urls(self, obj):
+        """Show output URLs."""
+        links = []
+        
+        if obj.output_image_s3_key:
+            url = obj.get_output_url()
+            if url:
+                links.append(f'<a href="{url}" target="_blank">Full Image</a>')
+        
+        if obj.output_thumbnail_s3_key:
+            url = obj.get_thumbnail_url()
+            if url:
+                links.append(f'<a href="{url}" target="_blank">Thumbnail</a>')
+        
+        return format_html('<br>'.join(links)) if links else 'No output files'
+    output_urls.short_description = 'Output URLs'
+    
+    def get_queryset(self, request):
+        """Optimize queryset."""
+        return super().get_queryset(request).select_related(
+            'draft', 'mockup_template', 'user', 'mockup_template__product_type'
+        )
+    
+    # Admin actions
+    actions = ['retry_failed_renders', 'cancel_pending_renders', 'cleanup_old_renders']
+    
+    def retry_failed_renders(self, request, queryset):
+        """Retry failed renders."""
+        failed_renders = queryset.filter(status='failed')
+        count = 0
+        
+        for render in failed_renders:
+            # Reset status and trigger new task
+            render.status = 'pending'
+            render.error_message = None
+            render.task_id = None
+            render.retry_count += 1
+            render.save()
+            
+            # Trigger new task
+            from .tasks import render_draft_preview as render_task
+            task = render_task.delay(str(render.render_id))
+            render.task_id = task.id
+            render.save(update_fields=['task_id'])
+            
+            count += 1
+        
+        self.message_user(request, f'{count} renders queued for retry.')
+    retry_failed_renders.short_description = "Retry failed renders"
+    
+    def cancel_pending_renders(self, request, queryset):
+        """Cancel pending renders."""
+        pending_renders = queryset.filter(status__in=['pending', 'processing'])
+        count = 0
+        
+        for render in pending_renders:
+            # Cancel Celery task
+            if render.task_id:
+                try:
+                    from celery import current_app
+                    current_app.control.revoke(render.task_id, terminate=True)
+                except:
+                    pass
+            
+            render.status = 'cancelled'
+            render.processing_completed_at = timezone.now()
+            render.save()
+            count += 1
+        
+        self.message_user(request, f'{count} renders cancelled.')
+    cancel_pending_renders.short_description = "Cancel pending renders"
+    
+    def cleanup_old_renders(self, request, queryset):
+        """Clean up renders older than 30 days."""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        cutoff_date = timezone.now() - timedelta(days=30)
+        old_renders = queryset.filter(
+            status__in=['completed', 'failed', 'cancelled'],
+            created_at__lt=cutoff_date
+        )
+        
+        count = old_renders.count()
+        
+        # TODO: Delete S3 files as well
+        # This would require implementing S3 cleanup logic
+        
+        old_renders.delete()
+        self.message_user(request, f'{count} old renders deleted.')
+    cleanup_old_renders.short_description = "Clean up old renders (30+ days)"
 
 
 # Additional admin site customizations

@@ -35,4 +35,21 @@ draft_urlpatterns = [
     path('uploads/confirm/', views.confirm_upload, name='confirm-upload'),
 ]
 
+# Mockup Rendering URLs
+rendering_urlpatterns = [
+    # Templates
+    path('templates/', views.ProductMockupTemplateListView.as_view(), name='mockup-templates'),
+    
+    # Draft-specific rendering
+    path('drafts/<uuid:uuid>/render-preview/', views.render_draft_preview, name='render-draft-preview'),
+    path('drafts/<uuid:uuid>/renders/', views.draft_render_history, name='draft-render-history'),
+    path('drafts/<uuid:uuid>/templates/', views.draft_available_templates, name='draft-available-templates'),
+    
+    # Render job management
+    path('renders/', views.MockupRenderListView.as_view(), name='render-list'),
+    path('renders/<uuid:render_id>/', views.get_render_status, name='render-status'),
+    path('renders/<uuid:render_id>/cancel/', views.cancel_render, name='cancel-render'),
+]
+
 urlpatterns += draft_urlpatterns
+urlpatterns += rendering_urlpatterns

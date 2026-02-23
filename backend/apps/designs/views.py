@@ -15,7 +15,7 @@ from botocore.exceptions import ClientError
 
 from .models import (
     DesignCategory, Design, DesignLicense, DesignUsage, DesignCollection,
-    Draft, DraftAsset, UploadSession
+    Draft, DraftAsset, UploadSession, MockupRender, ProductMockupTemplate
 )
 from .serializers import (
     DesignCategorySerializer, DesignListSerializer, DesignDetailSerializer,
@@ -23,7 +23,8 @@ from .serializers import (
     DesignUsageSerializer, DraftListSerializer, DraftDetailSerializer,
     DraftCreateSerializer, DraftUpdateSerializer, DraftAssetSerializer,
     PresignedUploadRequestSerializer, UploadConfirmationSerializer,
-    UploadSessionSerializer
+    UploadSessionSerializer, MockupRenderSerializer, ProductMockupTemplateSerializer,
+    RenderRequestSerializer, RenderResponseSerializer
 )
 
 
@@ -623,3 +624,256 @@ def draft_stats(request):
         stats['draft_status_counts'][status_code] = count
     
     return Response(stats)
+
+
+# Mockup Rendering Views
+
+class ProductMockupTemplateListView(generics.ListAPIView):
+    """API view to list available mockup templates for a product type."""
+    
+    serializer_class = ProductMockupTemplateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['product_type', 'product_variant', 'is_active']
+    ordering_fields = ['sort_order', 'name', 'created_at']
+    ordering = ['sort_order', 'name']
+    
+    def get_queryset(self):
+        """Return active mockup templates."""
+        return ProductMockupTemplate.objects.filter(is_active=True)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def render_draft_preview(request, uuid):
+    """
+    Trigger mockup rendering for a draft.
+    
+    POST /api/designs/drafts/{uuid}/render-preview
+    """
+    try:
+        # Get the draft
+        draft = get_object_or_404(
+            Draft,
+            uuid=uuid,
+            customer=request.user,
+            is_deleted=False
+        )
+        
+        # Validate request data
+        serializer = RenderRequestSerializer(
+            data=request.data,
+            context={'request': request, 'draft_uuid': uuid}
+        )
+        
+        if not serializer.is_valid():
+            return Response(
+                {'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        template_id = serializer.validated_data['template_id']
+        template = ProductMockupTemplate.objects.get(id=template_id)
+        
+        # Check if there's already a pending render for this draft+template
+        existing_render = MockupRender.objects.filter(
+            draft=draft,
+            mockup_template=template,
+            status__in=['pending', 'processing']
+        ).first()
+        
+        if existing_render:
+            return Response({
+                'render_id': existing_render.render_id,
+                'status': existing_render.status,
+                'message': 'Render already in progress for this draft and template.',
+                'existing': True
+            })
+        
+        # Create new render job
+        render_job = MockupRender.objects.create(
+            draft=draft,
+            mockup_template=template,
+            user=request.user,
+            status='pending'
+        )
+        
+        # Trigger Celery task
+        from .tasks import render_draft_preview as render_task
+        task = render_task.delay(str(render_job.render_id))
+        
+        # Update with task ID
+        render_job.task_id = task.id
+        render_job.save(update_fields=['task_id'])
+        
+        # Estimate completion time (rough estimate)
+        estimated_completion = timezone.now() + timedelta(minutes=2)
+        
+        response_data = RenderResponseSerializer({
+            'render_id': render_job.render_id,
+            'status': render_job.status,
+            'message': 'Render job created and queued for processing.',
+            'estimated_completion': estimated_completion
+        }).data
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to create render job', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_render_status(request, render_id):
+    """
+    Check status of a render job.
+    
+    GET /api/designs/renders/{render_id}
+    """
+    try:
+        render_job = get_object_or_404(
+            MockupRender,
+            render_id=render_id,
+            user=request.user
+        )
+        
+        serializer = MockupRenderSerializer(render_job)
+        return Response(serializer.data)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to get render status', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def cancel_render(request, render_id):
+    """
+    Cancel a pending render job.
+    
+    DELETE /api/designs/renders/{render_id}
+    """
+    try:
+        render_job = get_object_or_404(
+            MockupRender,
+            render_id=render_id,
+            user=request.user
+        )
+        
+        if render_job.status in ['completed', 'failed', 'cancelled']:
+            return Response(
+                {'error': 'Render job cannot be cancelled in current status'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Cancel Celery task if possible
+        if render_job.task_id:
+            try:
+                from celery import current_app
+                current_app.control.revoke(render_job.task_id, terminate=True)
+            except Exception:
+                pass  # Task may not be running or already completed
+        
+        # Update status
+        render_job.status = 'cancelled'
+        render_job.processing_completed_at = timezone.now()
+        render_job.save(update_fields=['status', 'processing_completed_at'])
+        
+        return Response({
+            'message': 'Render job cancelled successfully',
+            'render_id': render_job.render_id,
+            'status': render_job.status
+        })
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to cancel render job', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+class MockupRenderListView(generics.ListAPIView):
+    """API view to list user's render jobs."""
+    
+    serializer_class = MockupRenderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status', 'draft']
+    search_fields = ['draft__name', 'mockup_template__name']
+    ordering_fields = ['created_at', 'processing_completed_at']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """Return user's render jobs."""
+        return MockupRender.objects.filter(user=self.request.user)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def draft_render_history(request, uuid):
+    """
+    Get render history for a specific draft.
+    
+    GET /api/designs/drafts/{uuid}/renders
+    """
+    try:
+        draft = get_object_or_404(
+            Draft,
+            uuid=uuid,
+            customer=request.user,
+            is_deleted=False
+        )
+        
+        renders = MockupRender.objects.filter(
+            draft=draft,
+            user=request.user
+        ).order_by('-created_at')
+        
+        serializer = MockupRenderSerializer(renders, many=True)
+        return Response(serializer.data)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to get render history', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def draft_available_templates(request, uuid):
+    """
+    Get available mockup templates for a specific draft.
+    
+    GET /api/designs/drafts/{uuid}/templates
+    """
+    try:
+        draft = get_object_or_404(
+            Draft,
+            uuid=uuid,
+            customer=request.user,  
+            is_deleted=False
+        )
+        
+        # Get templates for this product type
+        templates = ProductMockupTemplate.objects.filter(
+            product_type=draft.product_type,
+            is_active=True
+        ).filter(
+            Q(product_variant__isnull=True) |
+            Q(product_variant=draft.product_variant)
+        ).order_by('sort_order', 'name')
+        
+        serializer = ProductMockupTemplateSerializer(templates, many=True)
+        return Response(serializer.data)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to get available templates', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

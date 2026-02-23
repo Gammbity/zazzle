@@ -1,0 +1,78 @@
+[
+  {
+    "name": "Front View",
+    "product_type": "Classic T-Shirt",
+    "image_file": "tshirt_front.png",
+    "design_area": {
+      "x": 150,
+      "y": 100,
+      "width": 300,
+      "height": 400
+    },
+    "design_rotation": 0.0,
+    "design_opacity": 0.9,
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "name": "Back View",
+    "product_type": "Classic T-Shirt", 
+    "image_file": "tshirt_back.png",
+    "design_area": {
+      "x": 150,
+      "y": 100,
+      "width": 300,
+      "height": 400
+    },
+    "design_rotation": 0.0,
+    "design_opacity": 0.9,
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "name": "Standard View",
+    "product_type": "Coffee Mug",
+    "image_file": "mug_standard.png",
+    "design_area": {
+      "x": 80,
+      "y": 120,
+      "width": 200,
+      "height": 150
+    },
+    "design_rotation": -5.0,
+    "design_opacity": 1.0,
+    "sort_order": 1,
+    "is_active": true,
+    "perspective_matrix": [1.0, 0.1, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+  },
+  {
+    "name": "Front Layout",
+    "product_type": "Business Card",
+    "image_file": "business_card_front.png", 
+    "design_area": {
+      "x": 50,
+      "y": 50,
+      "width": 300,
+      "height": 180
+    },
+    "design_rotation": 0.0,
+    "design_opacity": 1.0,
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "name": "Monthly View",
+    "product_type": "Desk Calendar",
+    "image_file": "calendar_monthly.png",
+    "design_area": {
+      "x": 100,
+      "y": 50,
+      "width": 400,
+      "height": 300
+    },
+    "design_rotation": 0.0,
+    "design_opacity": 1.0,
+    "sort_order": 1,
+    "is_active": true
+  }
+]

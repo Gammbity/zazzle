@@ -6,10 +6,11 @@ A modern, production-ready print-on-demand platform built specifically for the U
 
 ### Backend
 - **Django 4.2+** with Django REST Framework
-- **PostgreSQL** database
+- **PostgreSQL** database with UUID fields
 - **Redis** for caching and session management
-- **Celery** for asynchronous task processing
-- **AWS S3** for file storage
+- **Celery** for asynchronous task processing (rendering, emails)
+- **AWS S3** for file storage with presigned URLs
+- **Pillow** for image processing and compositing
 - **Stripe** for payment processing
 
 ### Frontend
@@ -156,7 +157,19 @@ The new Design Draft system allows customers to create work-in-progress designs 
 - **Editor State** - Persist complete design tool state
 - **Multi-Status Workflow** - Draft → Preview Rendering → Preview Ready
 
-See [apps/designs/README.md](backend/apps/designs/README.md) for complete documentation.
+### Mockup Preview Rendering
+
+Powered by Celery, the mockup rendering system generates realistic previews of customer designs:
+
+- **Professional Mockups** - High-quality product templates for multiple views
+- **Asynchronous Processing** - Celery-powered rendering for scalability
+- **Image Compositing** - Layer customer artwork with perspective transforms
+- **Text Rendering** - High-quality text with custom fonts and styling
+- **S3 Integration** - CDN-ready output with presigned URLs
+- **Status Polling** - Real-time progress updates via API
+- **Retry Logic** - Robust error handling with automatic retries
+
+See [apps/designs/README.md](backend/apps/designs/README.md) and [apps/designs/MOCKUP_RENDERING.md](backend/apps/designs/MOCKUP_RENDERING.md) for complete documentation.
 
 ### Key API Endpoints
 
@@ -188,6 +201,15 @@ GET    /api/designs/drafts/{uuid}/assets/      # List draft assets
 POST   /api/designs/uploads/presign/           # Request S3 upload URL
 POST   /api/designs/uploads/confirm/           # Confirm S3 upload
 
+# Mockup Rendering (NEW)
+GET    /api/designs/templates/                         # List mockup templates
+GET    /api/designs/drafts/{uuid}/templates/          # Get available templates
+POST   /api/designs/drafts/{uuid}/render-preview     # Trigger mockup render
+GET    /api/designs/renders/{render_id}              # Get render status
+DELETE /api/designs/renders/{render_id}/cancel       # Cancel pending render
+GET    /api/designs/renders/                         # List user renders
+GET    /api/designs/drafts/{uuid}/renders           # Draft render history
+
 # Legacy Designs
 GET  /api/designs/
 POST /api/designs/
@@ -213,10 +235,13 @@ POST /api/orders/<id>/cancel/
 
 ### Design Features
 - ✅ **Design Drafts** - Work-in-progress designs with auto-save and S3 uploads
+- ✅ **Mockup Rendering** - Asynchronous preview generation with professional templates
 - ✅ **Text Layer Management** - Rich text editing with fonts and positioning
 - ✅ **Asset Management** - Upload and organize images with z-index layering
 - ✅ **Secure File Upload** - S3 presigned URLs for direct secure uploads
 - ✅ **Editor State Persistence** - Save and restore complete design editor state
+- ✅ **Image Compositing** - Layer customer artwork with perspective transforms
+- ✅ **Professional Mockups** - Multiple product views with realistic rendering
 - ✅ **File Upload** - PNG, JPG, SVG, PDF support (legacy)
 - ✅ **Image Optimization** - Automatic resizing and optimization
 - ✅ **Design Categories** - Organize designs by category

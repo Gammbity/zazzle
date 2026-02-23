@@ -553,5 +553,268 @@ class UploadSession(models.Model):
         from django.utils import timezone
         return timezone.now() > self.expires_at
 
+
+class ProductMockupTemplate(models.Model):
+    """Mockup template for each product variant."""
+    
+    product_type = models.ForeignKey(
+        'products.ProductType',
+        on_delete=models.CASCADE,
+        related_name='mockup_templates'
+    )
+    
+    product_variant = models.ForeignKey(
+        'products.ProductVariant',
+        on_delete=models.CASCADE,
+        related_name='mockup_templates',
+        null=True,
+        blank=True,
+        help_text=_('Specific variant, if null applies to all variants of the product type')
+    )
+    
+    name = models.CharField(
+        _('template name'),
+        max_length=100,
+        help_text=_('e.g., "Front View", "Back View", "Flat Lay"')
+    )
+    
+    # Template image stored in S3
+    template_s3_key = models.CharField(
+        _('template S3 key'),
+        max_length=500,
+        help_text=_('S3 key for the base mockup template')
+    )
+    
+    # Design placement area within the template (in pixels)
+    design_area_x = models.PositiveIntegerField(_('design area X'), default=0)
+    design_area_y = models.PositiveIntegerField(_('design area Y'), default=0)
+    design_area_width = models.PositiveIntegerField(_('design area width'))
+    design_area_height = models.PositiveIntegerField(_('design area height'))
+    
+    # Template dimensions
+    template_width = models.PositiveIntegerField(_('template width'))
+    template_height = models.PositiveIntegerField(_('template height'))
+    
+    # Rendering settings
+    design_rotation = models.FloatField(
+        _('design rotation'),
+        default=0.0,
+        help_text=_('Rotation angle in degrees for the design on this template')
+    )
+    
+    design_opacity = models.FloatField(
+        _('design opacity'),
+        default=1.0,
+        help_text=_('Opacity for the design overlay (0.0 to 1.0)')
+    )
+    
+    # Perspective transform matrix (optional)
+    perspective_matrix = models.JSONField(
+        _('perspective transformation matrix'),
+        null=True,
+        blank=True,
+        help_text=_('8-value transformation matrix for perspective correction')
+    )
+    
+    is_active = models.BooleanField(_('is active'), default=True)
+    sort_order = models.PositiveIntegerField(_('sort order'), default=0)
+    
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Product Mockup Template')
+        verbose_name_plural = _('Product Mockup Templates')
+        ordering = ['product_type', 'sort_order', 'name']
+        unique_together = [['product_type', 'name']]
+        indexes = [
+            models.Index(fields=['product_type', 'is_active']),
+            models.Index(fields=['product_variant', 'is_active']),
+        ]
+    
+    def __str__(self):
+        if self.product_variant:
+            return f"{self.product_variant} - {self.name}"
+        return f"{self.product_type} - {self.name}"
+
+
+class MockupRender(models.Model):
+    """Track rendering jobs for draft previews."""
+    
+    RENDER_STATUS = [
+        ('pending', _('Pending')),
+        ('processing', _('Processing')),
+        ('completed', _('Completed')),
+        ('failed', _('Failed')),
+        ('cancelled', _('Cancelled')),
+    ]
+    
+    # Unique identifier for this render job
+    render_id = models.UUIDField(
+        _('render ID'),
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        help_text=_('Public identifier for this render job')
+    )
+    
+    # Associated draft
+    draft = models.ForeignKey(
+        Draft,
+        on_delete=models.CASCADE,
+        related_name='mockup_renders'
+    )
+    
+    # Mockup template used
+    mockup_template = models.ForeignKey(
+        ProductMockupTemplate,
+        on_delete=models.CASCADE,
+        related_name='renders'
+    )
+    
+    # User who requested the render
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='mockup_renders'
+    )
+    
+    # Render status and metadata
+    status = models.CharField(
+        _('status'),
+        max_length=20,
+        choices=RENDER_STATUS,
+        default='pending'
+    )
+    
+    # Celery task ID
+    task_id = models.CharField(
+        _('Celery task ID'),
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text=_('ID of the Celery task handling this render')
+    )
+    
+    # Output files (stored in S3)
+    output_image_s3_key = models.CharField(
+        _('output image S3 key'),
+        max_length=500,
+        null=True,
+        blank=True,
+        help_text=_('S3 key for the rendered preview image')
+    )
+    
+    output_thumbnail_s3_key = models.CharField(
+        _('output thumbnail S3 key'),
+        max_length=500,
+        null=True,
+        blank=True,
+        help_text=_('S3 key for the rendered thumbnail')
+    )
+    
+    # Error handling
+    error_message = models.TextField(
+        _('error message'),
+        null=True,
+        blank=True,
+        help_text=_('Error details if rendering failed')
+    )
+    
+    retry_count = models.PositiveIntegerField(
+        _('retry count'),
+        default=0,
+        help_text=_('Number of times this render has been retried')
+    )
+    
+    # Processing metadata
+    processing_started_at = models.DateTimeField(
+        _('processing started at'),
+        null=True,
+        blank=True
+    )
+    
+    processing_completed_at = models.DateTimeField(
+        _('processing completed at'),
+        null=True,
+        blank=True
+    )
+    
+    # File metadata
+    output_width = models.PositiveIntegerField(
+        _('output width'),
+        null=True,
+        blank=True,
+        help_text=_('Width of the rendered image in pixels')
+    )
+    
+    output_height = models.PositiveIntegerField(
+        _('output height'),
+        null=True,
+        blank=True,
+        help_text=_('Height of the rendered image in pixels')
+    )
+    
+    output_file_size = models.PositiveIntegerField(
+        _('output file size'),
+        null=True,
+        blank=True,
+        help_text=_('Size of the rendered image in bytes')
+    )
+    
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Mockup Render')
+        verbose_name_plural = _('Mockup Renders')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['render_id']),
+            models.Index(fields=['draft', 'status']),
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['task_id']),
+        ]
+    
+    def __str__(self):
+        return f"Render {self.render_id} - {self.draft.name} ({self.status})"
+    
+    @property
+    def is_completed(self):
+        """Check if rendering is completed (successfully or failed)."""
+        return self.status in ['completed', 'failed', 'cancelled']
+    
+    @property
+    def is_processing(self):
+        """Check if rendering is currently in progress."""
+        return self.status in ['pending', 'processing']
+    
+    @property
+    def processing_duration(self):
+        """Get processing duration if completed."""
+        if self.processing_started_at and self.processing_completed_at:
+            return self.processing_completed_at - self.processing_started_at
+        return None
+    
+    def get_output_url(self):
+        """Get the S3 URL for the output image."""
+        if self.output_image_s3_key:
+            from django.conf import settings
+            if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN') and settings.AWS_S3_CUSTOM_DOMAIN:
+                return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.output_image_s3_key}"
+            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{self.output_image_s3_key}"
+        return None
+    
+    def get_thumbnail_url(self):
+        """Get the S3 URL for the thumbnail image."""
+        if self.output_thumbnail_s3_key:
+            from django.conf import settings
+            if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN') and settings.AWS_S3_CUSTOM_DOMAIN:
+                return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.output_thumbnail_s3_key}"
+            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{self.output_thumbnail_s3_key}"
+        return None
+
+
 # Import settings at the end to avoid circular imports
 from django.conf import settings

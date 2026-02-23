@@ -275,6 +275,66 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 60  # 1 minute
 
+# Celery Rendering Configuration
+CELERY_TASK_ROUTES = {
+    'apps.designs.tasks.render_draft_preview': {'queue': 'renders'},
+    'apps.designs.tasks.cleanup_render_files': {'queue': 'cleanup'},
+}
+
+# Rendering Configuration
+RENDERING_MAX_RETRIES = config('RENDERING_MAX_RETRIES', default=3, cast=int)
+RENDERING_RETRY_DELAY = config('RENDERING_RETRY_DELAY', default=60, cast=int)  # seconds
+RENDERING_FONT_SIZE_MIN = config('RENDERING_FONT_SIZE_MIN', default=8, cast=int)
+RENDERING_FONT_SIZE_MAX = config('RENDERING_FONT_SIZE_MAX', default=200, cast=int)
+RENDERING_IMAGE_MAX_SIZE = config('RENDERING_IMAGE_MAX_SIZE', default=4000, cast=int)  # pixels
+RENDERING_OUTPUT_QUALITY = config('RENDERING_OUTPUT_QUALITY', default=90, cast=int)  # JPEG quality
+
+# Font Configuration for Text Rendering
+RENDERING_FONTS = {
+    'sans-serif': {
+        'regular': 'apps/designs/static/designs/fonts/open-sans-regular.ttf',
+        'bold': 'apps/designs/static/designs/fonts/open-sans-bold.ttf',
+        'italic': 'apps/designs/static/designs/fonts/open-sans-italic.ttf',
+        'fallback': ['roboto-regular.ttf', 'arial.ttf', 'helvetica.ttf']
+    },
+    'serif': {
+        'regular': 'apps/designs/static/designs/fonts/source-serif-regular.ttf',
+        'bold': 'apps/designs/static/designs/fonts/source-serif-bold.ttf', 
+        'italic': 'apps/designs/static/designs/fonts/source-serif-italic.ttf',
+        'fallback': ['times.ttf', 'georgia.ttf']
+    },
+    'monospace': {
+        'regular': 'apps/designs/static/designs/fonts/source-code-regular.ttf',
+        'bold': 'apps/designs/static/designs/fonts/jetbrains-mono-bold.ttf',
+        'fallback': ['courier.ttf', 'consolas.ttf']
+    },
+    'arial': {
+        'regular': 'apps/designs/static/designs/fonts/open-sans-regular.ttf',
+        'bold': 'apps/designs/static/designs/fonts/open-sans-bold.ttf',
+        'fallback': ['arial.ttf']
+    },
+    'helvetica': {
+        'regular': 'apps/designs/static/designs/fonts/roboto-regular.ttf',
+        'bold': 'apps/designs/static/designs/fonts/roboto-bold.ttf',
+        'fallback': ['helvetica.ttf', 'arial.ttf']
+    },
+    'times': {
+        'regular': 'apps/designs/static/designs/fonts/source-serif-regular.ttf',
+        'bold': 'apps/designs/static/designs/fonts/source-serif-bold.ttf',
+        'fallback': ['times.ttf']
+    },
+    'georgia': {
+        'regular': 'apps/designs/static/designs/fonts/playfair-regular.ttf',
+        'bold': 'apps/designs/static/designs/fonts/playfair-bold.ttf',
+        'fallback': ['georgia.ttf']
+    }
+}
+
+# Font cache settings
+RENDERING_FONT_CACHE_SIZE = config('RENDERING_FONT_CACHE_SIZE', default=50, cast=int)
+RENDERING_FONT_DEFAULT_FAMILY = config('RENDERING_FONT_DEFAULT_FAMILY', default='sans-serif')
+RENDERING_FONT_DEFAULT_SIZE = config('RENDERING_FONT_DEFAULT_SIZE', default=16, cast=int)
+
 # Email Configuration
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='')

@@ -7,7 +7,7 @@ import re
 import uuid
 from .models import (
     DesignCategory, Design, DesignLicense, DesignUsage, DesignCollection,
-    Draft, DraftAsset, UploadSession
+    Draft, DraftAsset, UploadSession, MockupRender, ProductMockupTemplate
 )
 
 
@@ -446,3 +446,147 @@ class UploadSessionSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'session_id', 'created_at', 'confirmed_at', 'is_expired'
         ]
+
+
+# Mockup Rendering Serializers
+
+class ProductMockupTemplateSerializer(serializers.ModelSerializer):
+    """Serializer for ProductMockupTemplate model."""
+    
+    product_type_name = serializers.CharField(source='product_type.name', read_only=True)
+    product_variant_name = serializers.CharField(source='product_variant.name', read_only=True)
+    template_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ProductMockupTemplate
+        fields = [
+            'id', 'name', 'product_type', 'product_type_name',
+            'product_variant', 'product_variant_name', 'template_url',
+            'design_area_x', 'design_area_y', 'design_area_width', 'design_area_height',
+            'template_width', 'template_height', 'design_rotation', 'design_opacity',
+            'perspective_matrix', 'is_active', 'sort_order', 'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'product_type_name', 'product_variant_name', 'template_url',
+            'created_at', 'updated_at'
+        ]
+    
+    def get_template_url(self, obj):
+        """Get the S3 URL for the template image."""
+        if obj.template_s3_key:
+            from django.conf import settings
+            if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN') and settings.AWS_S3_CUSTOM_DOMAIN:
+                return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{obj.template_s3_key}"
+            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.template_s3_key}"
+        return None
+
+
+class MockupRenderSerializer(serializers.ModelSerializer):
+    """Serializer for MockupRender model (read-only)."""
+    
+    draft_name = serializers.CharField(source='draft.name', read_only=True)
+    draft_uuid = serializers.CharField(source='draft.uuid', read_only=True)
+    template_name = serializers.CharField(source='mockup_template.name', read_only=True)
+    output_url = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
+    processing_duration = serializers.ReadOnlyField()
+    is_completed = serializers.ReadOnlyField()
+    is_processing = serializers.ReadOnlyField()
+    
+    class Meta:
+        model = MockupRender
+        fields = [
+            'render_id', 'draft', 'draft_uuid', 'draft_name',
+            'mockup_template', 'template_name', 'status', 'task_id',
+            'output_url', 'thumbnail_url', 'error_message', 'retry_count',
+            'processing_started_at', 'processing_completed_at', 'processing_duration',
+            'output_width', 'output_height', 'output_file_size',
+            'is_completed', 'is_processing', 'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'render_id', 'task_id', 'error_message', 'retry_count',
+            'processing_started_at', 'processing_completed_at', 'processing_duration',
+            'output_width', 'output_height', 'output_file_size',
+            'is_completed', 'is_processing', 'created_at', 'updated_at'
+        ]
+    
+    def get_output_url(self, obj):
+        """Get the output image URL."""
+        return obj.get_output_url()
+    
+    def get_thumbnail_url(self, obj):
+        """Get the thumbnail image URL."""
+        return obj.get_thumbnail_url()
+
+
+class RenderRequestSerializer(serializers.Serializer):
+    """Serializer for render request."""
+    
+    template_id = serializers.IntegerField(
+        help_text="ID of the mockup template to use for rendering"
+    )
+    
+    def validate_template_id(self, value):
+        """Validate that the template exists and is active."""
+        try:
+            template = ProductMockupTemplate.objects.get(
+                id=value,
+                is_active=True
+            )
+            
+            # Store the template for later use in the view
+            self._template = template
+            return value
+            
+        except ProductMockupTemplate.DoesNotExist:
+            raise serializers.ValidationError('Mockup template not found or inactive.')
+    
+    def validate(self, attrs):
+        """Validate that the template is compatible with the draft's product."""
+        request = self.context.get('request')
+        draft_uuid = self.context.get('draft_uuid')
+        
+        if not request or not draft_uuid:
+            raise serializers.ValidationError('Missing context data.')
+        
+        try:
+            draft = Draft.objects.get(uuid=draft_uuid, customer=request.user)
+            template = getattr(self, '_template', None)
+            
+            if not template:
+                raise serializers.ValidationError('Template validation failed.')
+            
+            # Check if template is for the same product type
+            if template.product_type != draft.product_type:
+                raise serializers.ValidationError(
+                    f'Template is for {template.product_type.name} but draft is for {draft.product_type.name}.'
+                )
+            
+            # Check if template has variant restriction
+            if template.product_variant and template.product_variant != draft.product_variant:
+                raise serializers.ValidationError(
+                    f'Template is for {template.product_variant} but draft uses {draft.product_variant}.'
+                )
+            
+            return attrs
+            
+        except Draft.DoesNotExist:
+            raise serializers.ValidationError('Draft not found.')
+
+
+class RenderResponseSerializer(serializers.Serializer):
+    """Serializer for render response."""
+    
+    render_id = serializers.UUIDField(
+        help_text="Unique identifier for this render job"
+    )
+    status = serializers.CharField(
+        help_text="Current status of the render job"
+    )
+    message = serializers.CharField(
+        help_text="Human-readable status message"
+    )
+    estimated_completion = serializers.DateTimeField(
+        required=False,
+        help_text="Estimated completion time (if available)"
+    )

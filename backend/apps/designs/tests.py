@@ -11,7 +11,7 @@ from decimal import Decimal
 import uuid
 
 from apps.products.models import ProductType, ProductVariant
-from .models import Draft, DraftAsset, UploadSession
+from .models import Draft, DraftAsset, UploadSession, MockupRender, ProductMockupTemplate
 
 User = get_user_model()
 
@@ -635,3 +635,564 @@ class FileValidationTestCase(TestCase):
         for content_type in invalid_types:
             with self.assertRaises(serializers.ValidationError):
                 validator.validate_content_type(content_type)
+
+
+# Mockup Rendering Tests
+
+class MockupRenderModelTestCase(TestCase):
+    """Test cases for MockupRender and ProductMockupTemplate models."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.user = User.objects.create_user(
+            email='customer@example.com',
+            username='customer',
+            password='testpass123'
+        )
+        
+        # Create product type and variant
+        self.product_type = ProductType.objects.create(
+            name='Test T-Shirt',
+            category=ProductType.ProductCategory.TSHIRT,
+            has_size_variants=True,
+            has_color_variants=True
+        )
+        
+        self.product_variant = ProductVariant.objects.create(
+            product_type=self.product_type,
+            size='M',
+            color='White',
+            color_hex='#FFFFFF',
+            sale_price=Decimal('85000.00'),
+            production_cost=Decimal('45000.00')
+        )
+        
+        # Create draft
+        self.draft = Draft.objects.create(
+            customer=self.user,
+            product_type=self.product_type,
+            product_variant=self.product_variant,
+            name='Test Design',
+            text_layers=[
+                {
+                    'id': 'text1',
+                    'text': 'Test Text',
+                    'x': 100,
+                    'y': 50,
+                    'font_size': 24,
+                    'color': '#000000',
+                    'font_family': 'Arial'
+                }
+            ],
+            editor_state={'zoom': 1.0}
+        )
+        
+        # Create mockup template
+        self.mockup_template = ProductMockupTemplate.objects.create(
+            product_type=self.product_type,
+            name='Front View',
+            template_s3_key='mockups/tshirt/front.png',
+            design_area_x=100,
+            design_area_y=50,
+            design_area_width=300,
+            design_area_height=400,
+            template_width=600,
+            template_height=600
+        )
+    
+    def test_mockup_template_creation(self):
+        """Test creating a mockup template."""
+        template = self.mockup_template
+        
+        self.assertEqual(template.product_type, self.product_type)
+        self.assertEqual(template.name, 'Front View')
+        self.assertTrue(template.is_active)
+        self.assertEqual(template.design_rotation, 0.0)
+        self.assertEqual(template.design_opacity, 1.0)
+    
+    def test_mockup_render_creation(self):
+        """Test creating a mockup render."""
+        render = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user
+        )
+        
+        self.assertEqual(render.draft, self.draft)
+        self.assertEqual(render.mockup_template, self.mockup_template)
+        self.assertEqual(render.user, self.user)
+        self.assertEqual(render.status, 'pending')
+        self.assertIsNotNone(render.render_id)
+        self.assertFalse(render.is_completed)
+        self.assertTrue(render.is_processing)
+    
+    def test_mockup_render_status_transitions(self):
+        """Test status transitions in mockup render."""
+        render = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user
+        )
+        
+        # Test pending -> processing
+        render.status = 'processing'
+        render.processing_started_at = timezone.now()
+        render.save()
+        self.assertTrue(render.is_processing)
+        self.assertFalse(render.is_completed)
+        
+        # Test processing -> completed
+        render.status = 'completed'
+        render.processing_completed_at = timezone.now()
+        render.output_image_s3_key = 'renders/test/image.jpg'
+        render.output_thumbnail_s3_key = 'renders/test/thumb.jpg'
+        render.save()
+        
+        self.assertFalse(render.is_processing)
+        self.assertTrue(render.is_completed)
+        self.assertIsNotNone(render.processing_duration)
+    
+    @override_settings(
+        AWS_STORAGE_BUCKET_NAME='test-bucket',
+        AWS_S3_REGION_NAME='us-east-1',
+        AWS_S3_CUSTOM_DOMAIN=None
+    )
+    def test_mockup_render_urls(self):
+        """Test URL generation for rendered images."""
+        render = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user,
+            output_image_s3_key='renders/test/image.jpg',
+            output_thumbnail_s3_key='renders/test/thumb.jpg'
+        )
+        
+        output_url = render.get_output_url()
+        thumbnail_url = render.get_thumbnail_url()
+        
+        self.assertIn('test-bucket', output_url)
+        self.assertIn('renders/test/image.jpg', output_url)
+        self.assertIn('test-bucket', thumbnail_url)
+        self.assertIn('renders/test/thumb.jpg', thumbnail_url)
+
+
+class MockupRenderAPITestCase(APITestCase):
+    """Test cases for Mockup Render API endpoints."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.user = User.objects.create_user(
+            email='customer@example.com',
+            username='customer',
+            password='testpass123'
+        )
+        
+        # Create product type and variant
+        self.product_type = ProductType.objects.create(
+            name='Test T-Shirt',
+            category=ProductType.ProductCategory.TSHIRT,
+            has_size_variants=True,
+            has_color_variants=True
+        )
+        
+        self.product_variant = ProductVariant.objects.create(
+            product_type=self.product_type,
+            size='M',
+            color='White',
+            color_hex='#FFFFFF',
+            sale_price=Decimal('85000.00'),
+            production_cost=Decimal('45000.00')
+        )
+        
+        # Create draft
+        self.draft = Draft.objects.create(
+            customer=self.user,
+            product_type=self.product_type,
+            product_variant=self.product_variant,
+            name='Test Design',
+            text_layers=[
+                {
+                    'id': 'text1',
+                    'text': 'Test Text',
+                    'x': 100,
+                    'y': 50,
+                    'font_size': 24,
+                    'color': '#000000',
+                    'font_family': 'Arial'
+                }
+            ],
+            editor_state={'zoom': 1.0}
+        )
+        
+        # Create mockup template
+        self.mockup_template = ProductMockupTemplate.objects.create(
+            product_type=self.product_type,
+            name='Front View',
+            template_s3_key='mockups/tshirt/front.png',
+            design_area_x=100,
+            design_area_y=50,
+            design_area_width=300,
+            design_area_height=400,
+            template_width=600,
+            template_height=600
+        )
+        
+        # Authenticate user
+        self.client.force_authenticate(user=self.user)
+    
+    def test_list_mockup_templates(self):
+        """Test listing mockup templates."""
+        url = reverse('designs:mockup-templates')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        
+        template_data = response.data['results'][0]
+        self.assertEqual(template_data['name'], 'Front View')
+        self.assertEqual(template_data['product_type'], self.product_type.id)
+        self.assertTrue(template_data['is_active'])
+    
+    def test_draft_available_templates(self):
+        """Test getting available templates for a draft."""
+        url = reverse('designs:draft-available-templates', kwargs={'uuid': self.draft.uuid})
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        
+        template_data = response.data[0]
+        self.assertEqual(template_data['name'], 'Front View')
+        self.assertEqual(template_data['product_type'], self.product_type.id)
+    
+    @patch('apps.designs.tasks.render_draft_preview.delay')
+    def test_render_draft_preview(self, mock_task):
+        """Test triggering a draft preview render."""
+        # Mock Celery task
+        mock_task_result = MagicMock()
+        mock_task_result.id = 'test-task-id'
+        mock_task.return_value = mock_task_result
+        
+        url = reverse('designs:render-draft-preview', kwargs={'uuid': self.draft.uuid})
+        data = {'template_id': self.mockup_template.id}
+        
+        response = self.client.post(url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('render_id', response.data)
+        self.assertEqual(response.data['status'], 'pending')
+        self.assertIn('message', response.data)
+        
+        # Verify render job was created
+        render = MockupRender.objects.get(render_id=response.data['render_id'])
+        self.assertEqual(render.draft, self.draft)
+        self.assertEqual(render.mockup_template, self.mockup_template)
+        self.assertEqual(render.user, self.user)
+        self.assertEqual(render.task_id, 'test-task-id')
+        
+        # Verify task was called
+        mock_task.assert_called_once()
+    
+    def test_render_draft_preview_invalid_template(self):
+        """Test rendering with invalid template ID."""
+        url = reverse('designs:render-draft-preview', kwargs={'uuid': self.draft.uuid})
+        data = {'template_id': 9999}  # Non-existent template
+        
+        response = self.client.post(url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('errors', response.data)
+    
+    def test_render_draft_preview_incompatible_template(self):
+        """Test rendering with template for different product type."""
+        # Create template for different product type
+        other_product_type = ProductType.objects.create(
+            name='Coffee Mug',
+            category=ProductType.ProductCategory.MUG
+        )
+        
+        other_template = ProductMockupTemplate.objects.create(
+            product_type=other_product_type,
+            name='Mug View',
+            template_s3_key='mockups/mug/view.png',
+            design_area_x=50,
+            design_area_y=50,
+            design_area_width=200,
+            design_area_height=150,
+            template_width=400,
+            template_height=400
+        )
+        
+        url = reverse('designs:render-draft-preview', kwargs={'uuid': self.draft.uuid})
+        data = {'template_id': other_template.id}
+        
+        response = self.client.post(url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('errors', response.data)
+    
+    def test_get_render_status(self):
+        """Test getting render job status."""
+        # Create a render job
+        render = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user,
+            status='completed',
+            output_image_s3_key='renders/test/image.jpg',
+            output_thumbnail_s3_key='renders/test/thumb.jpg'
+        )
+        
+        url = reverse('designs:render-status', kwargs={'render_id': render.render_id})
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['render_id'], str(render.render_id))
+        self.assertEqual(response.data['status'], 'completed')
+        self.assertIn('output_url', response.data)
+        self.assertIn('thumbnail_url', response.data)
+    
+    def test_cancel_render(self):
+        """Test cancelling a render job."""
+        # Create a pending render job
+        render = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user,
+            status='pending',
+            task_id='test-task-id'
+        )
+        
+        url = reverse('designs:cancel-render', kwargs={'render_id': render.render_id})
+        response = self.client.delete(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        
+        # Verify render was cancelled
+        render.refresh_from_db()
+        self.assertEqual(render.status, 'cancelled')
+        self.assertIsNotNone(render.processing_completed_at)
+    
+    def test_cancel_completed_render(self):
+        """Test cancelling a completed render (should fail)."""
+        # Create a completed render job
+        render = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user,
+            status='completed'
+        )
+        
+        url = reverse('designs:cancel-render', kwargs={'render_id': render.render_id})
+        response = self.client.delete(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+    
+    def test_list_user_renders(self):
+        """Test listing user's render jobs."""
+        # Create multiple render jobs
+        render1 = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user,
+            status='completed'
+        )
+        
+        render2 = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user,
+            status='pending'
+        )
+        
+        url = reverse('designs:render-list')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 2)
+    
+    def test_draft_render_history(self):
+        """Test getting render history for a specific draft."""
+        # Create render jobs for this draft
+        render1 = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user,
+            status='completed'
+        )
+        
+        render2 = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user,
+            status='failed'
+        )
+        
+        url = reverse('designs:draft-render-history', kwargs={'uuid': self.draft.uuid})
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+    
+    def test_unauthorized_access(self):
+        """Test unauthorized access to render endpoints."""
+        self.client.force_authenticate(user=None)
+        
+        # Test various endpoints
+        endpoints = [
+            reverse('designs:mockup-templates'),
+            reverse('designs:render-draft-preview', kwargs={'uuid': self.draft.uuid}),
+            reverse('designs:render-list'),
+        ]
+        
+        for url in endpoints:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_access_other_user_render(self):
+        """Test accessing another user's render job."""
+        # Create another user and their render
+        other_user = User.objects.create_user(
+            email='other@example.com',
+            username='other',
+            password='testpass123'
+        )
+        
+        other_render = MockupRender.objects.create(
+            draft=self.draft,  # Using same draft for simplicity
+            mockup_template=self.mockup_template,
+            user=other_user,  # Different user
+            status='completed'
+        )
+        
+        # Try to access other user's render
+        url = reverse('designs:render-status', kwargs={'render_id': other_render.render_id})
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class MockupRenderTaskTestCase(TestCase):
+    """Test cases for Mockup Render Celery tasks."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.user = User.objects.create_user(
+            email='customer@example.com',
+            username='customer',
+            password='testpass123'
+        )
+        
+        # Create product type and variant
+        self.product_type = ProductType.objects.create(
+            name='Test T-Shirt',
+            category=ProductType.ProductCategory.TSHIRT,
+            has_size_variants=True,
+            has_color_variants=True
+        )
+        
+        self.product_variant = ProductVariant.objects.create(
+            product_type=self.product_type,
+            size='M',
+            color='White',
+            color_hex='#FFFFFF',
+            sale_price=Decimal('85000.00'),
+            production_cost=Decimal('45000.00')
+        )
+        
+        # Create draft
+        self.draft = Draft.objects.create(
+            customer=self.user,
+            product_type=self.product_type,
+            product_variant=self.product_variant,
+            name='Test Design',
+            text_layers=[
+                {
+                    'id': 'text1',
+                    'text': 'Test Text',
+                    'x': 100,
+                    'y': 50,
+                    'font_size': 24,
+                    'color': '#000000',
+                    'font_family': 'Arial'
+                }
+            ],
+            editor_state={'zoom': 1.0}
+        )
+        
+        # Create mockup template
+        self.mockup_template = ProductMockupTemplate.objects.create(
+            product_type=self.product_type,
+            name='Front View',
+            template_s3_key='mockups/tshirt/front.png',
+            design_area_x=100,
+            design_area_y=50,
+            design_area_width=300,
+            design_area_height=400,
+            template_width=600,
+            template_height=600
+        )
+        
+        # Create render job
+        self.render_job = MockupRender.objects.create(
+            draft=self.draft,
+            mockup_template=self.mockup_template,
+            user=self.user
+        )
+    
+    @patch('apps.designs.tasks.MockupCompositor.render_mockup')
+    def test_render_task_success(self, mock_render):
+        """Test successful render execution."""
+        from .tasks import render_draft_preview
+        
+        # Mock successful rendering
+        mock_render.return_value = (
+            'renders/output.jpg',    # output_key
+            'renders/thumb.jpg',     # thumbnail_key
+            {'width': 600, 'height': 600, 'file_size': 123456}  # metadata
+        )
+        
+        # Execute task
+        result = render_draft_preview(str(self.render_job.render_id))
+        
+        self.assertEqual(result['status'], 'completed')
+        self.assertEqual(result['render_id'], str(self.render_job.render_id))
+        
+        # Verify database was updated
+        self.render_job.refresh_from_db()
+        self.assertEqual(self.render_job.status, 'completed')
+        self.assertEqual(self.render_job.output_image_s3_key, 'renders/output.jpg')
+        self.assertEqual(self.render_job.output_thumbnail_s3_key, 'renders/thumb.jpg')
+        self.assertEqual(self.render_job.output_width, 600)
+        self.assertEqual(self.render_job.output_height, 600)
+        self.assertEqual(self.render_job.output_file_size, 123456)
+    
+    @patch('apps.designs.tasks.MockupCompositor.render_mockup')
+    def test_render_task_failure(self, mock_render):
+        """Test render task failure handling."""
+        from .tasks import render_draft_preview
+        
+        # Mock rendering failure
+        mock_render.side_effect = Exception('Rendering failed')
+        
+        # Execute task
+        result = render_draft_preview(str(self.render_job.render_id))
+        
+        self.assertEqual(result['status'], 'failed')
+        self.assertIn('error', result)
+        
+        # Verify database was updated
+        self.render_job.refresh_from_db()
+        self.assertEqual(self.render_job.status, 'failed')
+        self.assertIsNotNone(self.render_job.error_message)
+        self.assertIsNotNone(self.render_job.processing_completed_at)
+    
+    def test_render_task_invalid_id(self):
+        """Test render task with invalid render ID."""
+        from .tasks import render_draft_preview
+        
+        # Execute task with invalid ID
+        with self.assertRaises(MockupRender.DoesNotExist):
+            render_draft_preview('invalid-uuid')

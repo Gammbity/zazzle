@@ -2,8 +2,10 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 from PIL import Image
 import os
+import uuid
 
 User = get_user_model()
 
@@ -238,6 +240,318 @@ class DesignCollection(models.Model):
         
     def __str__(self):
         return f"{self.name} by {self.user.get_full_name()}"
+
+
+class Draft(models.Model):
+    """
+    Customer design drafts for specific product variants.
+    Stores work-in-progress designs with uploaded images, text layers, and editor state.
+    """
+    
+    class DraftStatus(models.TextChoices):
+        DRAFT = 'draft', _('Draft')
+        PREVIEW_RENDERING = 'preview_rendering', _('Preview Rendering')
+        PREVIEW_READY = 'preview_ready', _('Preview Ready')
+        ARCHIVED = 'archived', _('Archived')
+    
+    # Unique identifier for draft
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    
+    # Product association
+    product_type = models.ForeignKey(
+        'products.ProductType',
+        on_delete=models.CASCADE,
+        related_name='drafts',
+        help_text=_('Product type this draft is for')
+    )
+    product_variant = models.ForeignKey(
+        'products.ProductVariant', 
+        on_delete=models.CASCADE,
+        related_name='drafts',
+        help_text=_('Specific product variant (size/color)')
+    )
+    
+    # Ownership
+    customer = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE, 
+        related_name='drafts',
+        help_text=_('Customer who owns this draft')
+    )
+    
+    # Design content
+    name = models.CharField(
+        _('draft name'), 
+        max_length=200, 
+        blank=True,
+        help_text=_('Optional name for the draft')
+    )
+    
+    # Text layers (JSON structure for text elements)
+    text_layers = models.JSONField(
+        _('text layers'),
+        default=list,
+        help_text=_('Text elements with positioning, styling, and content')
+    )
+    
+    # Editor state (JSON structure for design editor state)
+    editor_state = models.JSONField(
+        _('editor state'),
+        default=dict,
+        help_text=_('Complete editor state including transforms, positions, layers order')
+    )
+    
+    # Status tracking
+    status = models.CharField(
+        _('status'),
+        max_length=20,
+        choices=DraftStatus.choices,
+        default=DraftStatus.DRAFT
+    )
+    
+    # Preview generation
+    preview_image_s3_key = models.CharField(
+        _('preview image S3 key'),
+        max_length=500,
+        blank=True,
+        help_text=_('S3 key for generated preview image')
+    )
+    
+    # Metadata
+    is_deleted = models.BooleanField(_('is deleted'), default=False)
+    
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Draft')
+        verbose_name_plural = _('Drafts')
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['customer', 'status']),
+            models.Index(fields=['uuid']),
+            models.Index(fields=['product_type', 'product_variant']),
+        ]
+    
+    def __str__(self):
+        name = self.name or f'Draft #{self.pk}'
+        return f"{name} - {self.product_type.name} ({self.get_status_display()})"
+    
+    def clean(self):
+        """Validate that product variant belongs to product type."""
+        if self.product_variant and self.product_type:
+            if self.product_variant.product_type != self.product_type:
+                raise ValidationError({
+                    'product_variant': _('Product variant must belong to the selected product type.')
+                })
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+    
+    @property
+    def asset_count(self):
+        """Get the number of uploaded assets in this draft."""
+        return self.assets.filter(is_deleted=False).count()
+    
+    @property
+    def total_file_size(self):
+        """Get total file size of all assets in bytes."""
+        return self.assets.filter(is_deleted=False).aggregate(
+            total=models.Sum('file_size')
+        )['total'] or 0
+    
+    def get_absolute_url(self):
+        """Get the URL for this draft."""
+        return f"/drafts/{self.uuid}/"
+
+
+class DraftAsset(models.Model):
+    """
+    Individual uploaded assets within a draft (images, graphics, etc.).
+    Stores S3 keys and metadata for files uploaded to draft.
+    """
+    
+    class AssetType(models.TextChoices):
+        IMAGE = 'image', _('Image')
+        GRAPHIC = 'graphic', _('Graphic')
+        LOGO = 'logo', _('Logo')
+        BACKGROUND = 'background', _('Background')
+    
+    # Unique identifier
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    
+    # Draft association
+    draft = models.ForeignKey(
+        Draft,
+        on_delete=models.CASCADE,
+        related_name='assets',
+        help_text=_('Draft this asset belongs to')
+    )
+    
+    # File information
+    original_filename = models.CharField(
+        _('original filename'),
+        max_length=255,
+        help_text=_('Original uploaded filename (sanitized)')
+    )
+    
+    s3_key = models.CharField(
+        _('S3 key'),
+        max_length=500,
+        help_text=_('Unique S3 key for the uploaded file')
+    )
+    
+    content_type = models.CharField(
+        _('content type'),
+        max_length=100,
+        help_text=_('MIME type of the uploaded file')
+    )
+    
+    file_size = models.PositiveIntegerField(
+        _('file size'),
+        help_text=_('File size in bytes')
+    )
+    
+    # Image metadata (if applicable) 
+    width = models.PositiveIntegerField(_('width in pixels'), null=True, blank=True)
+    height = models.PositiveIntegerField(_('height in pixels'), null=True, blank=True)
+    
+    # Asset classification
+    asset_type = models.CharField(
+        _('asset type'),
+        max_length=20,
+        choices=AssetType.choices,
+        default=AssetType.IMAGE
+    )
+    
+    # Editor positioning (JSON for position, scale, rotation, etc.)
+    transform = models.JSONField(
+        _('transform'),
+        default=dict,
+        help_text=_('Position, scale, rotation and other transforms')
+    )
+    
+    # Layer order
+    z_index = models.IntegerField(
+        _('z-index'), 
+        default=0,
+        help_text=_('Layer order (higher numbers appear on top)')
+    )
+    
+    # Status
+    is_deleted = models.BooleanField(_('is deleted'), default=False)
+    
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Draft Asset')
+        verbose_name_plural = _('Draft Assets')
+        ordering = ['z_index', 'created_at']
+        indexes = [
+            models.Index(fields=['draft', 'is_deleted']),
+            models.Index(fields=['uuid']),
+            models.Index(fields=['s3_key']),
+        ]
+    
+    def __str__(self):
+        return f"{self.original_filename} in {self.draft}"
+    
+    @property
+    def file_url(self):
+        """Get the S3 URL for this asset."""
+        # This will be implemented with S3 URL generation
+        from django.conf import settings
+        if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN'):
+            return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.s3_key}"
+        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{self.s3_key}"
+    
+    @property
+    def is_image(self):
+        """Check if this asset is an image."""
+        return self.content_type.startswith('image/')
+    
+    @property
+    def file_extension(self):
+        """Get the file extension from the original filename."""
+        return os.path.splitext(self.original_filename)[1].lower()
+
+
+class UploadSession(models.Model):
+    """
+    Temporary session for tracking S3 presigned uploads.
+    Used to validate and confirm file uploads.
+    """
+    
+    # Unique identifier for this upload session
+    session_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    
+    # User who initiated the upload
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='upload_sessions'
+    )
+    
+    # Draft this upload is for (optional, for validation)
+    draft = models.ForeignKey(
+        Draft,
+        on_delete=models.CASCADE,
+        related_name='upload_sessions',
+        null=True,
+        blank=True
+    )
+    
+    # S3 upload details
+    s3_key = models.CharField(
+        _('S3 key'),
+        max_length=500,
+        help_text=_('Target S3 key for upload')
+    )
+    
+    original_filename = models.CharField(
+        _('original filename'),
+        max_length=255,
+        help_text=_('Sanitized original filename')
+    )
+    
+    expected_size = models.PositiveIntegerField(
+        _('expected file size'),
+        help_text=_('Expected file size in bytes')
+    )
+    
+    content_type = models.CharField(
+        _('content type'),
+        max_length=100,
+        help_text=_('Expected MIME type')
+    )
+    
+    # Session status
+    is_confirmed = models.BooleanField(_('is confirmed'), default=False)
+    expires_at = models.DateTimeField(_('expires at'))
+    
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    confirmed_at = models.DateTimeField(_('confirmed at'), null=True, blank=True)
+    
+    class Meta:
+        verbose_name = _('Upload Session')
+        verbose_name_plural = _('Upload Sessions')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['session_id']),
+            models.Index(fields=['user', 'is_confirmed']),
+            models.Index(fields=['s3_key']),
+        ]
+    
+    def __str__(self):
+        return f"Upload session {self.session_id} - {self.original_filename}"
+    
+    @property
+    def is_expired(self):
+        """Check if this upload session has expired."""
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
 
 # Import settings at the end to avoid circular imports
 from django.conf import settings

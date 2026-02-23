@@ -146,6 +146,18 @@ The API is fully documented using OpenAPI/Swagger:
 - **ReDoc**: http://localhost:8000/api/redoc/
 - **Schema**: http://localhost:8000/api/schema/
 
+### Design Draft System
+
+The new Design Draft system allows customers to create work-in-progress designs with secure S3 file uploads:
+
+- **Draft Management** - Create, update, and organize design drafts
+- **Text Layers** - Add and style text elements with positioning
+- **Asset Upload** - Secure S3 uploads via presigned URLs
+- **Editor State** - Persist complete design tool state
+- **Multi-Status Workflow** - Draft → Preview Rendering → Preview Ready
+
+See [apps/designs/README.md](backend/apps/designs/README.md) for complete documentation.
+
 ### Key API Endpoints
 
 ```bash
@@ -165,7 +177,18 @@ GET  /api/products/<slug>/
 GET  /api/products/categories/
 GET  /api/products/featured/
 
-# Designs
+# Design Drafts (NEW)
+GET    /api/designs/drafts/                    # List user drafts
+POST   /api/designs/drafts/                    # Create new draft
+GET    /api/designs/drafts/{uuid}/             # Get draft details
+PATCH  /api/designs/drafts/{uuid}/             # Update draft
+DELETE /api/designs/drafts/{uuid}/             # Archive draft
+GET    /api/designs/drafts/stats/              # Draft statistics
+GET    /api/designs/drafts/{uuid}/assets/      # List draft assets
+POST   /api/designs/uploads/presign/           # Request S3 upload URL
+POST   /api/designs/uploads/confirm/           # Confirm S3 upload
+
+# Legacy Designs
 GET  /api/designs/
 POST /api/designs/
 GET  /api/designs/my/
@@ -189,7 +212,12 @@ POST /api/orders/<id>/cancel/
 - ✅ **Admin Panel** - Complete management interface
 
 ### Design Features
-- ✅ **File Upload** - PNG, JPG, SVG, PDF support
+- ✅ **Design Drafts** - Work-in-progress designs with auto-save and S3 uploads
+- ✅ **Text Layer Management** - Rich text editing with fonts and positioning
+- ✅ **Asset Management** - Upload and organize images with z-index layering
+- ✅ **Secure File Upload** - S3 presigned URLs for direct secure uploads
+- ✅ **Editor State Persistence** - Save and restore complete design editor state
+- ✅ **File Upload** - PNG, JPG, SVG, PDF support (legacy)
 - ✅ **Image Optimization** - Automatic resizing and optimization
 - ✅ **Design Categories** - Organize designs by category
 - ✅ **License Management** - Different usage licenses

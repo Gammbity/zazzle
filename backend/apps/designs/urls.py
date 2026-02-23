@@ -4,7 +4,7 @@ from . import views
 app_name = 'designs'
 
 urlpatterns = [
-    # Categories
+    # Categories  
     path('categories/', views.DesignCategoryListView.as_view(), name='category-list'),
     
     # Designs
@@ -21,3 +21,18 @@ urlpatterns = [
     path('collections/<int:collection_id>/add/<int:design_id>/', views.add_to_collection, name='add-to-collection'),
     path('collections/<int:collection_id>/remove/<int:design_id>/', views.remove_from_collection, name='remove-from-collection'),
 ]
+
+# Draft System URLs
+draft_urlpatterns = [
+    # Draft management
+    path('drafts/', views.DraftListCreateView.as_view(), name='draft-list'),
+    path('drafts/<uuid:uuid>/', views.DraftDetailView.as_view(), name='draft-detail'),
+    path('drafts/<uuid:uuid>/assets/', views.DraftAssetListView.as_view(), name='draft-assets'),
+    path('drafts/stats/', views.draft_stats, name='draft-stats'),
+    
+    # Upload management
+    path('uploads/presign/', views.presigned_upload_url, name='presigned-upload'),
+    path('uploads/confirm/', views.confirm_upload, name='confirm-upload'),
+]
+
+urlpatterns += draft_urlpatterns

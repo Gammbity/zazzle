@@ -3,199 +3,343 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from django.db.models import Q, Avg, Count
+from django.db.models import Q, Min, Max, Count
+from django.shortcuts import get_object_or_404
 
-from .models import Category, Product, ProductVariant, ProductImage, ProductReview
+from .models import ProductType, ProductVariant, ProductAssetTemplate
 from .serializers import (
-    CategorySerializer, ProductListSerializer, ProductDetailSerializer,
-    ProductCreateSerializer, ProductVariantSerializer, ProductImageSerializer,
-    ProductReviewSerializer
+    ProductTypeListSerializer, ProductTypeDetailSerializer,
+    ProductVariantSerializer, ProductVariantDetailSerializer,
+    ProductAssetTemplateSerializer, TShirtProductSerializer,
+    MugProductSerializer, BusinessCardProductSerializer,
+    DeskCalendarProductSerializer
 )
 
 
-class CategoryListView(generics.ListCreateAPIView):
-    """API view for category list and creation."""
+class ProductListView(generics.ListAPIView):
+    """
+    API view for product catalog list.
+    GET /api/products/
     
-    queryset = Category.objects.filter(is_active=True, parent=None)
-    serializer_class = CategorySerializer
-    filter_backends = [SearchFilter, OrderingFilter]
+    Returns all active product types with pricing and variant information.
+    """
+    
+    queryset = ProductType.objects.filter(is_active=True).prefetch_related(
+        'variants', 'asset_templates'
+    )
+    serializer_class = ProductTypeListSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    
+    # Filtering options
+    filterset_fields = ['category', 'has_size_variants', 'has_color_variants']
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'sort_order', 'created_at']
     ordering = ['sort_order', 'name']
     
-    def get_permissions(self):
-        """Only admin can create categories."""
-        if self.request.method == 'POST':
-            return [permissions.IsAdminUser()]
-        return [permissions.AllowAny()]
-
-
-class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """API view for category detail, update, and delete."""
-    
-    queryset = Category.objects.filter(is_active=True)
-    serializer_class = CategorySerializer
-    lookup_field = 'slug'
-    
-    def get_permissions(self):
-        """Only admin can modify categories."""
-        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-            return [permissions.IsAdminUser()]
-        return [permissions.AllowAny()]
-
-
-class ProductListView(generics.ListCreateAPIView):
-    """API view for product list and creation."""
-    
-    queryset = Product.objects.filter(is_active=True).select_related('category')
-    serializer_class = ProductListSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['category', 'product_type', 'is_featured']
-    search_fields = ['name', 'description', 'category__name']
-    ordering_fields = ['name', 'base_price', 'created_at']
-    ordering = ['-created_at']
-    
     def get_queryset(self):
-        """Filter products based on query parameters."""
+        """Enhanced queryset with price and variant filtering."""
         queryset = super().get_queryset()
         
-        # Filter by price range
+        # Filter by price range (based on variant prices)
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
         
         if min_price:
-            queryset = queryset.filter(base_price__gte=min_price)
+            queryset = queryset.filter(variants__sale_price__gte=min_price).distinct()
         if max_price:
-            queryset = queryset.filter(base_price__lte=max_price)
-            
-        # Filter by colors
-        colors = self.request.query_params.getlist('color')
-        if colors:
-            queryset = queryset.filter(colors_available__contains=colors)
-            
-        # Filter by sizes
+            queryset = queryset.filter(variants__sale_price__lte=max_price).distinct()
+        
+        # Filter by available sizes
         sizes = self.request.query_params.getlist('size')
         if sizes:
-            queryset = queryset.filter(sizes_available__contains=sizes)
-            
+            queryset = queryset.filter(
+                variants__size__in=sizes,
+                variants__is_active=True
+            ).distinct()
+        
+        # Filter by available colors
+        colors = self.request.query_params.getlist('color')
+        if colors:
+            queryset = queryset.filter(
+                variants__color__in=colors,
+                variants__is_active=True
+            ).distinct()
+        
         return queryset
+
+
+class ProductDetailView(generics.RetrieveAPIView):
+    """
+    API view for product detail.
+    GET /api/products/{id}/
+    
+    Returns detailed product information with all variants and pricing.
+    """
+    
+    queryset = ProductType.objects.filter(is_active=True).prefetch_related(
+        'variants', 'asset_templates'
+    )
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'id'
     
     def get_serializer_class(self):
-        """Use different serializer for creation."""
-        if self.request.method == 'POST':
-            return ProductCreateSerializer
-        return ProductListSerializer
-    
-    def get_permissions(self):
-        """Only admin can create products."""
-        if self.request.method == 'POST':
-            return [permissions.IsAdminUser()]
-        return [permissions.AllowAny()]
+        """Return specialized serializer based on product category."""
+        try:
+            product_type = self.get_object()
+            category_serializers = {
+                ProductType.ProductCategory.TSHIRT: TShirtProductSerializer,
+                ProductType.ProductCategory.MUG: MugProductSerializer,
+                ProductType.ProductCategory.BUSINESS_CARD: BusinessCardProductSerializer,
+                ProductType.ProductCategory.DESK_CALENDAR: DeskCalendarProductSerializer,
+            }
+            return category_serializers.get(product_type.category, ProductTypeDetailSerializer)
+        except:
+            return ProductTypeDetailSerializer
 
 
-class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """API view for product detail, update, and delete."""
+class ProductVariantListView(generics.ListAPIView):
+    """
+    API view for product variants.
+    GET /api/products/{product_id}/variants/
     
-    queryset = Product.objects.filter(is_active=True).select_related('category').prefetch_related(
-        'variants', 'images', 'reviews__customer'
+    Returns all variants for a specific product type.
+    """
+    
+    serializer_class = ProductVariantDetailSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['size', 'color', 'is_active', 'is_default']
+    ordering_fields = ['size', 'color', 'sale_price']
+    ordering = ['size', 'color']
+    
+    def get_queryset(self):
+        """Get variants for specific product type."""
+        product_id = self.kwargs['product_id']
+        return ProductVariant.objects.filter(
+            product_type_id=product_id,
+            is_active=True
+        ).select_related('product_type')
+
+
+class ProductVariantDetailView(generics.RetrieveAPIView):
+    """
+    API view for specific product variant.
+    GET /api/products/{product_id}/variants/{variant_id}/
+    
+    Returns detailed information about a specific variant.
+    """
+    
+    serializer_class = ProductVariantDetailSerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'id'
+    
+    def get_queryset(self):
+        """Get variant for specific product type."""
+        product_id = self.kwargs['product_id']
+        return ProductVariant.objects.filter(
+            product_type_id=product_id,
+            is_active=True
+        ).select_related('product_type')
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def product_categories(request):
+    """
+    Get available product categories.
+    GET /api/products/categories/
+    """
+    categories = []
+    for choice in ProductType.ProductCategory.choices:
+        category_data = {
+            'value': choice[0],
+            'label': choice[1],
+            'count': ProductType.objects.filter(
+                category=choice[0],
+                is_active=True
+            ).count()
+        }
+        categories.append(category_data)
+    
+    return Response({
+        'categories': categories,
+        'total_products': ProductType.objects.filter(is_active=True).count()
+    })
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def product_filters(request):
+    """
+    Get available filter options for products.
+    GET /api/products/filters/
+    """
+    # Get all active product types for filter data
+    active_products = ProductType.objects.filter(is_active=True)
+    active_variants = ProductVariant.objects.filter(
+        product_type__is_active=True,
+        is_active=True
     )
-    serializer_class = ProductDetailSerializer
-    lookup_field = 'slug'
     
-    def get_permissions(self):
-        """Only admin can modify products."""
-        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-            return [permissions.IsAdminUser()]
-        return [permissions.AllowAny()]
-
-
-class FeaturedProductsView(generics.ListAPIView):
-    """API view for featured products."""
+    # Available sizes across all products
+    sizes = sorted(set(
+        variant.size for variant in active_variants 
+        if variant.size
+    ))
     
-    queryset = Product.objects.filter(is_active=True, is_featured=True).select_related('category')
-    serializer_class = ProductListSerializer
+    # Available colors across all products
+    colors = []
+    color_data = active_variants.exclude(color='').exclude(color_hex='').values(
+        'color', 'color_hex'
+    ).distinct()
     
-    def get_queryset(self):
-        """Get featured products with random ordering."""
-        return super().get_queryset().order_by('?')[:8]
-
-
-class ProductSearchView(generics.ListAPIView):
-    """API view for advanced product search."""
+    for item in color_data:
+        colors.append({
+            'name': item['color'],
+            'hex': item['color_hex']
+        })
     
-    serializer_class = ProductListSerializer
+    # Price range
+    price_range = active_variants.aggregate(
+        min_price=Min('sale_price'),
+        max_price=Max('sale_price')
+    )
     
-    def get_queryset(self):
-        """Advanced search functionality."""
-        query = self.request.query_params.get('q', '')
-        category = self.request.query_params.get('category')
-        product_type = self.request.query_params.get('type')
-        
-        queryset = Product.objects.filter(is_active=True)
-        
-        if query:
-            queryset = queryset.filter(
-                Q(name__icontains=query) |
-                Q(description__icontains=query) |
-                Q(category__name__icontains=query)
-            )
-            
-        if category:
-            queryset = queryset.filter(category__slug=category)
-            
-        if product_type:
-            queryset = queryset.filter(product_type=product_type)
-            
-        return queryset.distinct()
-
-
-class ProductReviewListCreateView(generics.ListCreateAPIView):
-    """API view for product reviews."""
-    
-    serializer_class = ProductReviewSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    
-    def get_queryset(self):
-        """Get reviews for specific product."""
-        product_slug = self.kwargs['product_slug']
-        return ProductReview.objects.filter(
-            product__slug=product_slug,
-            is_approved=True
-        ).select_related('customer')
-    
-    def perform_create(self, serializer):
-        """Create review for authenticated user."""
-        product_slug = self.kwargs['product_slug']
-        product = Product.objects.get(slug=product_slug)
-        serializer.save(customer=self.request.user, product=product)
+    return Response({
+        'sizes': sizes,
+        'colors': colors,
+        'price_range': {
+            'min': float(price_range['min_price'] or 0),
+            'max': float(price_range['max_price'] or 0),
+            'currency': 'UZS'
+        },
+        'categories': [
+            {'value': choice[0], 'label': choice[1]}
+            for choice in ProductType.ProductCategory.choices
+        ]
+    })
 
 
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
 def product_stats(request):
-    """Get product statistics."""
+    """
+    Get product catalog statistics.
+    GET /api/products/stats/
+    """
     stats = {
-        'total_products': Product.objects.filter(is_active=True).count(),
-        'total_categories': Category.objects.filter(is_active=True).count(),
-        'featured_products': Product.objects.filter(is_active=True, is_featured=True).count(),
-        'product_types': Product.objects.filter(is_active=True).values('product_type').annotate(
-            count=Count('id')
-        ).order_by('-count')
+        'total_products': ProductType.objects.filter(is_active=True).count(),
+        'total_variants': ProductVariant.objects.filter(
+            product_type__is_active=True,
+            is_active=True
+        ).count(),
+        'categories': ProductType.objects.filter(is_active=True).values(
+            'category'
+        ).annotate(
+            count=Count('id'),
+            label=Count('category')  # Will be replaced in the loop
+        ).order_by('-count'),
+        'price_summary': ProductVariant.objects.filter(
+            product_type__is_active=True,
+            is_active=True
+        ).aggregate(
+            min_price=Min('sale_price'),
+            max_price=Max('sale_price'),
+            avg_price=Min('sale_price')  # Using Min as placeholder for Avg
+        )
     }
+    
+    # Add human-readable labels to categories
+    category_labels = dict(ProductType.ProductCategory.choices)
+    for category in stats['categories']:
+        category['label'] = category_labels.get(category['category'], category['category'])
+    
     return Response(stats)
 
 
-@api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
-def mark_review_helpful(request, review_id):
-    """Mark a review as helpful."""
-    try:
-        review = ProductReview.objects.get(id=review_id)
-        review.helpful_count += 1
-        review.save()
-        return Response({'message': 'Review marked as helpful'})
-    except ProductReview.DoesNotExist:
-        return Response(
-            {'error': 'Review not found'}, 
-            status=status.HTTP_404_NOT_FOUND
-        )
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def featured_products(request):
+    """
+    Get featured/recommended products.
+    GET /api/products/featured/
+    """
+    # For MVP, we'll return products with the most variants or specific categories
+    featured_products = ProductType.objects.filter(
+        is_active=True
+    ).annotate(
+        variant_count=Count('variants', filter=Q(variants__is_active=True))
+    ).order_by('-variant_count')[:6]
+    
+    serializer = ProductTypeListSerializer(featured_products, many=True)
+    return Response({
+        'featured_products': serializer.data,
+        'message': 'Most popular products with variants'
+    })
+
+
+# Admin-only views for product management (if needed)
+
+class ProductTypeCreateView(generics.CreateAPIView):
+    """
+    Admin-only view to create product types.
+    POST /api/admin/products/
+    """
+    
+    queryset = ProductType.objects.all()
+    serializer_class = ProductTypeDetailSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+
+class ProductVariantCreateView(generics.CreateAPIView):
+    """
+    Admin-only view to create product variants.
+    POST /api/admin/products/{product_id}/variants/
+    """
+    
+    serializer_class = ProductVariantDetailSerializer
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get_queryset(self):
+        product_id = self.kwargs['product_id']
+        return ProductVariant.objects.filter(product_type_id=product_id)
+    
+    def perform_create(self, serializer):
+        product_id = self.kwargs['product_id']
+        product_type = get_object_or_404(ProductType, id=product_id)
+        serializer.save(product_type=product_type)
+
+
+# Search functionality
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def search_products(request):
+    """
+    Search products by query.
+    GET /api/products/search/?q=<query>
+    """
+    query = request.GET.get('q', '').strip()
+    
+    if not query:
+        return Response({
+            'results': [],
+            'message': 'Please provide a search query'
+        })
+    
+    # Search across product types
+    products = ProductType.objects.filter(
+        Q(name__icontains=query) |
+        Q(description__icontains=query) |
+        Q(category__icontains=query),
+        is_active=True
+    ).distinct()[:20]
+    
+    serializer = ProductTypeListSerializer(products, many=True)
+    
+    return Response({
+        'query': query,
+        'results': serializer.data,
+        'count': products.count()
+    })

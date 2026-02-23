@@ -4,18 +4,22 @@ from . import views
 app_name = 'products'
 
 urlpatterns = [
-    # Categories
-    path('categories/', views.CategoryListView.as_view(), name='category-list'),
-    path('categories/<slug:slug>/', views.CategoryDetailView.as_view(), name='category-detail'),
-    
-    # Products
+    # Main product endpoints (as requested by MVP)
     path('', views.ProductListView.as_view(), name='product-list'),
-    path('featured/', views.FeaturedProductsView.as_view(), name='featured-products'),
-    path('search/', views.ProductSearchView.as_view(), name='product-search'),
-    path('stats/', views.product_stats, name='product-stats'),
-    path('<slug:slug>/', views.ProductDetailView.as_view(), name='product-detail'),
+    path('<int:id>/', views.ProductDetailView.as_view(), name='product-detail'),
     
-    # Reviews
-    path('<slug:product_slug>/reviews/', views.ProductReviewListCreateView.as_view(), name='product-reviews'),
-    path('reviews/<int:review_id>/helpful/', views.mark_review_helpful, name='mark-review-helpful'),
+    # Product variants
+    path('<int:product_id>/variants/', views.ProductVariantListView.as_view(), name='product-variants'),
+    path('<int:product_id>/variants/<int:id>/', views.ProductVariantDetailView.as_view(), name='variant-detail'),
+    
+    # Utility endpoints
+    path('categories/', views.product_categories, name='product-categories'),
+    path('filters/', views.product_filters, name='product-filters'),
+    path('stats/', views.product_stats, name='product-stats'),
+    path('featured/', views.featured_products, name='featured-products'),
+    path('search/', views.search_products, name='search-products'),
+    
+    # Admin endpoints (for future use)
+    path('admin/create/', views.ProductTypeCreateView.as_view(), name='admin-create-product'),
+    path('admin/<int:product_id>/variants/create/', views.ProductVariantCreateView.as_view(), name='admin-create-variant'),
 ]

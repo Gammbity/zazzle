@@ -11,6 +11,7 @@ def create_mvp_products(apps, schema_editor):
     # 1. T-Shirt - with size and color variants
     tshirt = ProductType.objects.create(
         name='Classic T-Shirt',
+        slug='classic-t-shirt',
         category='tshirt',
         description='High-quality cotton T-shirt perfect for custom designs and everyday wear.',
         dimensions={
@@ -61,12 +62,14 @@ def create_mvp_products(apps, schema_editor):
                 production_cost = 55000  # 55,000 UZS
             
             is_default = (size == 'M' and color_name == 'White')
+            sku = f"TSHIRT-{size}-{color_name[:3].upper()}"
             
             ProductVariant.objects.create(
                 product_type=tshirt,
                 size=size,
                 color=color_name,
                 color_hex=color_hex,
+                sku=sku,
                 sale_price=sale_price,
                 production_cost=production_cost,
                 is_active=True,
@@ -77,6 +80,7 @@ def create_mvp_products(apps, schema_editor):
     # 2. Mug - single variant
     mug = ProductType.objects.create(
         name='Classic White Mug',
+        slug='classic-white-mug',
         category='mug',
         description='Premium white ceramic mug perfect for custom designs.',
         dimensions={
@@ -104,6 +108,7 @@ def create_mvp_products(apps, schema_editor):
         size='',
         color='White',
         color_hex='#FFFFFF',
+        sku='MUG-WHI',
         sale_price=65000,  # 65,000 UZS
         production_cost=35000,  # 35,000 UZS
         is_active=True,
@@ -114,6 +119,7 @@ def create_mvp_products(apps, schema_editor):
     # 3. Business Card - single-sided, 90x50
     business_card = ProductType.objects.create(
         name='Premium Business Cards',
+        slug='premium-business-cards',
         category='business_card',
         description='Professional single-sided business cards on premium cardstock.',
         dimensions={
@@ -141,6 +147,7 @@ def create_mvp_products(apps, schema_editor):
         size='',
         color='',
         color_hex='',
+        sku='BIZCARD-DEFAULT',
         sale_price=75000,  # 75,000 UZS (per 100 cards)
         production_cost=40000,  # 40,000 UZS
         is_active=True,
@@ -151,6 +158,7 @@ def create_mvp_products(apps, schema_editor):
     # 4. Desk Calendar - one main product
     desk_calendar = ProductType.objects.create(
         name='Custom Desk Calendar',
+        slug='custom-desk-calendar',
         category='desk_calendar',
         description='Personalized desk calendar with wire-o binding and built-in stand.',
         dimensions={
@@ -178,6 +186,7 @@ def create_mvp_products(apps, schema_editor):
         size='',
         color='',
         color_hex='',
+        sku='CALENDAR-DEFAULT',
         sale_price=120000,  # 120,000 UZS
         production_cost=75000,  # 75,000 UZS
         is_active=True,

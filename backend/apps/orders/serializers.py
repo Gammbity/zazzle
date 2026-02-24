@@ -1,6 +1,15 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Order, OrderItem, Payment, ShippingMethod, Coupon
+from .models import (
+    Order,
+    OrderItem,
+    Payment,
+    ShippingMethod,
+    Coupon,
+    PaymentTransaction,
+    ProductionFile,
+    OrderAssignment,
+)
 
 User = get_user_model()
 
@@ -169,61 +178,12 @@ class CouponValidationSerializer(serializers.Serializer):
 
 
 class CheckoutSerializer(serializers.Serializer):
-    """Serializer for checkout process."""
+    """Serializer for simplified checkout process (no delivery)."""
     
-    # Cart items
-    items = OrderItemSerializer(many=True)
-    
-    # Shipping info
-    shipping_name = serializers.CharField(max_length=100)
-    shipping_email = serializers.EmailField()
-    shipping_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
-    shipping_address = serializers.CharField()
-    shipping_city = serializers.CharField(max_length=100)
-    shipping_state = serializers.CharField(max_length=100)
-    shipping_postal_code = serializers.CharField(max_length=20)
-    shipping_country = serializers.CharField(max_length=100, default='Uzbekistan')
-    
-    # Order details
-    customer_notes = serializers.CharField(required=False, allow_blank=True)
-    coupon_code = serializers.CharField(max_length=50, required=False, allow_blank=True)
-    shipping_method = serializers.PrimaryKeyRelatedField(
-        queryset=ShippingMethod.objects.filter(is_active=True),
-        required=False,
-        allow_null=True
-    )
-    
-    # Payment
-    payment_method = serializers.CharField(max_length=20)
-    stripe_token = serializers.CharField(required=False, allow_blank=True)
-    
-    def validate_items(self, value):
-        """Validate cart items."""
-        if not value:
-            raise serializers.ValidationError("Cart cannot be empty.")
-        
-        for item in value:
-            if item.get('quantity', 0) <= 0:
-                raise serializers.ValidationError("Item quantity must be greater than 0.")
-        
-        return value
-    
-    def validate_coupon_code(self, value):
-        """Validate coupon code if provided."""
-        if value:
-            try:
-                coupon = Coupon.objects.get(code=value)
-                user = self.context['request'].user if self.context['request'].user.is_authenticated else None
-                is_valid, message = coupon.is_valid(user=user)
-                
-                if not is_valid:
-                    raise serializers.ValidationError(message)
-                
-                return value
-            except Coupon.DoesNotExist:
-                raise serializers.ValidationError("Invalid coupon code.")
-        
-        return value
+    contact_name = serializers.CharField(max_length=100)
+    contact_email = serializers.EmailField()
+    contact_phone = serializers.CharField(max_length=20)
+    note = serializers.CharField(required=False, allow_blank=True)
 
 
 class OrderStatusUpdateSerializer(serializers.ModelSerializer):
@@ -247,3 +207,110 @@ class OrderStatusUpdateSerializer(serializers.ModelSerializer):
             instance.delivered_at = timezone.now()
         
         return super().update(instance, validated_data)
+
+
+class PaymentInitSerializer(serializers.Serializer):
+    """Serializer for initializing payment transaction."""
+
+    provider = serializers.ChoiceField(choices=PaymentTransaction.Providers.choices)
+    order_id = serializers.IntegerField()
+    idempotency_key = serializers.CharField(max_length=64)
+
+    def validate(self, attrs):
+        request = self.context['request']
+        try:
+            order = Order.objects.get(id=attrs['order_id'], customer=request.user)
+        except Order.DoesNotExist:
+            raise serializers.ValidationError({'order_id': 'Order not found.'})
+
+        if order.status not in ['NEW', 'PAYMENT_PENDING']:
+            raise serializers.ValidationError({'order_id': 'Order is not eligible for payment.'})
+
+        attrs['order'] = order
+        return attrs
+
+
+class PaymentTransactionSerializer(serializers.ModelSerializer):
+    """Serializer for payment transaction responses."""
+
+    class Meta:
+        model = PaymentTransaction
+        fields = [
+            'id',
+            'provider',
+            'amount_uzs',
+            'currency',
+            'status',
+            'external_id',
+            'idempotency_key',
+            'order',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+
+class ProductionFileSerializer(serializers.ModelSerializer):
+    """Serializer for production files (for signed URL listing)."""
+
+    class Meta:
+        model = ProductionFile
+        fields = [
+            'id',
+            'order_item',
+            'file_type',
+            's3_key',
+            'dpi',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+
+class OrderAssignmentSerializer(serializers.ModelSerializer):
+    """Serializer for order assignment information."""
+
+    operator_email = serializers.EmailField(source='operator.email', read_only=True)
+
+    class Meta:
+        model = OrderAssignment
+        fields = [
+            'id',
+            'order',
+            'operator',
+            'operator_email',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'order', 'operator_email', 'created_at', 'updated_at']
+
+
+class OrderAssignInputSerializer(serializers.Serializer):
+    """Input serializer for assigning an order to an operator (admin-only)."""
+
+    operator_id = serializers.IntegerField()
+
+    def validate(self, attrs):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        operator_id = attrs['operator_id']
+
+        try:
+            operator = User.objects.get(id=operator_id, is_staff=False)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({'operator_id': 'Operator user not found.'})
+
+        attrs['operator'] = operator
+        return attrs
+
+
+class OrderStatusUpdateInputSerializer(serializers.Serializer):
+    """Input serializer for production status updates."""
+
+    status = serializers.ChoiceField(
+        choices=[
+            'READY_FOR_PRODUCTION',
+            'IN_PRODUCTION',
+            'DONE',
+        ]
+    )

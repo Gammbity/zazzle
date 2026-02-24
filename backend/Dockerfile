@@ -18,7 +18,7 @@ RUN pip install -e .[dev]
 COPY . .
 
 # Create directories for media and static files
-RUN mkdir -p /app/media /app/static
+RUN mkdir -p /app/media /app/static /app/logs
 
 # Expose port
 EXPOSE 8000

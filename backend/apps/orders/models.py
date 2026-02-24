@@ -12,14 +12,13 @@ class Order(models.Model):
     """Main order model."""
     
     ORDER_STATUS = [
-        ('pending', _('Pending Payment')),
-        ('paid', _('Paid')),
-        ('processing', _('Processing')),
-        ('printing', _('Printing')),
-        ('shipped', _('Shipped')),
-        ('delivered', _('Delivered')),
-        ('cancelled', _('Cancelled')),
-        ('refunded', _('Refunded')),
+        ('NEW', _('New')),
+        ('PAYMENT_PENDING', _('Payment Pending')),
+        ('PAID', _('Paid')),
+        ('READY_FOR_PRODUCTION', _('Ready for Production')),
+        ('IN_PRODUCTION', _('In Production')),
+        ('DONE', _('Done')),
+        ('CANCELLED', _('Cancelled')),
     ]
     
     # Order identification
@@ -27,7 +26,7 @@ class Order(models.Model):
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     
     # Order status
-    status = models.CharField(_('status'), max_length=20, choices=ORDER_STATUS, default='pending')
+    status = models.CharField(_('status'), max_length=32, choices=ORDER_STATUS, default='NEW')
     
     # Pricing
     subtotal = models.DecimalField(_('subtotal'), max_digits=10, decimal_places=2, default=0)
@@ -93,6 +92,48 @@ class Order(models.Model):
     def item_count(self):
         """Get total number of items."""
         return sum(item.quantity for item in self.items.all())
+
+
+class ProductionFile(models.Model):
+    """Print-ready file generated for a specific order item."""
+
+    class FileType(models.TextChoices):
+        PNG_300_DPI = 'png_300', _('PNG 300 DPI')
+        PDF = 'pdf', _('PDF')
+        OTHER = 'other', _('Other')
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='production_files',
+    )
+    order_item = models.ForeignKey(
+        'OrderItem',
+        on_delete=models.CASCADE,
+        related_name='production_files',
+    )
+
+    file_type = models.CharField(
+        _('file type'),
+        max_length=32,
+        choices=FileType.choices,
+        default=FileType.PNG_300_DPI,
+    )
+    s3_key = models.CharField(_('S3 key'), max_length=500)
+    dpi = models.PositiveIntegerField(_('DPI'), default=300)
+
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('Production File')
+        verbose_name_plural = _('Production Files')
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['order', 'order_item']),
+        ]
+
+    def __str__(self):
+        return f"{self.order.order_number} - item {self.order_item_id} ({self.file_type})"
 
 
 class OrderItem(models.Model):
@@ -215,6 +256,139 @@ class Payment(models.Model):
         super().save(*args, **kwargs)
 
 
+class PaymentTransaction(models.Model):
+    """Generic payment transaction for local providers."""
+
+    class Providers(models.TextChoices):
+        PAYME = 'payme', _('Payme')
+        CLICK = 'click', _('Click')
+        UZCARD_HUMO = 'uzcard_humo', _('Uzcard/Humo Direct')
+
+    class Status(models.TextChoices):
+        NEW = 'NEW', _('New')
+        INITIATED = 'INITIATED', _('Initiated')
+        SUCCESS = 'SUCCESS', _('Success')
+        FAILED = 'FAILED', _('Failed')
+        CANCELLED = 'CANCELLED', _('Cancelled')
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='payment_transactions',
+    )
+
+    provider = models.CharField(
+        _('provider'),
+        max_length=32,
+        choices=Providers.choices,
+    )
+    amount_uzs = models.DecimalField(
+        _('amount (UZS)'),
+        max_digits=14,
+        decimal_places=0,
+    )
+    currency = models.CharField(
+        _('currency'),
+        max_length=3,
+        default='UZS',
+    )
+    status = models.CharField(
+        _('status'),
+        max_length=16,
+        choices=Status.choices,
+        default=Status.NEW,
+    )
+    external_id = models.CharField(
+        _('external transaction id'),
+        max_length=128,
+        blank=True,
+    )
+    idempotency_key = models.CharField(
+        _('idempotency key'),
+        max_length=64,
+        unique=True,
+    )
+    raw_payload = models.JSONField(
+        _('raw payload'),
+        default=dict,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Payment Transaction')
+        verbose_name_plural = _('Payment Transactions')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['provider', 'external_id']),
+            models.Index(fields=['order', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.provider} {self.amount_uzs} {self.currency} ({self.status})"
+
+
+class OrderAssignment(models.Model):
+    """Assignment of an order to an internal print operator."""
+
+    order = models.OneToOneField(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='assignment',
+    )
+    operator = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='assigned_orders',
+    )
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='order_assignments_made',
+    )
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Order Assignment')
+        verbose_name_plural = _('Order Assignments')
+        indexes = [
+            models.Index(fields=['operator']),
+        ]
+
+    def __str__(self):
+        return f"{self.order.order_number} -> {self.operator.email}"
+
+
+class InternalNote(models.Model):
+    """Internal notes on orders (for operators/admins)."""
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='internal_notes',
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='order_internal_notes',
+    )
+    text = models.TextField(_('note'))
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('Internal Note')
+        verbose_name_plural = _('Internal Notes')
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Note for {self.order.order_number} by {self.author.email}"
+
+
 class ShippingMethod(models.Model):
     """Shipping method configuration."""
     
@@ -278,7 +452,7 @@ class Coupon(models.Model):
     # Conditions
     minimum_amount = models.DecimalField(_('minimum amount'), max_digits=10, decimal_places=2, default=0)
     applicable_products = models.ManyToManyField(
-        'products.Product', 
+        'products.ProductType', 
         blank=True,
         related_name='coupons'
     )

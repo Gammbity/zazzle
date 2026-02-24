@@ -129,7 +129,7 @@ class LoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError('Invalid email or password.')
         else:
             raise serializers.ValidationError('Must include email and password.')
-    class UserRegistrationSerializer(serializers.ModelSerializer):
+class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for user registration."""
     
     password = serializers.CharField(write_only=True, min_length=8)

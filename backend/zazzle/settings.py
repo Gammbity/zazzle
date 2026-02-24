@@ -24,7 +24,7 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-change-me')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',') if config('ALLOWED_HOSTS', default='') else []
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0,backend').split(',')
 
 # Application definition
 
@@ -70,6 +70,8 @@ LOCAL_APPS = [
     'apps.products',
     'apps.orders',
     'apps.designs',
+    'apps.cart',
+    'apps.support',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -83,6 +85,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'zazzle.urls'
@@ -234,10 +237,9 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Account settings
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
 ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'
@@ -258,7 +260,9 @@ SPECTACULAR_SETTINGS = {
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost",
     "http://localhost:3000",
+    "http://127.0.0.1",
     "http://127.0.0.1:3000",
 ]
 
@@ -273,7 +277,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
-CELERY_TASK_SOFT_TIME_LIMIT = 60  # 1 minute
+CELERY_TASK_SOFT_TIME_LIMIT = 60 * 5  # 5 minutes
 
 # Celery Rendering Configuration
 CELERY_TASK_ROUTES = {
@@ -371,6 +375,9 @@ STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 
 # Logging
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

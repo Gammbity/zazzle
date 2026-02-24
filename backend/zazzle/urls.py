@@ -18,6 +18,8 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from django.http import HttpResponse, JsonResponse
+from apps.orders import views as order_views
 
 api_urlpatterns = [
     path('auth/', include('dj_rest_auth.urls')),
@@ -26,6 +28,8 @@ api_urlpatterns = [
     path('products/', include('apps.products.urls')),
     path('orders/', include('apps.orders.urls')),
     path('designs/', include('apps.designs.urls')),
+    path('cart/', include('apps.cart.urls')),
+    path('support/', include('apps.support.urls')),
 ]
 
 urlpatterns = [
@@ -34,11 +38,17 @@ urlpatterns = [
     
     # API
     path('api/', include(api_urlpatterns)),
+    path('api/checkout', order_views.checkout, name='api-checkout'),
+    path('api/payments/init', order_views.payment_init, name='api-payment-init'),
+    path('api/payments/<str:provider>/callback', order_views.payment_callback, name='api-payment-callback'),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    
+    # API Health check
+    path('api/health/', lambda request: JsonResponse({'status': 'ok'}), name='api_health'),
     
     # Health check
     path('health/', lambda request: HttpResponse('OK'), name='health_check'),
@@ -53,5 +63,3 @@ if settings.DEBUG:
     if 'debug_toolbar' in settings.INSTALLED_APPS:
         import debug_toolbar
         urlpatterns = [path('__debug__/', include(debug_toolbar.urls))] + urlpatterns
-
-from django.http import HttpResponse

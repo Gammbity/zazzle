@@ -22,4 +22,10 @@ urlpatterns = [
     # Admin endpoints
     path('admin/orders/', views.AdminOrderListView.as_view(), name='admin-order-list'),
     path('admin/orders/<int:pk>/', views.AdminOrderDetailView.as_view(), name='admin-order-detail'),
+    
+    # Production workflow
+    path('operator/orders', views.operator_orders, name='operator-orders'),
+    path('<int:order_id>/assign', views.assign_order, name='order-assign'),
+    path('<int:order_id>/status', views.update_order_status, name='order-status'),
+    path('<int:order_id>/files', views.order_files, name='order-files'),
 ]

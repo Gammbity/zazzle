@@ -158,7 +158,7 @@ SITE_ID = 1
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    d for d in [BASE_DIR / 'static'] if d.is_dir()
 ]
 
 # Media files
@@ -261,12 +261,20 @@ SPECTACULAR_SETTINGS = {
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost",
+    "http://localhost:80",
     "http://localhost:3000",
     "http://127.0.0.1",
     "http://127.0.0.1:3000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost",
+    "http://localhost:80",
+    "http://localhost:3000",
+    "http://127.0.0.1",
+]
 
 # Celery Configuration
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')

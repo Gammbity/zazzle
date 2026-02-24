@@ -2,15 +2,19 @@
 
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
-import type { ProductAngle } from '@/lib/products/catalog';
+import type { ProductAngle, OverlayBox } from '@/lib/products/catalog';
 import { cn } from '@/lib/utils';
 
 interface ProductGalleryProps {
   angles: ProductAngle[];
   productName: string;
+  /** When set, the design is overlaid on every angle image. */
+  designUrl?: string | null;
+  /** Overlay bounding box (percentage-based). Required when designUrl is set. */
+  overlayBox?: OverlayBox;
 }
 
-export default function ProductGallery({ angles, productName }: ProductGalleryProps) {
+export default function ProductGallery({ angles, productName, designUrl, overlayBox }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const active = angles[activeIndex];
 
@@ -39,6 +43,27 @@ export default function ProductGallery({ angles, productName }: ProductGalleryPr
           className="object-contain p-4 transition-opacity duration-300"
           priority
         />
+
+        {/* Design overlay */}
+        {designUrl && overlayBox && (
+          <div
+            className="absolute overflow-hidden pointer-events-none"
+            style={{
+              left: `${overlayBox.x}%`,
+              top: `${overlayBox.y}%`,
+              width: `${overlayBox.width}%`,
+              height: `${overlayBox.height}%`,
+            }}
+            aria-hidden="true"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={designUrl}
+              alt="Your design"
+              className="h-full w-full object-contain opacity-85 mix-blend-multiply"
+            />
+          </div>
+        )}
       </div>
 
       {/* Thumbnails */}

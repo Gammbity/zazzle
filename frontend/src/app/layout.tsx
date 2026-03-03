@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000'),
   title: 'Zazzle Uzbekistan - Custom Print on Demand',
   description: 'Create custom designs and print them on high-quality products. T-shirts, mugs, posters and more. Made in Uzbekistan.',
   keywords: 'print on demand, custom designs, t-shirts, mugs, posters, Uzbekistan',

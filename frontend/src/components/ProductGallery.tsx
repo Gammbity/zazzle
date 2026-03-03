@@ -16,10 +16,24 @@ interface ProductGalleryProps {
 
 export default function ProductGallery({ angles, productName, designUrl, overlayBox }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const active = angles[activeIndex];
+  
+  // Safety checks for angles array
+  if (!angles || angles.length === 0) {
+    return (
+      <div className="aspect-square w-full rounded-2xl border border-gray-100 bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-500">No product images available</p>
+      </div>
+    );
+  }
+
+  // Ensure activeIndex is within bounds
+  const safeActiveIndex = Math.max(0, Math.min(activeIndex, angles.length - 1));
+  const active = angles[safeActiveIndex];
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (!angles || angles.length === 0) return;
+      
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault();
         setActiveIndex((prev) => (prev + 1) % angles.length);
@@ -77,13 +91,13 @@ export default function ProductGallery({ angles, productName, designUrl, overlay
           <button
             key={angle.id}
             role="tab"
-            aria-selected={i === activeIndex}
+            aria-selected={i === safeActiveIndex}
             aria-label={angle.label}
-            tabIndex={i === activeIndex ? 0 : -1}
+            tabIndex={i === safeActiveIndex ? 0 : -1}
             onClick={() => setActiveIndex(i)}
             className={cn(
               'relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 bg-gray-50 transition-all duration-200',
-              i === activeIndex
+              i === safeActiveIndex
                 ? 'border-primary-500 ring-2 ring-primary-500/30'
                 : 'border-gray-200 hover:border-gray-300',
             )}

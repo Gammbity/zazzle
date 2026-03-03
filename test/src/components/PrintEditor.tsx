@@ -4,22 +4,20 @@ import { fabric } from 'fabric';
 interface PrintEditorProps {
     onCanvasReady: (canvas: fabric.Canvas) => void;
     onTextureUpdate: () => void;
-    /**
-     * Width of the canvas in pixels — should represent the full printable wrap circumference
-     * (i.e. circumference of the mug body minus the handle gap).
-     * Height should equal the printable height of the mug body.
-     */
+    mugColor?: string;
     width?: number;
     height?: number;
 }
 
-// Professional Mug Print Dimensions
-// Resolution: 1500x550 (approx 2.7:1 ratio for 11oz mugs, height calibrated to 3D)
-const CANVAS_W = 1500;
-const CANVAS_H = 550;
-const PADDING_V = 10; // 5px top + 5px bottom (at this resolution)
+// Resolution: 540x200 (2.7:1 ratio for 11oz mugs, height calibrated to 3D)
+const CANVAS_W = 540;
+const CANVAS_H = 200;
 
-export default function PrintEditor({ onCanvasReady, onTextureUpdate, width = CANVAS_W, height = CANVAS_H }: PrintEditorProps) {
+// 11oz mug circumference ≈ 29.5cm → 1cm ≈ 18px
+// Safe margin on each side next to the handle seam
+const HANDLE_MARGIN_PX = 18;
+
+export default function PrintEditor({ onCanvasReady, onTextureUpdate, mugColor = '#ffffff', width = CANVAS_W, height = CANVAS_H }: PrintEditorProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fabricRef = useRef<fabric.Canvas | null>(null);
 
@@ -29,31 +27,94 @@ export default function PrintEditor({ onCanvasReady, onTextureUpdate, width = CA
         const canvas = new fabric.Canvas(canvasRef.current, {
             width,
             height,
-            backgroundColor: '#ffffff',
+            // Canvas background = mug body color.
+            // 3D material is white, so this background color IS the mug color on the 3D model.
+            backgroundColor: mugColor,
             preserveObjectStacking: true,
-            // Clip everything to the canvas boundary
-            clipPath: new fabric.Rect({
-                left: 0,
-                top: 0,
-                width,
-                height,
-                absolutePositioned: true,
-            }),
+            // Make selection borders visible
+            selectionBorderColor: '#3b82f6',
+            selectionLineWidth: 2,
+            // Show controls above everything
+            controlsAboveOverlay: true,
+            centeredScaling: false,
+            centeredRotation: false,
+            // Enable selection
+            selection: true,
+            // Do not clip offscreen elements (controls might be offscreen)
+            skipOffscreen: false,
+            // Standard settings for editing
+            enableRetinaScaling: false,
+            renderOnAddRemove: true,
         });
         fabricRef.current = canvas;
 
-        // Add padding guides (non-selectable)
-        const guideStyle = {
-            stroke: '#cbd5e1',
-            strokeDashArray: [5, 5],
-            selectable: false,
-            evented: false,
-        };
-        canvas.add(new fabric.Line([0, PADDING_V, width, PADDING_V], guideStyle));
-        canvas.add(new fabric.Line([0, height - PADDING_V, width, height - PADDING_V], guideStyle));
+        // ── Per-object clipping to safe print zone ───────────────────────────
+        // We do NOT use canvas.clipPath (that also clips the white background).
+        // Instead each added object gets its own clipPath so the canvas background
+        // stays fully white while objects are hard-clipped at the guide lines.
+        const makeSafeClip = () => new fabric.Rect({
+            left: HANDLE_MARGIN_PX,
+            top: 0,
+            width: width - HANDLE_MARGIN_PX * 2,
+            height,
+            absolutePositioned: true,
+        });
+
+        // Simplified styling - Fabric handles its own structure
+        const canvasElement = canvasRef.current;
+        if (canvasElement) {
+            canvasElement.style.position = 'relative';
+        }
+
+        // Configure control handles for 2D editing
+        fabric.Object.prototype.set({
+            cornerSize: 12, // Visible corners for editing
+            transparentCorners: false,
+            cornerColor: '#3b82f6',
+            cornerStrokeColor: '#ffffff',
+            borderColor: '#3b82f6',
+            borderScaleFactor: 1,
+            hasRotatingPoint: true, // Enable rotation
+            rotatingPointOffset: 25,
+            // Allow editing in 2D canvas
+            lockMovementX: false,
+            lockMovementY: false,
+            // Enable controls for editing
+            hasBorders: true,
+            hasControls: true,
+            selectable: true,
+            evented: true,
+        });
+
+        // Single event setup for object configuration
+        canvas.on('object:added', function (e) {
+            const obj = e.target;
+            if (obj) {
+                obj.set({
+                    hasBorders: true,
+                    hasControls: true,
+                    cornerSize: 12,
+                    borderColor: '#3b82f6',
+                    cornerColor: '#3b82f6',
+                    transparentCorners: false,
+                    selectable: true,
+                    evented: true,
+                });
+
+                // Apply individual clip so this object cannot render
+                // outside the safe zone — canvas background stays white.
+                obj.clipPath = makeSafeClip();
+
+                obj.setCoords();
+                canvas.renderAll();
+            }
+            onTextureUpdate();
+        });
 
         canvas.on('object:modified', onTextureUpdate);
-        canvas.on('object:added', onTextureUpdate);
+        canvas.on('object:scaling', onTextureUpdate);
+        canvas.on('object:moving', onTextureUpdate);
+        canvas.on('object:rotating', onTextureUpdate);
         canvas.on('object:removed', onTextureUpdate);
         canvas.on('selection:cleared', onTextureUpdate);
 
@@ -77,7 +138,7 @@ export default function PrintEditor({ onCanvasReady, onTextureUpdate, width = CA
 
         return () => {
             canvas.off('object:modified', onTextureUpdate);
-            canvas.off('object:added', onTextureUpdate);
+            canvas.off('object:added');
             canvas.off('object:removed', onTextureUpdate);
             canvas.off('selection:cleared', onTextureUpdate);
             window.removeEventListener('keydown', handleKeyDown);
@@ -85,19 +146,62 @@ export default function PrintEditor({ onCanvasReady, onTextureUpdate, width = CA
         };
     }, []);
 
+    // ── Sync canvas background with mug color ─────────────────────────────
+    // When mugColor changes, repaint canvas background so 3D texture reflects it.
+    useEffect(() => {
+        const canvas = fabricRef.current;
+        if (!canvas) return;
+        canvas.setBackgroundColor(mugColor, () => {
+            canvas.renderAll();
+            onTextureUpdate();
+        });
+    }, [mugColor]);
+
     return (
         <div className="print-editor-sidebar">
             <div className="canvas-header">
                 <h3 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-                    Print Hududi (Krujka Aylanasi) — Bo'yi va Eni Krujkaga Moslangan
+                    Print Hududi (Krujka Aylanasi)
                 </h3>
             </div>
-            {/* overflow hidden ensures visual clip even where fabric might render outside */}
+            {/* Canvas wrapper with complete isolation for controls */}
             <div
                 className="canvas-wrapper-2d"
-                style={{ overflow: 'hidden', maxWidth: '100%', borderRadius: '6px', border: '2px dashed #94a3b8' }}
+                style={{
+                    overflow: 'visible',
+                    maxWidth: '100%',
+                    borderRadius: '6px',
+                    border: '2px solid #94a3b8',
+                    position: 'relative',
+                }}
             >
                 <canvas ref={canvasRef} />
+
+                {/* ── Handle Safe-Zone Overlays ── */}
+                {/* Left margin (handle-side edge) */}
+                <div
+                    className="handle-zone handle-zone-left"
+                    style={{ width: HANDLE_MARGIN_PX }}
+                >
+                    <span className="handle-zone-label">✋</span>
+                </div>
+                {/* Right margin (handle-side edge) */}
+                <div
+                    className="handle-zone handle-zone-right"
+                    style={{ width: HANDLE_MARGIN_PX }}
+                >
+                    <span className="handle-zone-label">✋</span>
+                </div>
+
+                {/* Dashed guide lines */}
+                <div className="handle-guide handle-guide-left" style={{ left: HANDLE_MARGIN_PX }} />
+                <div className="handle-guide handle-guide-right" style={{ right: HANDLE_MARGIN_PX }} />
+            </div>
+
+            {/* Legend */}
+            <div className="handle-legend">
+                <span className="handle-legend-dot" />
+                <span>Tutqich yaqinida {HANDLE_MARGIN_PX}px (≈1 sm) bo'sh hudud — rasm shu zonaga tushmasa yaxshi</span>
             </div>
         </div>
     );

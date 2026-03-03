@@ -71,10 +71,13 @@ export default function MugRealisticPreview({
   const renderIdRef = useRef(0);
 
   // Currently we render from the first angle asset
-  const asset = angleAssets[0];
+  const asset = angleAssets && angleAssets.length > 0 ? angleAssets[0] : null;
 
   // Compute designBox from the base image dimensions + known placement %
   const designBoxMemo = useMemo(() => {
+    if (!asset || !asset.designBox) {
+      return { x: 0, y: 0, w: 0, h: 0 };
+    }
     return asset.designBox;
   }, [asset]);
 
@@ -83,7 +86,10 @@ export default function MugRealisticPreview({
   // -----------------------------------------------------------------------
 
   const render = useCallback(async () => {
-    if (!designDataUrl || !asset) return;
+    if (!designDataUrl || !asset || !asset.baseSrc || !asset.maskSrc || !asset.shadingSrc) {
+      setError('Missing required mug assets or design data');
+      return;
+    }
 
     const id = ++renderIdRef.current;
     setRendering(true);
@@ -97,7 +103,7 @@ export default function MugRealisticPreview({
 
       // Design placement: 18%–82% horizontally, 20%–70% vertically (matches overlayBox percentages)
       const dBox =
-        designBoxMemo.w > 0
+        designBoxMemo && designBoxMemo.w > 0
           ? designBoxMemo
           : {
               x: Math.round(bw * 0.18),

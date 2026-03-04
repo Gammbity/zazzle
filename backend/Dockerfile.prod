@@ -23,10 +23,9 @@ WORKDIR /app
 
 # Install Python dependencies
 FROM base as dependencies
-COPY pyproject.toml poetry.lock ./
-RUN pip install poetry==1.6.1 && \
-    poetry config virtualenvs.create false && \
-    poetry install --no-dev --no-interaction --no-ansi
+COPY pyproject.toml ./
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install .
 
 # Production stage
 FROM base as production

@@ -1,0 +1,702 @@
+:root {
+  /* Primary palette */
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-color: #3b82f6;
+
+  /* Backgrounds */
+  --bg-main: #f8fafc;
+  --bg-color: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --panel-bg: #ffffff;
+
+  /* Text */
+  --text-main: #1e293b;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #64748b;
+
+  /* Borders */
+  --border: #e2e8f0;
+  --border-color: #e2e8f0;
+
+  /* Danger */
+  --danger-color: #ef4444;
+  --danger-hover: #dc2626;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+  /* Misc */
+  --glass: backdrop-filter: blur(12px) saturate(180%);
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* Base Layout */
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  flex-direction: row;
+}
+
+/* UI Structure */
+.left-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+  background-color: #e2e8f0;
+  overflow-y: auto;
+  padding: 1rem;
+  padding-bottom: 2rem;
+  gap: 1rem;
+}
+
+/* The 3D view container — fills available width, fixed height */
+.canvas-wrapper {
+  background: #cbd5e1;
+  width: 100%;
+  max-width: 700px;
+  flex: 1;
+  min-height: 350px;
+  max-height: 520px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.right-panel-container {
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -4px 0 25px rgba(0, 0, 0, 0.05);
+  z-index: 20;
+}
+
+/* 2D Editor sits directly below the 3D Viewer in the left panel */
+.print-editor-wrapper {
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  width: auto;
+  overflow: hidden;
+  /* No more scrolling */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.print-editor-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.canvas-header h3 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.canvas-wrapper-2d {
+  position: relative;
+  background: repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%) 50% / 20px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: visible !important;
+  /* Allow controls to show outside canvas */
+  /* Remove clipping that hides controls */
+  /* contain: layout style paint !important; */
+  /* clip-path: inset(0px); */
+  /* -webkit-clip-path: inset(0px); */
+  /* Prevent any visual bleed-through */
+  z-index: 100;
+  transform: translateZ(0);
+  /* Force new stacking context */
+  /* Space for control handles */
+  /* Ensure div can receive events */
+}
+
+/* Fabric.js control containment - Allow editing handles in 2D editor */
+.canvas-wrapper-2d .upper-canvas {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+}
+
+.canvas-wrapper-2d canvas,
+.canvas-wrapper-2d .canvas-container {
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Enable selection colors and cursor */
+.canvas-wrapper-2d .fabric-corner {
+  cursor: pointer !important;
+}
+
+/* Ensure fabric canvas itself is interactive */
+.canvas-wrapper-2d canvas {
+  pointer-events: auto !important;
+}
+
+/* Complete isolation from 3D canvas */
+.canvas-wrapper {
+  z-index: 1;
+  isolation: isolate;
+  transform: translateZ(0);
+  overflow: hidden !important;
+  clip-path: inset(0px) !important;
+}
+
+/* Hide fabric controls specifically from 3D canvas area */
+.canvas-wrapper .fabric-corner,
+.canvas-wrapper .fabric-control,
+.canvas-wrapper .fabric-corner-controls,
+.canvas-wrapper .fabric-corner-circle,
+.canvas-wrapper .fabric-rotating-point,
+.canvas-wrapper .fabric-selection {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Target Three.js canvas specifically */
+.canvas-wrapper canvas:not([data-fabric]) {
+  position: relative !important;
+  z-index: 1 !important;
+  isolation: isolate !important;
+}
+
+/* Ensure 2D canvas never affects 3D canvas but allow controls */
+.print-editor-wrapper {
+  position: relative;
+  z-index: 10;
+  isolation: isolate;
+  transform: translateZ(0);
+  /* Remove contain property that might clip controls */
+  /* contain: layout style paint; */
+}
+
+
+/* Safe Area Guide (removed dashes) */
+.safe-area-overlay {
+  position: absolute;
+  top: 5%;
+  bottom: 5%;
+  left: 15%;
+  /* Keep away from the handle side */
+  right: 15%;
+  /* Keep away from the handle side */
+  border: none;
+  border-radius: 4px;
+  pointer-events: none;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.safe-area-overlay::after {
+  content: 'XAVFSIZ PRINT HUDUDI';
+  color: rgba(59, 130, 246, 0.3);
+  font-weight: bold;
+  font-size: 1.5rem;
+  pointer-events: none;
+}
+
+/* Sidebar Styling */
+.modern-sidebar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.sidebar-header p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+}
+
+/* Tab Navigation */
+.tab-menu {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 1rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+  background-color: var(--bg-color);
+}
+
+.tab-content {
+  padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Action Buttons */
+.action-btn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: white;
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--bg-color);
+}
+
+.action-btn.primary {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+}
+
+.action-btn.primary:hover {
+  background: var(--primary-hover);
+}
+
+.action-btn.danger {
+  color: var(--danger-color);
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.action-btn.danger:hover {
+  background: #fee2e2;
+  border-color: var(--danger-hover);
+}
+
+.hint-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.global-actions {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Stickers Grid */
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.sticker-btn {
+  font-size: 1.5rem;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.sticker-btn:hover {
+  transform: scale(1.1);
+}
+
+/* 3D Tools Controls Overlay (Zoom etc) */
+.zoom-controls {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  background: white;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.zoom-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.zoom-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: white;
+  cursor: pointer;
+  font-size: 1.25rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zoom-btn:hover {
+  background: var(--bg-color);
+}
+
+/* ── Upload Zone ─────────────────────────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem 1rem;
+  background: var(--bg-color);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  text-align: center;
+  outline: none;
+}
+
+.upload-zone:hover,
+.upload-zone:focus {
+  border-color: var(--primary-color);
+  background: #eff6ff;
+}
+
+.upload-zone.drag-over {
+  border-color: var(--primary-color);
+  background: #dbeafe;
+  transform: scale(1.01);
+}
+
+.upload-zone.upload-error-zone {
+  border-color: #f87171;
+  background: #fef2f2;
+}
+
+.upload-zone-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.upload-zone-inner strong {
+  color: var(--text-primary);
+}
+
+.upload-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.upload-retry {
+  font-size: 0.8rem;
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.upload-error-text {
+  color: #dc2626;
+  font-size: 0.82rem;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.upload-success-text {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.upload-filename {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Thumbnail Card ──────────────────────────────────────────────────────── */
+.thumbnail-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: white;
+}
+
+.thumbnail-img {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.thumbnail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.thumbnail-name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumbnail-size {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.thumbnail-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.thumbnail-remove:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ── Fit Controls ────────────────────────────────────────────────────────── */
+.fit-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fit-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.fit-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+/* ── Config Section ──────────────────────────────────────────────────────── */
+.config-section {
+  margin-bottom: 1.25rem;
+}
+
+.config-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+/* ── Color Palette ───────────────────────────────────────────────────────── */
+.color-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.color-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch[aria-pressed="true"] {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+/* ── Slider Label ────────────────────────────────────────────────────────── */
+.slider-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.slider-label input[type="range"] {
+  width: 100%;
+  accent-color: var(--primary-color);
+  cursor: pointer;
+}
+
+/* ── Spin animation ──────────────────────────────────────────────────────── */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+  color: var(--primary-color);
+}
+
+/* ── Handle Safe-Zone Overlay ────────────────────────────────────────────── */
+.handle-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  /* clicks go through to canvas */
+  z-index: 5;
+  /* Red-striped diagonal pattern to signal "danger zone" */
+  background: repeating-linear-gradient(-45deg,
+      rgba(239, 68, 68, 0.18) 0px,
+      rgba(239, 68, 68, 0.18) 4px,
+      rgba(239, 68, 68, 0.06) 4px,
+      rgba(239, 68, 68, 0.06) 10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.handle-zone-left {
+  left: 0;
+  border-right: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.handle-zone-right {
+  right: 0;
+  border-left: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.handle-zone-label {
+  font-size: 10px;
+  writing-mode: vertical-rl;
+  color: rgba(185, 28, 28, 0.7);
+  user-select: none;
+  transform: rotate(180deg);
+  line-height: 1;
+}
+
+/* Dashed safe-area guide lines */
+.handle-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  pointer-events: none;
+  z-index: 6;
+  border-left: 2px dashed rgba(239, 68, 68, 0.6);
+}
+
+/* Legend below canvas */
+.handle-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #b91c1c;
+  padding: 0 2px;
+}
+
+.handle-legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: repeating-linear-gradient(-45deg,
+      rgba(239, 68, 68, 0.5) 0px,
+      rgba(239, 68, 68, 0.5) 3px,
+      rgba(239, 68, 68, 0.15) 3px,
+      rgba(239, 68, 68, 0.15) 7px);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+}

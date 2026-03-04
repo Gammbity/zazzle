@@ -1,11 +1,15 @@
 {
   "extends": [
     "next/core-web-vitals",
-    "@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended",
     "prettier"
   ],
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint", "prettier", "tailwindcss"],
+  "plugins": [
+    "@typescript-eslint",
+    "prettier",
+    "tailwindcss"
+  ],
   "rules": {
     "prettier/prettier": "error",
     "@typescript-eslint/no-unused-vars": "error",

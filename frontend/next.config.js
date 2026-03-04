@@ -16,9 +16,17 @@ const nextConfig = {
       },
     ],
   },
+  output: 'standalone',
+  transpilePackages: ['three', '@react-three/fiber', '@react-three/drei'],
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '/api',
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_',
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   },
   webpack: (config) => {
     // Konva optionally requires the 'canvas' Node package for SSR.

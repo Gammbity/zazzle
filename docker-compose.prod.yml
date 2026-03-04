@@ -19,7 +19,7 @@ services:
     networks:
       - zazzle_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,6 +28,8 @@ services:
     image: redis:7-alpine
     restart: always
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    env_file:
+      - .env.prod
     volumes:
       - redis_data:/data
     ports:
@@ -35,7 +37,7 @@ services:
     networks:
       - zazzle_network
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a ${REDIS_PASSWORD} ping | grep PONG"]
+      test: [ "CMD-SHELL", "redis-cli --no-auth-warning -a ${REDIS_PASSWORD} ping | grep PONG" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,7 +48,7 @@ services:
       dockerfile: Dockerfile.prod
     restart: always
     environment:
-      - DJANGO_SETTINGS_MODULE=zazzle.settings.production
+      - DJANGO_SETTINGS_MODULE=zazzle.settings
     env_file:
       - .env.prod
     volumes:
@@ -60,7 +62,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health/ || exit 1"]
+      test: [ "CMD-SHELL", "curl -f http://localhost:8000/api/health/ || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -72,7 +74,7 @@ services:
     restart: always
     command: celery -A zazzle worker --loglevel=info --concurrency=4
     environment:
-      - DJANGO_SETTINGS_MODULE=zazzle.settings.production
+      - DJANGO_SETTINGS_MODULE=zazzle.settings
     env_file:
       - .env.prod
     volumes:
@@ -83,7 +85,7 @@ services:
       - backend
       - redis
     healthcheck:
-      test: ["CMD-SHELL", "celery -A zazzle inspect ping"]
+      test: [ "CMD-SHELL", "celery -A zazzle inspect ping" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -95,7 +97,7 @@ services:
     restart: always
     command: celery -A zazzle beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     environment:
-      - DJANGO_SETTINGS_MODULE=zazzle.settings.production
+      - DJANGO_SETTINGS_MODULE=zazzle.settings
     env_file:
       - .env.prod
     volumes:
@@ -118,7 +120,7 @@ services:
     networks:
       - zazzle_network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      test: [ "CMD-SHELL", "curl -f http://localhost:3000 || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -141,7 +143,7 @@ services:
       - backend
       - frontend
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      test: [ "CMD-SHELL", "curl -f http://localhost/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 3

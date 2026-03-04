@@ -60,22 +60,25 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   position: relative;
   background-color: #e2e8f0;
   overflow-y: auto;
+  padding: 1rem;
   padding-bottom: 2rem;
+  gap: 1rem;
 }
 
-/* The 3D view container */
+/* The 3D view container — fills available width, fixed height */
 .canvas-wrapper {
   background: #cbd5e1;
-  width: 500px;
-  height: 450px;
-  /* Further reduced to ensure it fits common laptop screens without scrolling the whole page */
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  width: 100%;
+  max-width: 700px;
+  flex: 1;
+  min-height: 350px;
+  max-height: 520px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   position: relative;
   overflow: hidden;
 }
@@ -160,7 +163,6 @@ body {
 
 /* Complete isolation from 3D canvas */
 .canvas-wrapper {
-  position: relative;
   z-index: 1;
   isolation: isolate;
   transform: translateZ(0);

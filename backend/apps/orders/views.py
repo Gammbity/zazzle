@@ -1,45 +1,50 @@
-from rest_framework import generics, status, permissions
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter, OrderingFilter
-from django.shortcuts import get_object_or_404
 from django.db import models, transaction
-from django.utils import timezone
-from django.conf import settings
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics, permissions, status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.response import Response
 
 from .models import (
-    Order,
-    OrderItem,
-    Payment,
-    ShippingMethod,
     Coupon,
+    Order,
+    OrderAssignment,
+    OrderItem,
     PaymentTransaction,
     ProductionFile,
-    OrderAssignment,
-)
-from .serializers import (
-    OrderListSerializer,
-    OrderDetailSerializer,
-    OrderCreateSerializer,
-    CouponValidationSerializer,
-    CheckoutSerializer,
-    OrderStatusUpdateSerializer,
-    ShippingMethodSerializer,
-    CouponSerializer,
-    PaymentInitSerializer,
-    ProductionFileSerializer,
-    OrderAssignmentSerializer,
-    OrderAssignInputSerializer,
-    OrderStatusUpdateInputSerializer,
+    ShippingMethod,
 )
 from .payment_providers import init_payment_for_provider, verify_provider_signature
-from .tasks import process_payment, send_order_confirmation
+from .serializers import (
+    CheckoutSerializer,
+    CouponSerializer,
+    CouponValidationSerializer,
+    OrderAssignInputSerializer,
+    OrderAssignmentSerializer,
+    OrderDetailSerializer,
+    OrderListSerializer,
+    OrderStatusUpdateInputSerializer,
+    OrderStatusUpdateSerializer,
+    PaymentInitSerializer,
+    ShippingMethodSerializer,
+)
+from .services import (
+    build_order_stats,
+    build_signed_file_url,
+    can_manage_order,
+    get_admin_order_queryset,
+    get_operator_order_queryset,
+    get_order_from_lookup,
+    get_user_order_queryset,
+    is_operator,
+    validate_status_transition,
+)
 
 
 class OrderListView(generics.ListAPIView):
     """API view for order list (user's orders)."""
-    
+
     serializer_class = OrderListSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -47,45 +52,34 @@ class OrderListView(generics.ListAPIView):
     search_fields = ['order_number', 'shipping_name']
     ordering_fields = ['created_at', 'total_amount', 'status']
     ordering = ['-created_at']
-    
+
     def get_queryset(self):
         """Get orders for authenticated user."""
-        return Order.objects.filter(
-            customer=self.request.user
-        ).select_related('customer', 'shipping_method')
+        return get_user_order_queryset(self.request.user, include_items=True)
 
 
 class OrderDetailView(generics.RetrieveAPIView):
     """API view for order detail."""
-    
+
     serializer_class = OrderDetailSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         """Get orders for authenticated user."""
-        return Order.objects.filter(
-            customer=self.request.user
-        ).prefetch_related(
-            'items', 'payments'
-        ).select_related('customer', 'shipping_method')
-    
+        return get_user_order_queryset(
+            self.request.user,
+            include_items=True,
+            include_payments=True,
+        )
+
     def get_object(self):
         """Get order by order number or ID."""
-        lookup_value = self.kwargs.get('pk')
-        
-        # Try to get by order number first, then by ID
-        try:
-            if lookup_value.isdigit():
-                return self.get_queryset().get(id=lookup_value)
-            else:
-                return self.get_queryset().get(order_number=lookup_value)
-        except Order.DoesNotExist:
-            return None
+        return get_order_from_lookup(self.get_queryset(), self.kwargs.get('pk'))
 
 
 class AdminOrderListView(generics.ListAPIView):
     """Admin view for all orders."""
-    
+
     serializer_class = OrderListSerializer
     permission_classes = [permissions.IsAdminUser]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -93,24 +87,22 @@ class AdminOrderListView(generics.ListAPIView):
     search_fields = ['order_number', 'customer__email', 'shipping_name']
     ordering_fields = ['created_at', 'total_amount', 'status']
     ordering = ['-created_at']
-    
+
     def get_queryset(self):
         """Get all orders for admin."""
-        return Order.objects.all().select_related('customer', 'shipping_method')
+        return get_admin_order_queryset(include_items=True)
 
 
 class AdminOrderDetailView(generics.RetrieveUpdateAPIView):
     """Admin view for order detail and updates."""
-    
+
     serializer_class = OrderDetailSerializer
     permission_classes = [permissions.IsAdminUser]
-    
+
     def get_queryset(self):
         """Get all orders for admin."""
-        return Order.objects.all().prefetch_related(
-            'items', 'payments'
-        ).select_related('customer', 'shipping_method')
-    
+        return get_admin_order_queryset(include_items=True, include_payments=True)
+
     def get_serializer_class(self):
         """Use different serializer for updates."""
         if self.request.method in ['PUT', 'PATCH']:
@@ -120,20 +112,19 @@ class AdminOrderDetailView(generics.RetrieveUpdateAPIView):
 
 class ShippingMethodListView(generics.ListAPIView):
     """API view for available shipping methods."""
-    
+
     queryset = ShippingMethod.objects.filter(is_active=True)
     serializer_class = ShippingMethodSerializer
     permission_classes = [permissions.AllowAny]
-    
+
     def get_queryset(self):
         """Filter shipping methods by country."""
         country = self.request.query_params.get('country', 'Uzbekistan')
         queryset = super().get_queryset()
-        
-        # Filter by country if available_countries is set
+
         return queryset.filter(
-            models.Q(available_countries__contains=[country]) |
-            models.Q(available_countries=[])
+            models.Q(available_countries__contains=[country])
+            | models.Q(available_countries=[])
         )
 
 
@@ -144,16 +135,16 @@ def checkout(request):
     Simplified checkout endpoint.
     Creates an order from the current user's cart and stores only contact info and optional note.
     """
-    from apps.cart.models import CartItem, Cart  # Imported here to avoid circular imports.
+    from apps.cart.models import Cart  # Imported here to avoid circular imports.
 
     serializer = CheckoutSerializer(data=request.data, context={'request': request})
     serializer.is_valid(raise_exception=True)
 
     try:
         with transaction.atomic():
-            cart = Cart.objects.select_related('customer').prefetch_related('items__draft__product_variant').get(
-                customer=request.user
-            )
+            cart = Cart.objects.select_related('customer').prefetch_related(
+                'items__draft__product_variant'
+            ).get(customer=request.user)
 
             if cart.is_empty:
                 return Response(
@@ -161,7 +152,6 @@ def checkout(request):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Validate each cart item is ready for checkout
             cart_items = list(cart.items.all())
             for item in cart_items:
                 is_valid, error_message = item.validate_for_checkout()
@@ -175,7 +165,6 @@ def checkout(request):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-            # Create order
             order = Order.objects.create(
                 customer=request.user,
                 shipping_name=serializer.validated_data['contact_name'],
@@ -190,7 +179,6 @@ def checkout(request):
                 status='PAYMENT_PENDING',
             )
 
-            # Create order items from cart items
             from apps.products.models import ProductVariant
 
             for cart_item in cart_items:
@@ -214,7 +202,6 @@ def checkout(request):
                     },
                 )
 
-            # Populate basic pricing
             order.subtotal = sum(item.total_price for item in order.items.all())
             order.tax_amount = 0
             order.shipping_cost = 0
@@ -230,7 +217,6 @@ def checkout(request):
                 ]
             )
 
-            # Clear cart after successful order creation
             cart.clear()
 
             return Response(
@@ -260,67 +246,61 @@ def validate_coupon(request):
     """Validate coupon code."""
     serializer = CouponValidationSerializer(
         data=request.data,
-        context={'request': request}
+        context={'request': request},
     )
-    
+
     if serializer.is_valid():
         coupon = serializer.validated_data['coupon']
         order_amount = serializer.validated_data.get('order_amount', 0)
-        
         discount_amount = coupon.calculate_discount(order_amount)
-        
-        return Response({
-            'valid': True,
-            'coupon': CouponSerializer(coupon).data,
-            'discount_amount': discount_amount,
-            'message': 'Coupon is valid'
-        })
-    
-    return Response({
-        'valid': False,
-        'errors': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                'valid': True,
+                'coupon': CouponSerializer(coupon).data,
+                'discount_amount': discount_amount,
+                'message': 'Coupon is valid',
+            }
+        )
+
+    return Response(
+        {
+            'valid': False,
+            'errors': serializer.errors,
+        },
+        status=status.HTTP_400_BAD_REQUEST,
+    )
 
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def cancel_order(request, order_id):
     """Cancel order if possible."""
-    try:
-        order = Order.objects.get(
-            id=order_id,
-            customer=request.user
-        )
-        
-        # Check if order can be cancelled
-        if order.status in ['DONE', 'CANCELLED']:
-            return Response(
-                {'error': 'Order cannot be cancelled at this stage'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        order.status = 'CANCELLED'
-        order.save()
-        
-        # Revert coupon usage
-        if order.coupon_code:
-            try:
-                coupon = Coupon.objects.get(code=order.coupon_code)
-                coupon.usage_count = max(0, coupon.usage_count - 1)
-                coupon.save()
-            except Coupon.DoesNotExist:
-                pass
-        
-        return Response({
-            'message': 'Order cancelled successfully',
-            'order_number': order.order_number
-        })
-        
-    except Order.DoesNotExist:
+    order = get_object_or_404(get_user_order_queryset(request.user), id=order_id)
+
+    if order.status in ['DONE', 'CANCELLED']:
         return Response(
-            {'error': 'Order not found'},
-            status=status.HTTP_404_NOT_FOUND
+            {'error': 'Order cannot be cancelled at this stage'},
+            status=status.HTTP_400_BAD_REQUEST,
         )
+
+    order.status = 'CANCELLED'
+    order.save(update_fields=['status', 'updated_at'])
+
+    if order.coupon_code:
+        try:
+            coupon = Coupon.objects.get(code=order.coupon_code)
+            coupon.usage_count = max(0, coupon.usage_count - 1)
+            coupon.save(update_fields=['usage_count', 'updated_at'])
+        except Coupon.DoesNotExist:
+            pass
+
+    return Response(
+        {
+            'message': 'Order cancelled successfully',
+            'order_number': order.order_number,
+        }
+    )
 
 
 @api_view(['GET'])
@@ -328,44 +308,19 @@ def cancel_order(request, order_id):
 def order_stats(request):
     """Get order statistics for user or admin."""
     user = request.user
-    
+
     if user.is_staff:
-        # Admin stats
-        stats = {
-            'total_orders': Order.objects.count(),
-            'new_orders': Order.objects.filter(status='NEW').count(),
-            'payment_pending_orders': Order.objects.filter(status='PAYMENT_PENDING').count(),
-            'paid_orders': Order.objects.filter(status='PAID').count(),
-            'in_production_orders': Order.objects.filter(
-                status__in=['READY_FOR_PRODUCTION', 'IN_PRODUCTION']
-            ).count(),
-            'done_orders': Order.objects.filter(status='DONE').count(),
-            'cancelled_orders': Order.objects.filter(status='CANCELLED').count(),
-            'total_revenue': sum(
-                order.total_amount
-                for order in Order.objects.filter(status__in=['PAID', 'READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'DONE'])
-            ),
-        }
+        stats = build_order_stats(
+            get_admin_order_queryset(),
+            amount_label='total_revenue',
+            include_cancelled=True,
+        )
     else:
-        # User stats
-        user_orders = Order.objects.filter(customer=user)
-        stats = {
-            'total_orders': user_orders.count(),
-            'new_orders': user_orders.filter(status='NEW').count(),
-            'payment_pending_orders': user_orders.filter(status='PAYMENT_PENDING').count(),
-            'paid_orders': user_orders.filter(status='PAID').count(),
-            'in_production_orders': user_orders.filter(
-                status__in=['READY_FOR_PRODUCTION', 'IN_PRODUCTION']
-            ).count(),
-            'done_orders': user_orders.filter(status='DONE').count(),
-            'total_spent': sum(
-                order.total_amount
-                for order in user_orders.filter(
-                    status__in=['PAID', 'READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'DONE']
-                )
-            ),
-        }
-    
+        stats = build_order_stats(
+            get_user_order_queryset(user),
+            amount_label='total_spent',
+        )
+
     return Response(stats)
 
 
@@ -487,15 +442,6 @@ def payment_callback(request, provider: str):
     return Response({'status': 'ok', 'transaction_status': tx.status})
 
 
-def _is_operator(user):
-    """
-    Simple helper to identify print operators.
-    For now, we treat any non-staff, active user that appears as an assignee as an operator.
-    This can be replaced with a dedicated role/permission later.
-    """
-    return user.is_authenticated and not user.is_staff
-
-
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def operator_orders(request):
@@ -505,19 +451,13 @@ def operator_orders(request):
     GET /api/operator/orders
     """
     user = request.user
-    if not _is_operator(user):
+    if not is_operator(user):
         return Response(
             {'detail': 'Only operators can access this endpoint.'},
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    qs = (
-        Order.objects.filter(assignment__operator=user)
-        .select_related('customer')
-        .prefetch_related('items')
-    )
-
-    serializer = OrderListSerializer(qs, many=True)
+    serializer = OrderListSerializer(get_operator_order_queryset(user), many=True)
     return Response(serializer.data)
 
 
@@ -530,7 +470,7 @@ def assign_order(request, order_id: int):
     POST /api/orders/{id}/assign
     body: { "operator_id": int }
     """
-    order = get_object_or_404(Order, id=order_id)
+    order = get_object_or_404(get_admin_order_queryset(), id=order_id)
     serializer = OrderAssignInputSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
@@ -553,14 +493,9 @@ def update_order_status(request, order_id: int):
     POST /api/orders/{id}/status
     body: { "status": "IN_PRODUCTION" | "DONE" | "READY_FOR_PRODUCTION" }
     """
-    order = get_object_or_404(Order, id=order_id)
+    order = get_object_or_404(get_admin_order_queryset(), id=order_id)
 
-    # Only admin or assigned operator can change status
-    user = request.user
-    is_admin = user.is_staff
-    is_assigned_operator = hasattr(order, 'assignment') and order.assignment.operator_id == user.id
-
-    if not (is_admin or is_assigned_operator):
+    if not can_manage_order(order, request.user):
         return Response(
             {'detail': 'You are not allowed to update this order.'},
             status=status.HTTP_403_FORBIDDEN,
@@ -570,36 +505,10 @@ def update_order_status(request, order_id: int):
     input_serializer.is_valid(raise_exception=True)
     new_status = input_serializer.validated_data['status']
 
-    # Business rules for transitions
-    if new_status == 'READY_FOR_PRODUCTION':
-        if order.status != 'PAID':
-            return Response(
-                {'detail': 'Order must be PAID before becoming READY_FOR_PRODUCTION.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        # Ensure production files exist for all items
-        items_count = order.items.count()
-        files_items_count = (
-            ProductionFile.objects.filter(order=order)
-            .values('order_item_id')
-            .distinct()
-            .count()
-        )
-        if files_items_count < items_count:
-            return Response(
-                {'detail': 'Production files must be generated for all items.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-    if new_status == 'IN_PRODUCTION' and order.status not in ['READY_FOR_PRODUCTION', 'IN_PRODUCTION']:
+    transition_error = validate_status_transition(order, new_status)
+    if transition_error:
         return Response(
-            {'detail': 'Order must be READY_FOR_PRODUCTION before starting production.'},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if new_status == 'DONE' and order.status not in ['IN_PRODUCTION', 'DONE']:
-        return Response(
-            {'detail': 'Order must be IN_PRODUCTION before being marked DONE.'},
+            {'detail': transition_error},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -617,13 +526,9 @@ def order_files(request, order_id: int):
 
     GET /api/orders/{id}/files
     """
-    order = get_object_or_404(Order, id=order_id)
-    user = request.user
+    order = get_object_or_404(get_admin_order_queryset(), id=order_id)
 
-    is_admin = user.is_staff
-    is_assigned_operator = hasattr(order, 'assignment') and order.assignment.operator_id == user.id
-
-    if not (is_admin or is_assigned_operator):
+    if not can_manage_order(order, request.user):
         return Response(
             {'detail': 'You are not allowed to view production files for this order.'},
             status=status.HTTP_403_FORBIDDEN,
@@ -631,25 +536,15 @@ def order_files(request, order_id: int):
 
     files = ProductionFile.objects.filter(order=order).select_related('order_item')
 
-    base_bucket = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', 'bucket')
-    custom_domain = getattr(settings, 'AWS_S3_CUSTOM_DOMAIN', None)
-
-    def _build_signed_url(s3_key: str) -> str:
-        # Placeholder; replace with real signed-url logic using boto3 or similar.
-        if custom_domain:
-            return f"https://{custom_domain}/{s3_key}"
-        return f"https://{base_bucket}.s3.amazonaws.com/{s3_key}"
-
-    data = []
-    for pf in files:
-        data.append(
+    return Response(
+        [
             {
-                'id': pf.id,
-                'order_item_id': pf.order_item_id,
-                'file_type': pf.file_type,
-                'dpi': pf.dpi,
-                'signed_url': _build_signed_url(pf.s3_key),
+                'id': production_file.id,
+                'order_item_id': production_file.order_item_id,
+                'file_type': production_file.file_type,
+                'dpi': production_file.dpi,
+                'signed_url': build_signed_file_url(production_file.s3_key),
             }
-        )
-
-    return Response(data)
+            for production_file in files
+        ]
+    )

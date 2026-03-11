@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import AppImage from '@/components/AppImage';
 import { STICKER_ASSETS, type StickerAsset } from '@/lib/editor/types';
 import { cn } from '@/lib/utils';
 
@@ -13,15 +13,18 @@ interface StickerPickerProps {
  * Grid of sticker thumbnails.
  * Rendered inside a modal or inline panel.
  */
-export default function StickerPicker({ onSelect, onClose }: StickerPickerProps) {
+export default function StickerPicker({
+  onSelect,
+  onClose,
+}: StickerPickerProps) {
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-gray-500">
+    <div className='flex flex-col gap-4'>
+      <p className='text-sm text-gray-500'>
         Tap a sticker to add it to your design.
       </p>
 
-      <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
-        {STICKER_ASSETS.map((s) => (
+      <div className='grid grid-cols-4 gap-3 sm:grid-cols-6'>
+        {STICKER_ASSETS.map(s => (
           <button
             key={s.id}
             onClick={() => {
@@ -31,20 +34,20 @@ export default function StickerPicker({ onSelect, onClose }: StickerPickerProps)
             className={cn(
               'group flex flex-col items-center gap-1 rounded-xl border border-gray-100 bg-gray-50 p-3',
               'transition-all hover:border-primary-300 hover:bg-primary-50 hover:shadow-sm',
-              'focus-visible:ring-2 focus-visible:ring-primary-500 outline-none',
+              'outline-none focus-visible:ring-2 focus-visible:ring-primary-500'
             )}
             aria-label={`Add ${s.label} sticker`}
           >
-            <div className="relative h-10 w-10">
-              <Image
+            <div className='relative h-10 w-10'>
+              <AppImage
                 src={s.src}
                 alt={s.label}
                 fill
-                className="object-contain transition-transform group-hover:scale-110"
+                className='object-contain transition-transform group-hover:scale-110'
                 unoptimized
               />
             </div>
-            <span className="text-[10px] font-medium text-gray-500 group-hover:text-primary-600">
+            <span className='text-[10px] font-medium text-gray-500 group-hover:text-primary-600'>
               {s.label}
             </span>
           </button>

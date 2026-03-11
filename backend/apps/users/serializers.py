@@ -20,8 +20,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['last_login_ip', 'login_count', 'created_at', 'updated_at']
         extra_kwargs = {
-            'phone_number': {'required': True},
-            'display_name': {'required': True}
+            'phone_number': {'required': False},
+            'display_name': {'required': False}
         }
 
 

@@ -18,11 +18,36 @@ import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+TRUE_VALUES = {'1', 'true', 'yes', 'on'}
+FALSE_VALUES = {'0', 'false', 'no', 'off'}
+
+
+def config_bool(name, default=False, aliases=()):
+    """
+    Read boolean settings defensively.
+
+    Generic environment variables like DEBUG can collide with the host machine.
+    Invalid values are ignored and the next alias/default is used instead of
+    crashing during Django startup.
+    """
+    for key in (name, *aliases):
+        value = os.getenv(key)
+        if value is None:
+            continue
+
+        normalized = value.strip().lower()
+        if normalized in TRUE_VALUES:
+            return True
+        if normalized in FALSE_VALUES:
+            return False
+
+    return bool(default)
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config_bool('DJANGO_DEBUG', default=True, aliases=('DEBUG',))
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0,backend').split(',')
 
@@ -352,12 +377,12 @@ RENDERING_FONT_DEFAULT_SIZE = config('RENDERING_FONT_DEFAULT_SIZE', default=16, 
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_USE_TLS = config_bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
 # AWS S3 Configuration
-USE_S3 = config('USE_S3', default=False, cast=bool)
+USE_S3 = config_bool('USE_S3', default=False)
 
 if USE_S3:
     AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
@@ -446,7 +471,7 @@ X_FRAME_OPTIONS = 'DENY'
 
 # Additional security settings for production
 if not DEBUG:
-    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+    SECURE_SSL_REDIRECT = config_bool('SECURE_SSL_REDIRECT', default=True)
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True

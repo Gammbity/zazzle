@@ -8,9 +8,22 @@ import {
   forwardRef,
   useImperativeHandle,
 } from 'react';
-import { Stage, Layer as KonvaLayer, Rect, Text, Image as KonvaImage, Transformer, Line } from 'react-konva';
+import {
+  Stage,
+  Layer as KonvaLayer,
+  Rect,
+  Text,
+  Image as KonvaImage,
+  Transformer,
+  Line,
+} from 'react-konva';
 import type Konva from 'konva';
-import type { Layer, TextLayer, ImageLayer, StickerLayer } from '@/lib/editor/types';
+import type {
+  Layer,
+  TextLayer,
+  ImageLayer,
+  StickerLayer,
+} from '@/lib/editor/types';
 import type { PrintableArea } from '@/lib/products/catalog';
 
 // ---------------------------------------------------------------------------
@@ -39,6 +52,13 @@ interface DesignCanvasProps {
   onReady?: (handle: DesignCanvasHandle) => void;
 }
 
+interface BoundsRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -47,16 +67,50 @@ function useImage(src: string | undefined): HTMLImageElement | null {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {
-    if (!src) { setImage(null); return; }
+    if (!src) {
+      setImage(null);
+      return;
+    }
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => setImage(img);
     img.onerror = () => setImage(null);
     img.src = src;
-    return () => { img.onload = null; img.onerror = null; };
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
   }, [src]);
 
   return image;
+}
+
+function getPrintableBounds(
+  printableArea: PrintableArea,
+  canvasWidth: number,
+  canvasHeight: number
+): BoundsRect {
+  return {
+    x: (printableArea.x / 100) * canvasWidth,
+    y: (printableArea.y / 100) * canvasHeight,
+    width: (printableArea.width / 100) * canvasWidth,
+    height: (printableArea.height / 100) * canvasHeight,
+  };
+}
+
+function clampPosition(
+  pos: { x: number; y: number },
+  nodeWidth: number,
+  nodeHeight: number,
+  bounds: BoundsRect
+) {
+  const maxX = Math.max(bounds.x, bounds.x + bounds.width - nodeWidth);
+  const maxY = Math.max(bounds.y, bounds.y + bounds.height - nodeHeight);
+
+  return {
+    x: Math.min(Math.max(pos.x, bounds.x), maxX),
+    y: Math.min(Math.max(pos.y, bounds.y), maxY),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -67,10 +121,12 @@ function ImageLayerNode({
   layer,
   onSelect,
   onTransform,
+  dragBounds,
 }: {
   layer: ImageLayer;
   onSelect: () => void;
   onTransform: (attrs: Partial<Layer>) => void;
+  dragBounds: BoundsRect;
 }) {
   const shapeRef = useRef<Konva.Image>(null);
   const image = useImage(layer.src);
@@ -91,10 +147,18 @@ function ImageLayerNode({
       rotation={layer.rotation}
       opacity={layer.opacity}
       draggable
+      dragBoundFunc={pos =>
+        clampPosition(
+          pos,
+          layer.width * layer.scaleX,
+          layer.height * layer.scaleY,
+          dragBounds
+        )
+      }
       perfectDrawEnabled={false}
       onMouseDown={onSelect}
       onTouchStart={onSelect}
-      onDragEnd={(e) => {
+      onDragEnd={e => {
         onTransform({ x: e.target.x(), y: e.target.y() });
       }}
       onTransformEnd={() => {
@@ -119,11 +183,13 @@ function TextLayerNode({
   onSelect,
   onTransform,
   onDoubleClick,
+  dragBounds,
 }: {
   layer: TextLayer;
   onSelect: () => void;
   onTransform: (attrs: Partial<Layer>) => void;
   onDoubleClick?: () => void;
+  dragBounds: BoundsRect;
 }) {
   const shapeRef = useRef<Konva.Text>(null);
 
@@ -145,12 +211,20 @@ function TextLayerNode({
       rotation={layer.rotation}
       opacity={layer.opacity}
       draggable
+      dragBoundFunc={pos =>
+        clampPosition(
+          pos,
+          layer.width * layer.scaleX,
+          layer.height * layer.scaleY,
+          dragBounds
+        )
+      }
       hitStrokeWidth={6}
       onMouseDown={onSelect}
       onTouchStart={onSelect}
       onDblClick={() => onDoubleClick?.()}
       onDblTap={() => onDoubleClick?.()}
-      onDragEnd={(e) => {
+      onDragEnd={e => {
         onTransform({ x: e.target.x(), y: e.target.y() });
       }}
       onTransformEnd={() => {
@@ -178,10 +252,12 @@ function StickerLayerNode({
   layer,
   onSelect,
   onTransform,
+  dragBounds,
 }: {
   layer: StickerLayer;
   onSelect: () => void;
   onTransform: (attrs: Partial<Layer>) => void;
+  dragBounds: BoundsRect;
 }) {
   const shapeRef = useRef<Konva.Image>(null);
   const image = useImage(layer.src);
@@ -202,10 +278,18 @@ function StickerLayerNode({
       rotation={layer.rotation}
       opacity={layer.opacity}
       draggable
+      dragBoundFunc={pos =>
+        clampPosition(
+          pos,
+          layer.width * layer.scaleX,
+          layer.height * layer.scaleY,
+          dragBounds
+        )
+      }
       perfectDrawEnabled={false}
       onMouseDown={onSelect}
       onTouchStart={onSelect}
-      onDragEnd={(e) => {
+      onDragEnd={e => {
         onTransform({ x: e.target.x(), y: e.target.y() });
       }}
       onTransformEnd={() => {
@@ -240,24 +324,58 @@ function SafeAreaGuides({
 }) {
   // Guard against undefined printableArea
   if (!printableArea) return null;
-  
-  const x = (printableArea.x / 100) * canvasWidth;
-  const y = (printableArea.y / 100) * canvasHeight;
-  const w = (printableArea.width / 100) * canvasWidth;
-  const h = (printableArea.height / 100) * canvasHeight;
+
+  const {
+    x,
+    y,
+    width: w,
+    height: h,
+  } = getPrintableBounds(printableArea, canvasWidth, canvasHeight);
 
   return (
     <>
-      <Rect x={x} y={y} width={w} height={h}
-        stroke="#0ea5e9" strokeWidth={1.5} dash={[6, 4]} listening={false} />
-      <Rect x={0} y={0} width={canvasWidth} height={y}
-        fill="rgba(0,0,0,0.06)" listening={false} />
-      <Rect x={0} y={y + h} width={canvasWidth} height={canvasHeight - y - h}
-        fill="rgba(0,0,0,0.06)" listening={false} />
-      <Rect x={0} y={y} width={x} height={h}
-        fill="rgba(0,0,0,0.06)" listening={false} />
-      <Rect x={x + w} y={y} width={canvasWidth - x - w} height={h}
-        fill="rgba(0,0,0,0.06)" listening={false} />
+      <Rect
+        x={x}
+        y={y}
+        width={w}
+        height={h}
+        stroke='#0ea5e9'
+        strokeWidth={1.5}
+        dash={[6, 4]}
+        listening={false}
+      />
+      <Rect
+        x={0}
+        y={0}
+        width={canvasWidth}
+        height={y}
+        fill='rgba(0,0,0,0.06)'
+        listening={false}
+      />
+      <Rect
+        x={0}
+        y={y + h}
+        width={canvasWidth}
+        height={canvasHeight - y - h}
+        fill='rgba(0,0,0,0.06)'
+        listening={false}
+      />
+      <Rect
+        x={0}
+        y={y}
+        width={x}
+        height={h}
+        fill='rgba(0,0,0,0.06)'
+        listening={false}
+      />
+      <Rect
+        x={x + w}
+        y={y}
+        width={canvasWidth - x - w}
+        height={h}
+        fill='rgba(0,0,0,0.06)'
+        listening={false}
+      />
     </>
   );
 }
@@ -276,11 +394,19 @@ function CenterGuides({
     <>
       <Line
         points={[canvasWidth / 2, 0, canvasWidth / 2, canvasHeight]}
-        stroke="#0ea5e9" strokeWidth={0.5} dash={[4, 4]} listening={false} opacity={0.5}
+        stroke='#0ea5e9'
+        strokeWidth={0.5}
+        dash={[4, 4]}
+        listening={false}
+        opacity={0.5}
       />
       <Line
         points={[0, canvasHeight / 2, canvasWidth, canvasHeight / 2]}
-        stroke="#0ea5e9" strokeWidth={0.5} dash={[4, 4]} listening={false} opacity={0.5}
+        stroke='#0ea5e9'
+        strokeWidth={0.5}
+        dash={[4, 4]}
+        listening={false}
+        opacity={0.5}
       />
     </>
   );
@@ -303,13 +429,18 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
       onDoubleClickText,
       onReady,
     },
-    ref,
+    ref
   ) {
     const stageRef = useRef<Konva.Stage>(null);
     const designLayerRef = useRef<Konva.Layer>(null);
     const guidesLayerRef = useRef<Konva.Layer>(null);
     const trRef = useRef<Konva.Transformer>(null);
     const [showGuides, setShowGuides] = useState(false);
+    const printableBounds = getPrintableBounds(
+      printableArea,
+      canvasWidth,
+      canvasHeight
+    );
 
     // -------------------------------------------------------------------
     // Export: design layer only (guides hidden, transformer hidden)
@@ -377,7 +508,7 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
           onSelectLayer(null);
         }
       },
-      [onSelectLayer],
+      [onSelectLayer]
     );
 
     const handleDragStart = useCallback(() => setShowGuides(true), []);
@@ -387,7 +518,7 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
 
     return (
       <div
-        className="border border-gray-200 rounded-xl overflow-hidden bg-[repeating-conic-gradient(#f3f4f6_0%_25%,white_0%_50%)] bg-[length:16px_16px]"
+        className='overflow-hidden rounded-xl border border-gray-200 bg-[repeating-conic-gradient(#f3f4f6_0%_25%,white_0%_50%)] bg-[length:16px_16px]'
         style={{ width: canvasWidth, height: canvasHeight }}
       >
         <Stage
@@ -417,7 +548,7 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            {sorted.map((layer) => {
+            {sorted.map(layer => {
               if (!layer.visible) return null;
               const handleTransform = (attrs: Partial<Layer>) =>
                 onTransformLayer(layer.id, attrs);
@@ -431,6 +562,7 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
                       layer={layer as ImageLayer}
                       onSelect={handleSelect}
                       onTransform={handleTransform}
+                      dragBounds={printableBounds}
                     />
                   );
                 case 'text':
@@ -441,6 +573,7 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
                       onSelect={handleSelect}
                       onTransform={handleTransform}
                       onDoubleClick={() => onDoubleClickText?.(layer.id)}
+                      dragBounds={printableBounds}
                     />
                   );
                 case 'sticker':
@@ -450,6 +583,7 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
                       layer={layer as StickerLayer}
                       onSelect={handleSelect}
                       onTransform={handleTransform}
+                      dragBounds={printableBounds}
                     />
                   );
                 default:
@@ -474,36 +608,19 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
               boundBoxFunc={(oldBox, newBox) => {
                 // Minimum size constraint
                 if (newBox.width < 10 || newBox.height < 10) return oldBox;
-                
-                // Keep within canvas bounds
-                const constrainedBox = { ...newBox };
-                
-                // Constrain left edge
-                if (constrainedBox.x < 0) {
-                  constrainedBox.width += constrainedBox.x;
-                  constrainedBox.x = 0;
+
+                if (
+                  newBox.x < printableBounds.x ||
+                  newBox.y < printableBounds.y ||
+                  newBox.x + newBox.width >
+                    printableBounds.x + printableBounds.width ||
+                  newBox.y + newBox.height >
+                    printableBounds.y + printableBounds.height
+                ) {
+                  return oldBox;
                 }
-                
-                // Constrain top edge
-                if (constrainedBox.y < 0) {
-                  constrainedBox.height += constrainedBox.y;
-                  constrainedBox.y = 0;
-                }
-                
-                // Constrain right edge
-                if (constrainedBox.x + constrainedBox.width > canvasWidth) {
-                  constrainedBox.width = canvasWidth - constrainedBox.x;
-                }
-                
-                // Constrain bottom edge
-                if (constrainedBox.y + constrainedBox.height > canvasHeight) {
-                  constrainedBox.height = canvasHeight - constrainedBox.y;
-                }
-                
-                // Ensure minimum size after constraining
-                if (constrainedBox.width < 10 || constrainedBox.height < 10) return oldBox;
-                
-                return constrainedBox;
+
+                return newBox;
               }}
               ignoreStroke
               padding={4}
@@ -512,7 +629,7 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
         </Stage>
       </div>
     );
-  },
+  }
 );
 
 export default DesignCanvas;

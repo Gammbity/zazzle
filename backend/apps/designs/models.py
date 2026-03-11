@@ -298,6 +298,7 @@ class Draft(models.Model):
     text_layers = models.JSONField(
         _('text layers'),
         default=list,
+        blank=True,
         help_text=_('Text elements with positioning, styling, and content')
     )
     
@@ -305,6 +306,7 @@ class Draft(models.Model):
     editor_state = models.JSONField(
         _('editor state'),
         default=dict,
+        blank=True,
         help_text=_('Complete editor state including transforms, positions, layers order')
     )
     
@@ -470,9 +472,11 @@ class DraftAsset(models.Model):
         """Get the S3 URL for this asset."""
         # This will be implemented with S3 URL generation
         from django.conf import settings
-        if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN'):
-            return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.s3_key}"
-        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{self.s3_key}"
+        custom_domain = getattr(settings, 'AWS_S3_CUSTOM_DOMAIN', None)
+        if custom_domain:
+            return f"https://{custom_domain}/{self.s3_key}"
+        bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', 'test-bucket')
+        return f"https://{bucket_name}.s3.amazonaws.com/{self.s3_key}"
     
     @property
     def is_image(self):
@@ -808,18 +812,24 @@ class MockupRender(models.Model):
         """Get the S3 URL for the output image."""
         if self.output_image_s3_key:
             from django.conf import settings
-            if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN') and settings.AWS_S3_CUSTOM_DOMAIN:
-                return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.output_image_s3_key}"
-            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{self.output_image_s3_key}"
+            custom_domain = getattr(settings, 'AWS_S3_CUSTOM_DOMAIN', None)
+            if custom_domain:
+                return f"https://{custom_domain}/{self.output_image_s3_key}"
+            bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', 'test-bucket')
+            region_name = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
+            return f"https://{bucket_name}.s3.{region_name}.amazonaws.com/{self.output_image_s3_key}"
         return None
     
     def get_thumbnail_url(self):
         """Get the S3 URL for the thumbnail image."""
         if self.output_thumbnail_s3_key:
             from django.conf import settings
-            if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN') and settings.AWS_S3_CUSTOM_DOMAIN:
-                return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.output_thumbnail_s3_key}"
-            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{self.output_thumbnail_s3_key}"
+            custom_domain = getattr(settings, 'AWS_S3_CUSTOM_DOMAIN', None)
+            if custom_domain:
+                return f"https://{custom_domain}/{self.output_thumbnail_s3_key}"
+            bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', 'test-bucket')
+            region_name = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
+            return f"https://{bucket_name}.s3.{region_name}.amazonaws.com/{self.output_thumbnail_s3_key}"
         return None
 
 

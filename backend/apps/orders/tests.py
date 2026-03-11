@@ -6,7 +6,7 @@ from rest_framework.test import APIClient
 from .models import Order, PaymentTransaction, ProductionFile, OrderAssignment
 from apps.cart.models import Cart, CartItem
 from apps.designs.models import Draft
-from apps.products.models import ProductType, ProductVariant, Product
+from apps.products.models import ProductType, ProductVariant
 
 
 User = get_user_model()
@@ -22,20 +22,21 @@ class PaymentIdempotencyTests(TestCase):
         )
         self.client.force_authenticate(self.user)
 
-        product_type = ProductType.objects.create(name='T-Shirt', slug='t-shirt')
-        product = Product.objects.create(
-            name='Basic Tee',
-            slug='basic-tee',
-            product_type=product_type,
-            base_price=100000,
+        product_type, _ = ProductType.objects.get_or_create(
+            category=ProductType.ProductCategory.TSHIRT,
+            defaults={
+                'name': 'T-Shirt',
+                'slug': 't-shirt',
+            },
         )
         variant = ProductVariant.objects.create(
-            product=product,
             product_type=product_type,
-            size='M',
-            color='White',
-            price=100000,
-            is_available=True,
+            size='QA1',
+            color='QA White',
+            color_hex='#FFFFFF',
+            sale_price=100000,
+            production_cost=50000,
+            is_active=True,
         )
         draft = Draft.objects.create(
             product_type=product_type,
@@ -43,6 +44,19 @@ class PaymentIdempotencyTests(TestCase):
             customer=self.user,
             status=Draft.DraftStatus.PREVIEW_READY,
             name='My Draft',
+            text_layers=[
+                {
+                    'id': 'text-1',
+                    'text': 'QA',
+                    'x': 0,
+                    'y': 0,
+                }
+            ],
+            editor_state={
+                'zoom': 1,
+                'pan_x': 0,
+                'pan_y': 0,
+            },
         )
 
         cart = Cart.objects.create(customer=self.user)
@@ -50,7 +64,7 @@ class PaymentIdempotencyTests(TestCase):
             cart=cart,
             draft=draft,
             quantity=1,
-            unit_price=variant.price,
+            unit_price=variant.sale_price,
         )
 
         response = self.client.post(
@@ -139,20 +153,21 @@ class ProductionWorkflowPermissionTests(TestCase):
 
         self.customer = self.other_user
 
-        product_type = ProductType.objects.create(name='T-Shirt', slug='t-shirt-2')
-        product = Product.objects.create(
-            name='Pro Tee',
-            slug='pro-tee',
-            product_type=product_type,
-            base_price=200000,
+        product_type, _ = ProductType.objects.get_or_create(
+            category=ProductType.ProductCategory.TSHIRT,
+            defaults={
+                'name': 'T-Shirt',
+                'slug': 't-shirt-2',
+            },
         )
         variant = ProductVariant.objects.create(
-            product=product,
             product_type=product_type,
-            size='L',
-            color='Black',
-            price=200000,
-            is_available=True,
+            size='QA2',
+            color='QA Black',
+            color_hex='#000000',
+            sale_price=200000,
+            production_cost=100000,
+            is_active=True,
         )
         draft = Draft.objects.create(
             product_type=product_type,
@@ -160,6 +175,19 @@ class ProductionWorkflowPermissionTests(TestCase):
             customer=self.customer,
             status=Draft.DraftStatus.PREVIEW_READY,
             name='Prod Draft',
+            text_layers=[
+                {
+                    'id': 'text-1',
+                    'text': 'QA',
+                    'x': 0,
+                    'y': 0,
+                }
+            ],
+            editor_state={
+                'zoom': 1,
+                'pan_x': 0,
+                'pan_y': 0,
+            },
         )
 
         cart = Cart.objects.create(customer=self.customer)
@@ -167,7 +195,7 @@ class ProductionWorkflowPermissionTests(TestCase):
             cart=cart,
             draft=draft,
             quantity=1,
-            unit_price=variant.price,
+            unit_price=variant.sale_price,
         )
 
         self.client.force_authenticate(self.customer)
@@ -257,4 +285,10 @@ class ProductionWorkflowPermissionTests(TestCase):
         self.client.force_authenticate(self.customer)
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 403)
+
+    def test_missing_order_lookup_returns_404(self):
+        self.client.force_authenticate(self.customer)
+        url = reverse('orders:order-detail', kwargs={'pk': 'missing-order'})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 404)
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import Image from 'next/image';
+import AppImage from '@/components/AppImage';
 import type { ProductAngle, OverlayBox } from '@/lib/products/catalog';
 import { cn } from '@/lib/utils';
 
@@ -14,14 +14,19 @@ interface ProductGalleryProps {
   overlayBox?: OverlayBox;
 }
 
-export default function ProductGallery({ angles, productName, designUrl, overlayBox }: ProductGalleryProps) {
+export default function ProductGallery({
+  angles,
+  productName,
+  designUrl,
+  overlayBox,
+}: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  
+
   // Safety checks for angles array
   if (!angles || angles.length === 0) {
     return (
-      <div className="aspect-square w-full rounded-2xl border border-gray-100 bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">No product images available</p>
+      <div className='flex aspect-square w-full items-center justify-center rounded-2xl border border-gray-100 bg-gray-50'>
+        <p className='text-gray-500'>No product images available</p>
       </div>
     );
   }
@@ -33,48 +38,51 @@ export default function ProductGallery({ angles, productName, designUrl, overlay
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!angles || angles.length === 0) return;
-      
+
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault();
-        setActiveIndex((prev) => (prev + 1) % angles.length);
+        setActiveIndex(prev => (prev + 1) % angles.length);
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault();
-        setActiveIndex((prev) => (prev - 1 + angles.length) % angles.length);
+        setActiveIndex(prev => (prev - 1 + angles.length) % angles.length);
       }
     },
-    [angles.length],
+    [angles.length]
   );
 
   return (
-    <div className="flex flex-col gap-4" role="group" aria-label={`${productName} gallery`}>
+    <div
+      className='flex flex-col gap-4'
+      role='group'
+      aria-label={`${productName} gallery`}
+    >
       {/* Main image */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-100 bg-gray-50">
-        <Image
+      <div className='relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-100 bg-gray-50'>
+        <AppImage
           src={active.src}
           alt={active.alt}
           fill
-          sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-contain p-4 transition-opacity duration-300"
+          sizes='(max-width: 768px) 100vw, 50vw'
+          className='object-contain p-4 transition-opacity duration-300'
           priority
         />
 
         {/* Design overlay */}
         {designUrl && overlayBox && (
           <div
-            className="absolute overflow-hidden pointer-events-none"
+            className='pointer-events-none absolute overflow-hidden'
             style={{
               left: `${overlayBox.x}%`,
               top: `${overlayBox.y}%`,
               width: `${overlayBox.width}%`,
               height: `${overlayBox.height}%`,
             }}
-            aria-hidden="true"
+            aria-hidden='true'
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={designUrl}
-              alt="Your design"
-              className="h-full w-full object-contain opacity-85 mix-blend-multiply"
+              alt='Your design'
+              className='h-full w-full object-contain opacity-85 mix-blend-multiply'
             />
           </div>
         )}
@@ -82,15 +90,15 @@ export default function ProductGallery({ angles, productName, designUrl, overlay
 
       {/* Thumbnails */}
       <div
-        className="flex gap-3 overflow-x-auto pb-1"
-        role="tablist"
-        aria-label="Product image angles"
+        className='flex gap-3 overflow-x-auto pb-1'
+        role='tablist'
+        aria-label='Product image angles'
         onKeyDown={handleKeyDown}
       >
         {angles.map((angle, i) => (
           <button
             key={angle.id}
-            role="tab"
+            role='tab'
             aria-selected={i === safeActiveIndex}
             aria-label={angle.label}
             tabIndex={i === safeActiveIndex ? 0 : -1}
@@ -99,15 +107,15 @@ export default function ProductGallery({ angles, productName, designUrl, overlay
               'relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 bg-gray-50 transition-all duration-200',
               i === safeActiveIndex
                 ? 'border-primary-500 ring-2 ring-primary-500/30'
-                : 'border-gray-200 hover:border-gray-300',
+                : 'border-gray-200 hover:border-gray-300'
             )}
           >
-            <Image
+            <AppImage
               src={angle.src}
               alt={angle.alt}
               fill
-              sizes="64px"
-              className="object-contain p-1"
+              sizes='64px'
+              className='object-contain p-1'
             />
           </button>
         ))}

@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useLocation } from '@/lib/router';
 
 export default function NavigationProgress() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const location = useLocation();
   const [isNavigating, setIsNavigating] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -13,7 +12,7 @@ export default function NavigationProgress() {
   useEffect(() => {
     setIsNavigating(false);
     setProgress(0);
-  }, [pathname, searchParams]);
+  }, [location.hash, location.pathname, location.search]);
 
   // Listen for navigation start via custom event
   useEffect(() => {
@@ -31,7 +30,7 @@ export default function NavigationProgress() {
     if (!isNavigating) return;
 
     const timer = setInterval(() => {
-      setProgress((prev) => {
+      setProgress(prev => {
         if (prev >= 90) return prev;
         return prev + Math.random() * 10;
       });
@@ -43,9 +42,9 @@ export default function NavigationProgress() {
   if (!isNavigating) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[9999] h-1 bg-gray-100">
+    <div className='fixed left-0 right-0 top-0 z-[9999] h-1 bg-gray-100'>
       <div
-        className="h-full bg-primary-500 transition-all duration-200 ease-out"
+        className='h-full bg-primary-500 transition-all duration-200 ease-out'
         style={{ width: `${progress}%` }}
       />
     </div>

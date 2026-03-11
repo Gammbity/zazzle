@@ -12,6 +12,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db import models
 from .models import UserProfile, SocialConnection
+from .permissions import IsAdmin
 from .serializers import (
     UserSerializer, UserUpdateSerializer, UserRegistrationSerializer,
     CustomTokenObtainPairSerializer, LoginSerializer, ChangePasswordSerializer,
@@ -69,19 +70,22 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
-    
-    def perform_create(self, serializer):
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        
+
         # Generate JWT tokens for automatic login
         refresh = RefreshToken.for_user(user)
-        
+
+        headers = self.get_success_headers({})
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
             'user': UserSerializer(user).data,
             'message': 'Registration successful'
-        }, status=status.HTTP_201_CREATED)
+        }, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class LogoutView(APIView):
@@ -117,6 +121,10 @@ class UserUpdateView(generics.UpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    def update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
+
 
 class ChangePasswordView(generics.UpdateAPIView):
     """API view for changing user password."""
@@ -141,7 +149,7 @@ class UserListView(generics.ListAPIView):
     
     queryset = User.objects.all().select_related('profile')
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdmin]
     filterset_fields = ['role', 'is_seller', 'is_active']
     search_fields = ['username', 'email', 'first_name', 'last_name']
     ordering_fields = ['created_at', 'username', 'email']
@@ -352,7 +360,7 @@ def deactivate_account(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAdminUser])
+@permission_classes([IsAdmin])
 def user_role_stats(request):
     """Get user role statistics (admin only)."""
     from django.db.models import Count

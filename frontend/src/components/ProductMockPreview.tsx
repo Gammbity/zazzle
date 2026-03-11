@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import Image from 'next/image';
+import AppImage from '@/components/AppImage';
 import type { OverlayBox } from '@/lib/products/catalog';
 import { cn } from '@/lib/utils';
 import Modal from '@/components/Modal';
@@ -37,24 +37,24 @@ export default function ProductMockPreview({
   }, [designUrl, productName]);
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm font-medium text-gray-700">Preview on product</p>
+    <div className='flex flex-col gap-3'>
+      <p className='text-sm font-medium text-gray-700'>Preview on product</p>
 
       <div
         ref={composedRef}
         className={cn(
           'relative mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 shadow-sm',
-          previewStyle === 'perspective' && 'perspective-container',
+          previewStyle === 'perspective' && 'perspective-container'
         )}
         style={{ aspectRatio: '1 / 1' }}
       >
         {/* Base product image */}
-        <Image
+        <AppImage
           src={baseImage}
           alt={`${productName} base`}
           fill
-          sizes="(max-width: 768px) 100vw, 400px"
-          className="object-contain p-2"
+          sizes='(max-width: 768px) 100vw, 400px'
+          className='object-contain p-2'
           priority
         />
 
@@ -62,7 +62,7 @@ export default function ProductMockPreview({
         <div
           className={cn(
             'absolute overflow-hidden',
-            previewStyle === 'perspective' && 'perspective-overlay',
+            previewStyle === 'perspective' && 'perspective-overlay'
           )}
           style={{
             left: `${overlayBox.x}%`,
@@ -70,37 +70,36 @@ export default function ProductMockPreview({
             width: `${overlayBox.width}%`,
             height: `${overlayBox.height}%`,
           }}
-          aria-hidden="true"
+          aria-hidden='true'
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={designUrl}
-            alt="Your design on product"
+            alt='Your design on product'
             className={cn(
               'h-full w-full object-contain opacity-85 mix-blend-multiply',
-              previewStyle === 'perspective' && 'perspective-design',
+              previewStyle === 'perspective' && 'perspective-design'
             )}
           />
         </div>
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-2">
+      <div className='flex gap-2'>
         <button
           onClick={() => setShowFinal(true)}
-          className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          className='flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50'
         >
           View Final
         </button>
         <button
           onClick={downloadPreview}
-          className="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+          className='flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700'
         >
           Download Design
         </button>
       </div>
 
-      <p className="text-center text-xs text-gray-400">
+      <p className='text-center text-xs text-gray-400'>
         This is an approximate preview. Final print may vary slightly.
       </p>
 
@@ -109,27 +108,27 @@ export default function ProductMockPreview({
         open={showFinal}
         onClose={() => setShowFinal(false)}
         title={`${productName} — Final Preview`}
-        maxWidth="max-w-3xl"
+        maxWidth='max-w-3xl'
       >
-        <div className="flex flex-col items-center gap-4">
+        <div className='flex flex-col items-center gap-4'>
           <div
             className={cn(
               'relative w-full overflow-hidden rounded-xl bg-gray-50',
-              previewStyle === 'perspective' && 'perspective-container',
+              previewStyle === 'perspective' && 'perspective-container'
             )}
             style={{ aspectRatio: '1 / 1' }}
           >
-            <Image
+            <AppImage
               src={baseImage}
               alt={`${productName} base`}
               fill
-              sizes="(max-width: 768px) 100vw, 700px"
-              className="object-contain p-4"
+              sizes='(max-width: 768px) 100vw, 700px'
+              className='object-contain p-4'
             />
             <div
               className={cn(
                 'absolute overflow-hidden',
-                previewStyle === 'perspective' && 'perspective-overlay',
+                previewStyle === 'perspective' && 'perspective-overlay'
               )}
               style={{
                 left: `${overlayBox.x}%`,
@@ -138,13 +137,12 @@ export default function ProductMockPreview({
                 height: `${overlayBox.height}%`,
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={designUrl}
-                alt="Design overlay"
+                alt='Design overlay'
                 className={cn(
                   'h-full w-full object-contain opacity-85 mix-blend-multiply',
-                  previewStyle === 'perspective' && 'perspective-design',
+                  previewStyle === 'perspective' && 'perspective-design'
                 )}
               />
             </div>
@@ -152,7 +150,7 @@ export default function ProductMockPreview({
 
           <button
             onClick={downloadPreview}
-            className="w-full max-w-xs rounded-xl bg-primary-600 py-3 text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
+            className='w-full max-w-xs rounded-xl bg-primary-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-700'
           >
             Download Preview
           </button>
@@ -160,7 +158,7 @@ export default function ProductMockPreview({
       </Modal>
 
       {/* Inline styles for perspective effect */}
-      <style jsx>{`
+      <style>{`
         .perspective-container {
           perspective: 800px;
         }

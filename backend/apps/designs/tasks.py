@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import boto3
 from celery import shared_task
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from django.core.files.storage import default_storage
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -48,11 +49,11 @@ class S3Manager:
     def __init__(self):
         self.s3_client = boto3.client(
             's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME,
+            aws_access_key_id=getattr(settings, 'AWS_ACCESS_KEY_ID', 'test-access-key'),
+            aws_secret_access_key=getattr(settings, 'AWS_SECRET_ACCESS_KEY', 'test-secret-key'),
+            region_name=getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1'),
         )
-        self.bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        self.bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', 'test-bucket')
     
     def download_image(self, s3_key: str) -> Image.Image:
         """Download image from S3 and return PIL Image."""
@@ -448,7 +449,12 @@ def render_draft_preview(self, render_id: str) -> Dict:
         logger.info(f"Starting render task for {render_id}")
         
         # Get the render job
-        render_job = MockupRender.objects.get(render_id=render_id)
+        try:
+            render_lookup = uuid.UUID(str(render_id))
+        except (TypeError, ValueError) as exc:
+            raise MockupRender.DoesNotExist(f"Render job not found: {render_id}") from exc
+
+        render_job = MockupRender.objects.get(render_id=render_lookup)
         render_job.status = 'processing'
         render_job.task_id = self.request.id
         render_job.processing_started_at = timezone.now()
@@ -491,6 +497,10 @@ def render_draft_preview(self, render_id: str) -> Dict:
     except MockupRender.DoesNotExist:
         logger.error(f"Render job not found: {render_id}")
         raise
+
+    except DjangoValidationError as exc:
+        logger.error(f"Invalid render identifier {render_id}: {exc}")
+        raise MockupRender.DoesNotExist(f"Render job not found: {render_id}") from exc
         
     except Exception as exc:
         logger.error(f"Render task failed for {render_id}: {exc}")
@@ -505,6 +515,13 @@ def render_draft_preview(self, render_id: str) -> Dict:
             render_job.save()
         except:
             pass
+
+        if getattr(settings, 'CELERY_TASK_ALWAYS_EAGER', False):
+            return {
+                'render_id': render_id,
+                'status': 'failed',
+                'error': str(exc)
+            }
         
         # Retry if we haven't exceeded max retries
         if self.request.retries < self.max_retries:

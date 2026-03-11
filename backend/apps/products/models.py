@@ -193,6 +193,21 @@ class ProductVariant(models.Model):
     def profit_margin(self):
         """Calculate profit margin in UZS."""
         return self.sale_price - self.production_cost
+
+    @property
+    def price(self):
+        """Backward-compatible alias for legacy code paths."""
+        return self.sale_price
+
+    @property
+    def is_available(self):
+        """Legacy availability flag kept in sync with current active state."""
+        return self.is_active
+
+    @property
+    def product(self):
+        """Expose product_type for older code that expects variant.product.name."""
+        return self.product_type
     
     @property
     def profit_percentage(self):

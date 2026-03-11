@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-} from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { composeMugPreview, loadImage } from '@/lib/render/mugRenderer';
 import type { MugRenderOptions } from '@/lib/render/mugRenderer';
 import { cn } from '@/lib/utils';
@@ -86,7 +80,13 @@ export default function MugRealisticPreview({
   // -----------------------------------------------------------------------
 
   const render = useCallback(async () => {
-    if (!designDataUrl || !asset || !asset.baseSrc || !asset.maskSrc || !asset.shadingSrc) {
+    if (
+      !designDataUrl ||
+      !asset ||
+      !asset.baseSrc ||
+      !asset.maskSrc ||
+      !asset.shadingSrc
+    ) {
       setError('Missing required mug assets or design data');
       return;
     }
@@ -137,7 +137,14 @@ export default function MugRealisticPreview({
     } finally {
       if (id === renderIdRef.current) setRendering(false);
     }
-  }, [designDataUrl, asset, designBoxMemo, warpIntensity, printOpacity, onCompositeReady]);
+  }, [
+    designDataUrl,
+    asset,
+    designBoxMemo,
+    warpIntensity,
+    printOpacity,
+    onCompositeReady,
+  ]);
 
   // Auto-render on mount and when deps change (debounced)
   useEffect(() => {
@@ -150,43 +157,42 @@ export default function MugRealisticPreview({
   // -----------------------------------------------------------------------
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className='flex flex-col gap-4'>
       {/* Preview canvas */}
       <div
         className={cn(
           'relative aspect-square w-full overflow-hidden rounded-2xl border bg-gray-50 transition-opacity',
           rendering ? 'opacity-60' : 'opacity-100',
-          error ? 'border-red-200' : 'border-gray-100',
+          error ? 'border-red-200' : 'border-gray-100'
         )}
       >
         {compositeUrl ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={compositeUrl}
-            alt="Mug realistic preview"
-            className="h-full w-full object-contain p-2"
+            alt='Mug realistic preview'
+            className='h-full w-full object-contain p-2'
           />
         ) : !error ? (
-          <div className="flex h-full items-center justify-center text-sm text-gray-400">
+          <div className='flex h-full items-center justify-center text-sm text-gray-400'>
             {rendering ? 'Rendering…' : 'No preview yet'}
           </div>
         ) : null}
         {error && (
-          <div className="flex h-full items-center justify-center p-4 text-center text-sm text-red-500">
+          <div className='flex h-full items-center justify-center p-4 text-center text-sm text-red-500'>
             {error}
           </div>
         )}
         {rendering && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-400 border-t-transparent" />
+          <div className='absolute inset-0 flex items-center justify-center'>
+            <div className='h-8 w-8 animate-spin rounded-full border-2 border-primary-400 border-t-transparent' />
           </div>
         )}
       </div>
 
       {/* Sliders */}
-      <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
+      <div className='flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4'>
         <SliderRow
-          label="Wrap intensity"
+          label='Wrap intensity'
           value={warpIntensity}
           min={0}
           max={1}
@@ -194,7 +200,7 @@ export default function MugRealisticPreview({
           onChange={setWarpIntensity}
         />
         <SliderRow
-          label="Print opacity"
+          label='Print opacity'
           value={printOpacity}
           min={0.5}
           max={1}
@@ -207,8 +213,8 @@ export default function MugRealisticPreview({
       {compositeUrl && (
         <a
           href={compositeUrl}
-          download="mug-preview.png"
-          className="block w-full rounded-xl bg-primary-600 py-2.5 text-center text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
+          download='mug-preview.png'
+          className='block w-full rounded-xl bg-primary-600 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-primary-700'
         >
           Download Realistic Preview
         </a>
@@ -237,20 +243,20 @@ function SliderRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <label className="flex items-center gap-3">
-      <span className="w-28 text-xs font-medium text-gray-600">{label}</span>
+    <label className='flex items-center gap-3'>
+      <span className='w-28 text-xs font-medium text-gray-600'>{label}</span>
       <input
-        type="range"
+        type='range'
         min={min}
         max={max}
         step={step}
         value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-gray-200 accent-primary-600
+        onChange={e => onChange(Number(e.target.value))}
+        className='h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-gray-200 accent-primary-600
           [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none
-          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary-600 [&::-webkit-slider-thumb]:shadow"
+          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary-600 [&::-webkit-slider-thumb]:shadow'
       />
-      <span className="w-10 text-right text-xs tabular-nums text-gray-500">
+      <span className='w-10 text-right text-xs tabular-nums text-gray-500'>
         {value.toFixed(2)}
       </span>
     </label>

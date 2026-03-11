@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import Image from 'next/image';
+import AppImage from '@/components/AppImage';
 import { cn } from '@/lib/utils';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -13,7 +13,10 @@ interface ImageUploadProps {
   className?: string;
 }
 
-export default function ImageUpload({ onImageSelected, className }: ImageUploadProps) {
+export default function ImageUpload({
+  onImageSelected,
+  className,
+}: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +43,7 @@ export default function ImageUpload({ onImageSelected, className }: ImageUploadP
       setPreview(url);
       onImageSelected(url);
     },
-    [onImageSelected, preview],
+    [onImageSelected, preview]
   );
 
   const handleChange = useCallback(
@@ -48,7 +51,7 @@ export default function ImageUpload({ onImageSelected, className }: ImageUploadP
       const file = e.target.files?.[0];
       if (file) processFile(file);
     },
-    [processFile],
+    [processFile]
   );
 
   const handleDrop = useCallback(
@@ -58,7 +61,7 @@ export default function ImageUpload({ onImageSelected, className }: ImageUploadP
       const file = e.dataTransfer.files[0];
       if (file) processFile(file);
     },
-    [processFile],
+    [processFile]
   );
 
   const handleClear = useCallback(() => {
@@ -71,87 +74,92 @@ export default function ImageUpload({ onImageSelected, className }: ImageUploadP
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      <label className="text-sm font-medium text-gray-700">Upload your design</label>
+      <label className='text-sm font-medium text-gray-700'>
+        Upload your design
+      </label>
 
       {/* Drop zone */}
       <div
-        role="button"
+        role='button'
         tabIndex={0}
-        aria-label="Upload design image"
+        aria-label='Upload design image'
         onClick={() => inputRef.current?.click()}
-        onKeyDown={(e) => {
+        onKeyDown={e => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             inputRef.current?.click();
           }
         }}
-        onDragOver={(e) => {
+        onDragOver={e => {
           e.preventDefault();
           setIsDragOver(true);
         }}
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         className={cn(
-          'flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer',
+          'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors',
           isDragOver
             ? 'border-primary-400 bg-primary-50'
-            : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100',
+            : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
         )}
       >
         {preview ? (
-          <div className="relative h-32 w-32">
-            <Image
+          <div className='relative h-32 w-32'>
+            <AppImage
               src={preview}
-              alt="Uploaded design preview"
+              alt='Uploaded design preview'
               fill
-              className="rounded-lg object-contain"
+              className='rounded-lg object-contain'
               unoptimized
             />
           </div>
         ) : (
           <>
             <svg
-              className="h-10 w-10 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden="true"
+              className='h-10 w-10 text-gray-400'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+              aria-hidden='true'
             >
               <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                strokeLinecap='round'
+                strokeLinejoin='round'
                 strokeWidth={1.5}
-                d="M12 16v-8m0 0l-3 3m3-3l3 3M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"
+                d='M12 16v-8m0 0l-3 3m3-3l3 3M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1'
               />
             </svg>
-            <p className="text-sm text-gray-600">
-              <span className="font-medium text-primary-600">Click</span> or drag &amp; drop
+            <p className='text-sm text-gray-600'>
+              <span className='font-medium text-primary-600'>Click</span> or
+              drag &amp; drop
             </p>
-            <p className="text-xs text-gray-400">PNG, JPG, or WebP — max 5 MB</p>
+            <p className='text-xs text-gray-400'>
+              PNG, JPG, or WebP — max 5 MB
+            </p>
           </>
         )}
       </div>
 
       <input
         ref={inputRef}
-        type="file"
-        accept=".png,.jpg,.jpeg,.webp"
+        type='file'
+        accept='.png,.jpg,.jpeg,.webp'
         onChange={handleChange}
-        className="sr-only"
-        aria-hidden="true"
+        className='sr-only'
+        aria-hidden='true'
       />
 
       {error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className='text-sm text-red-600' role='alert'>
           {error}
         </p>
       )}
 
       {preview && (
         <button
-          type="button"
+          type='button'
           onClick={handleClear}
-          className="self-start text-sm font-medium text-gray-500 underline hover:text-gray-700 transition-colors"
+          className='self-start text-sm font-medium text-gray-500 underline transition-colors hover:text-gray-700'
         >
           Remove image
         </button>

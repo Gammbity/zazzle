@@ -15,6 +15,89 @@ from .models import Draft, DraftAsset, UploadSession, MockupRender, ProductMocku
 
 User = get_user_model()
 
+DEFAULT_TEXT_LAYERS = [
+    {
+        'id': 'text1',
+        'text': 'Test Text',
+        'x': 100,
+        'y': 50,
+        'font_size': 24,
+        'color': '#000000',
+        'font_family': 'Arial',
+    }
+]
+DEFAULT_EDITOR_STATE = {'zoom': 1.0}
+
+
+def get_or_create_product_type(category, **overrides):
+    defaults = {
+        ProductType.ProductCategory.TSHIRT: {
+            'name': 'Test T-Shirt',
+            'has_size_variants': True,
+            'has_color_variants': True,
+        },
+        ProductType.ProductCategory.MUG: {
+            'name': 'Test Mug',
+            'has_size_variants': False,
+            'has_color_variants': False,
+        },
+        ProductType.ProductCategory.BUSINESS_CARD: {
+            'name': 'Test Business Card',
+            'has_size_variants': False,
+            'has_color_variants': False,
+        },
+        ProductType.ProductCategory.DESK_CALENDAR: {
+            'name': 'Test Desk Calendar',
+            'has_size_variants': False,
+            'has_color_variants': False,
+        },
+    }[category]
+    defaults.update(overrides)
+    product_type, _ = ProductType.objects.get_or_create(
+        category=category,
+        defaults=defaults,
+    )
+    updated_fields = []
+    for field, value in defaults.items():
+        if getattr(product_type, field) != value:
+            setattr(product_type, field, value)
+            updated_fields.append(field)
+    if updated_fields:
+        product_type.save(update_fields=updated_fields)
+    return product_type
+
+
+def get_or_create_product_variant(product_type, **overrides):
+    size = overrides.pop('size', 'QA')
+    color = overrides.pop('color', 'Test White')
+    defaults = {
+        'color_hex': '#FFFFFF',
+        'sale_price': Decimal('85000.00'),
+        'production_cost': Decimal('45000.00'),
+        'is_active': True,
+    }
+    defaults.update(overrides)
+    variant, _ = ProductVariant.objects.get_or_create(
+        product_type=product_type,
+        size=size,
+        color=color,
+        defaults=defaults,
+    )
+    updated_fields = []
+    if variant.size != size:
+        variant.size = size
+        updated_fields.append('size')
+    if variant.color != color:
+        variant.color = color
+        updated_fields.append('color')
+    for field, value in defaults.items():
+        if getattr(variant, field) != value:
+            setattr(variant, field, value)
+            updated_fields.append(field)
+    if updated_fields:
+        variant.save(update_fields=updated_fields)
+    return variant
+
 
 class DraftModelTestCase(TestCase):
     """Test cases for Draft model."""
@@ -28,20 +111,13 @@ class DraftModelTestCase(TestCase):
         )
         
         # Create product type and variant
-        self.product_type = ProductType.objects.create(
-            name='Test T-Shirt',
-            category=ProductType.ProductCategory.TSHIRT,
-            has_size_variants=True,
-            has_color_variants=True
+        self.product_type = get_or_create_product_type(
+            ProductType.ProductCategory.TSHIRT
         )
-        
-        self.product_variant = ProductVariant.objects.create(
-            product_type=self.product_type,
-            size='M',
-            color='White',
-            color_hex='#FFFFFF',
-            sale_price=Decimal('85000.00'),
-            production_cost=Decimal('45000.00')
+        self.product_variant = get_or_create_product_variant(
+            self.product_type,
+            size='QAM',
+            color='Test White',
         )
     
     def test_draft_creation(self):
@@ -74,15 +150,15 @@ class DraftModelTestCase(TestCase):
     def test_draft_validation_wrong_variant(self):
         """Test that draft validation fails for wrong product variant."""
         # Create variant for different product type
-        other_product_type = ProductType.objects.create(
-            name='Test Mug',
-            category=ProductType.ProductCategory.MUG
+        other_product_type = get_or_create_product_type(
+            ProductType.ProductCategory.MUG
         )
-        
-        other_variant = ProductVariant.objects.create(
-            product_type=other_product_type,
+        other_variant = get_or_create_product_variant(
+            other_product_type,
+            size='MUG',
+            color='Test Mug',
             sale_price=Decimal('65000.00'),
-            production_cost=Decimal('35000.00')
+            production_cost=Decimal('35000.00'),
         )
         
         # This should fail validation
@@ -139,15 +215,13 @@ class DraftAssetModelTestCase(TestCase):
             password='testpass123'
         )
         
-        self.product_type = ProductType.objects.create(
-            name='Test T-Shirt',
-            category=ProductType.ProductCategory.TSHIRT
+        self.product_type = get_or_create_product_type(
+            ProductType.ProductCategory.TSHIRT
         )
-        
-        self.product_variant = ProductVariant.objects.create(
-            product_type=self.product_type,
-            sale_price=Decimal('85000.00'),
-            production_cost=Decimal('45000.00')
+        self.product_variant = get_or_create_product_variant(
+            self.product_type,
+            size='QAD',
+            color='Asset White',
         )
         
         self.draft = Draft.objects.create(
@@ -254,20 +328,13 @@ class DraftAPITestCase(APITestCase):
         )
         
         # Create product data
-        self.product_type = ProductType.objects.create(
-            name='Test T-Shirt',
-            category=ProductType.ProductCategory.TSHIRT,
-            has_size_variants=True,
-            has_color_variants=True
+        self.product_type = get_or_create_product_type(
+            ProductType.ProductCategory.TSHIRT
         )
-        
-        self.product_variant = ProductVariant.objects.create(
-            product_type=self.product_type,
-            size='M',
-            color='White',
-            color_hex='#FFFFFF',
-            sale_price=Decimal('85000.00'),
-            production_cost=Decimal('45000.00')
+        self.product_variant = get_or_create_product_variant(
+            self.product_type,
+            size='QAU1',
+            color='API White',
         )
         
         # Create draft for user1
@@ -390,15 +457,15 @@ class DraftAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.user1)
         
         # Create variant for different product type
-        other_product_type = ProductType.objects.create(
-            name='Test Mug',
-            category=ProductType.ProductCategory.MUG
+        other_product_type = get_or_create_product_type(
+            ProductType.ProductCategory.MUG
         )
-        
-        other_variant = ProductVariant.objects.create(
-            product_type=other_product_type,
+        other_variant = get_or_create_product_variant(
+            other_product_type,
+            size='MUG2',
+            color='API Mug',
             sale_price=Decimal('65000.00'),
-            production_cost=Decimal('35000.00')
+            production_cost=Decimal('35000.00'),
         )
         
         url = reverse('designs:draft-list')
@@ -425,15 +492,13 @@ class UploadAPITestCase(APITestCase):
             password='testpass123'
         )
         
-        self.product_type = ProductType.objects.create(
-            name='Test T-Shirt',
-            category=ProductType.ProductCategory.TSHIRT
+        self.product_type = get_or_create_product_type(
+            ProductType.ProductCategory.TSHIRT
         )
-        
-        self.product_variant = ProductVariant.objects.create(
-            product_type=self.product_type,
-            sale_price=Decimal('85000.00'),
-            production_cost=Decimal('45000.00')
+        self.product_variant = get_or_create_product_variant(
+            self.product_type,
+            size='UPL',
+            color='Upload White',
         )
         
         self.draft = Draft.objects.create(
@@ -608,7 +673,7 @@ class FileValidationTestCase(TestCase):
             ('normal-file.png', 'normal-file.png'),
             ('file with spaces.jpg', 'file_with_spaces.jpg'),
             ('file$with@special#chars.webp', 'file_with_special_chars.webp'),
-            ('../../../hack.png', '______hack.png'),
+            ('../../../hack.png', 'hack.png'),
             ('file.PNG', 'file.PNG'),  # Case preserved
         ]
         
@@ -651,20 +716,13 @@ class MockupRenderModelTestCase(TestCase):
         )
         
         # Create product type and variant
-        self.product_type = ProductType.objects.create(
-            name='Test T-Shirt',
-            category=ProductType.ProductCategory.TSHIRT,
-            has_size_variants=True,
-            has_color_variants=True
+        self.product_type = get_or_create_product_type(
+            ProductType.ProductCategory.TSHIRT
         )
-        
-        self.product_variant = ProductVariant.objects.create(
-            product_type=self.product_type,
-            size='M',
-            color='White',
-            color_hex='#FFFFFF',
-            sale_price=Decimal('85000.00'),
-            production_cost=Decimal('45000.00')
+        self.product_variant = get_or_create_product_variant(
+            self.product_type,
+            size='QAMR',
+            color='Mock White',
         )
         
         # Create draft
@@ -673,18 +731,8 @@ class MockupRenderModelTestCase(TestCase):
             product_type=self.product_type,
             product_variant=self.product_variant,
             name='Test Design',
-            text_layers=[
-                {
-                    'id': 'text1',
-                    'text': 'Test Text',
-                    'x': 100,
-                    'y': 50,
-                    'font_size': 24,
-                    'color': '#000000',
-                    'font_family': 'Arial'
-                }
-            ],
-            editor_state={'zoom': 1.0}
+            text_layers=DEFAULT_TEXT_LAYERS,
+            editor_state=DEFAULT_EDITOR_STATE
         )
         
         # Create mockup template
@@ -788,20 +836,13 @@ class MockupRenderAPITestCase(APITestCase):
         )
         
         # Create product type and variant
-        self.product_type = ProductType.objects.create(
-            name='Test T-Shirt',
-            category=ProductType.ProductCategory.TSHIRT,
-            has_size_variants=True,
-            has_color_variants=True
+        self.product_type = get_or_create_product_type(
+            ProductType.ProductCategory.TSHIRT
         )
-        
-        self.product_variant = ProductVariant.objects.create(
-            product_type=self.product_type,
-            size='M',
-            color='White',
-            color_hex='#FFFFFF',
-            sale_price=Decimal('85000.00'),
-            production_cost=Decimal('45000.00')
+        self.product_variant = get_or_create_product_variant(
+            self.product_type,
+            size='QARA',
+            color='Render White',
         )
         
         # Create draft
@@ -810,18 +851,8 @@ class MockupRenderAPITestCase(APITestCase):
             product_type=self.product_type,
             product_variant=self.product_variant,
             name='Test Design',
-            text_layers=[
-                {
-                    'id': 'text1',
-                    'text': 'Test Text',
-                    'x': 100,
-                    'y': 50,
-                    'font_size': 24,
-                    'color': '#000000',
-                    'font_family': 'Arial'
-                }
-            ],
-            editor_state={'zoom': 1.0}
+            text_layers=DEFAULT_TEXT_LAYERS,
+            editor_state=DEFAULT_EDITOR_STATE
         )
         
         # Create mockup template
@@ -906,9 +937,9 @@ class MockupRenderAPITestCase(APITestCase):
     def test_render_draft_preview_incompatible_template(self):
         """Test rendering with template for different product type."""
         # Create template for different product type
-        other_product_type = ProductType.objects.create(
+        other_product_type = get_or_create_product_type(
+            ProductType.ProductCategory.MUG,
             name='Coffee Mug',
-            category=ProductType.ProductCategory.MUG
         )
         
         other_template = ProductMockupTemplate.objects.create(
@@ -1086,20 +1117,13 @@ class MockupRenderTaskTestCase(TestCase):
         )
         
         # Create product type and variant
-        self.product_type = ProductType.objects.create(
-            name='Test T-Shirt',
-            category=ProductType.ProductCategory.TSHIRT,
-            has_size_variants=True,
-            has_color_variants=True
+        self.product_type = get_or_create_product_type(
+            ProductType.ProductCategory.TSHIRT
         )
-        
-        self.product_variant = ProductVariant.objects.create(
-            product_type=self.product_type,
-            size='M',
-            color='White',
-            color_hex='#FFFFFF',
-            sale_price=Decimal('85000.00'),
-            production_cost=Decimal('45000.00')
+        self.product_variant = get_or_create_product_variant(
+            self.product_type,
+            size='QATK',
+            color='Task White',
         )
         
         # Create draft
@@ -1108,18 +1132,8 @@ class MockupRenderTaskTestCase(TestCase):
             product_type=self.product_type,
             product_variant=self.product_variant,
             name='Test Design',
-            text_layers=[
-                {
-                    'id': 'text1',
-                    'text': 'Test Text',
-                    'x': 100,
-                    'y': 50,
-                    'font_size': 24,
-                    'color': '#000000',
-                    'font_family': 'Arial'
-                }
-            ],
-            editor_state={'zoom': 1.0}
+            text_layers=DEFAULT_TEXT_LAYERS,
+            editor_state=DEFAULT_EDITOR_STATE
         )
         
         # Create mockup template

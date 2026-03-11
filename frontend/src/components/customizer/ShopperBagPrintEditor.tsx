@@ -2,22 +2,22 @@
 
 import { fabric } from 'fabric';
 import SingleSurfacePrintEditor from './SingleSurfacePrintEditor';
-import { calendarCustomizerConfig } from './single-surface-presets';
+import { shopperBagCustomizerConfig } from './single-surface-presets';
 
-interface CalendarPrintEditorProps {
+interface ShopperBagPrintEditorProps {
   onCanvasReady: (canvas: fabric.Canvas) => void;
   onTextureUpdate: (dataUrl: string) => void;
 }
 
-export default function CalendarPrintEditor({
+export default function ShopperBagPrintEditor({
   onCanvasReady,
   onTextureUpdate,
-}: CalendarPrintEditorProps) {
+}: ShopperBagPrintEditorProps) {
   return (
     <SingleSurfacePrintEditor
       onCanvasReady={onCanvasReady}
       onTextureUpdate={onTextureUpdate}
-      config={calendarCustomizerConfig.editor}
+      config={shopperBagCustomizerConfig.editor}
     />
   );
 }

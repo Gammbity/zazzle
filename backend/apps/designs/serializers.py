@@ -232,6 +232,7 @@ class DraftListSerializer(serializers.ModelSerializer):
 class DraftDetailSerializer(serializers.ModelSerializer):
     """Serializer for Draft detail view."""
     
+    customer = serializers.IntegerField(source='customer_id', read_only=True)
     product_type = serializers.SerializerMethodField()
     product_variant = serializers.SerializerMethodField()
     assets = DraftAssetSerializer(many=True, read_only=True)
@@ -242,7 +243,7 @@ class DraftDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Draft
         fields = [
-            'uuid', 'name', 'product_type', 'product_variant', 'text_layers',
+            'uuid', 'customer', 'name', 'product_type', 'product_variant', 'text_layers',
             'editor_state', 'status', 'status_display', 'preview_image_s3_key',
             'assets', 'asset_count', 'total_file_size', 'created_at', 'updated_at'
         ]
@@ -475,9 +476,12 @@ class ProductMockupTemplateSerializer(serializers.ModelSerializer):
         """Get the S3 URL for the template image."""
         if obj.template_s3_key:
             from django.conf import settings
-            if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN') and settings.AWS_S3_CUSTOM_DOMAIN:
-                return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{obj.template_s3_key}"
-            return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{obj.template_s3_key}"
+            custom_domain = getattr(settings, 'AWS_S3_CUSTOM_DOMAIN', None)
+            if custom_domain:
+                return f"https://{custom_domain}/{obj.template_s3_key}"
+            bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', 'test-bucket')
+            region_name = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
+            return f"https://{bucket_name}.s3.{region_name}.amazonaws.com/{obj.template_s3_key}"
         return None
 
 

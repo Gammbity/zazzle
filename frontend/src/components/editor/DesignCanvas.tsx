@@ -238,6 +238,9 @@ function SafeAreaGuides({
   canvasWidth: number;
   canvasHeight: number;
 }) {
+  // Guard against undefined printableArea
+  if (!printableArea) return null;
+  
   const x = (printableArea.x / 100) * canvasWidth;
   const y = (printableArea.y / 100) * canvasHeight;
   const w = (printableArea.width / 100) * canvasWidth;
@@ -460,15 +463,48 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
               rotateEnabled
               enabledAnchors={[
                 'top-left',
+                'top-center',
                 'top-right',
-                'bottom-left',
-                'bottom-right',
                 'middle-left',
                 'middle-right',
+                'bottom-left',
+                'bottom-center',
+                'bottom-right',
               ]}
-              boundBoxFunc={(oldBox, newBox) =>
-                newBox.width < 10 || newBox.height < 10 ? oldBox : newBox
-              }
+              boundBoxFunc={(oldBox, newBox) => {
+                // Minimum size constraint
+                if (newBox.width < 10 || newBox.height < 10) return oldBox;
+                
+                // Keep within canvas bounds
+                const constrainedBox = { ...newBox };
+                
+                // Constrain left edge
+                if (constrainedBox.x < 0) {
+                  constrainedBox.width += constrainedBox.x;
+                  constrainedBox.x = 0;
+                }
+                
+                // Constrain top edge
+                if (constrainedBox.y < 0) {
+                  constrainedBox.height += constrainedBox.y;
+                  constrainedBox.y = 0;
+                }
+                
+                // Constrain right edge
+                if (constrainedBox.x + constrainedBox.width > canvasWidth) {
+                  constrainedBox.width = canvasWidth - constrainedBox.x;
+                }
+                
+                // Constrain bottom edge
+                if (constrainedBox.y + constrainedBox.height > canvasHeight) {
+                  constrainedBox.height = canvasHeight - constrainedBox.y;
+                }
+                
+                // Ensure minimum size after constraining
+                if (constrainedBox.width < 10 || constrainedBox.height < 10) return oldBox;
+                
+                return constrainedBox;
+              }}
               ignoreStroke
               padding={4}
             />

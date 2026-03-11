@@ -308,6 +308,25 @@ export default function EditorPanel({
   }, [onPreviewGenerated]);
 
   // ========================================================================
+  // Real-time preview generation (debounced)
+  // ========================================================================
+
+  useEffect(() => {
+    // Skip if no layers
+    if (layers.length === 0) {
+      onPreviewGenerated('');
+      return;
+    }
+
+    // Debounce preview generation to avoid excessive calls
+    const timer = setTimeout(() => {
+      generatePreview();
+    }, 150); // 150ms debounce for smooth real-time updates
+
+    return () => clearTimeout(timer);
+  }, [layers, generatePreview, onPreviewGenerated]);
+
+  // ========================================================================
   // Keyboard shortcuts
   // ========================================================================
 
@@ -592,20 +611,6 @@ export default function EditorPanel({
           </ul>
         </div>
       )}
-
-      {/* ───── Preview button ───── */}
-      <button
-        onClick={generatePreview}
-        disabled={layers.length === 0}
-        className={cn(
-          'w-full rounded-xl py-3 text-sm font-semibold transition-colors',
-          layers.length > 0
-            ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm'
-            : 'bg-gray-200 text-gray-400 cursor-not-allowed',
-        )}
-      >
-        Generate Preview
-      </button>
 
       {/* ───── Sticker picker modal ───── */}
       <Modal

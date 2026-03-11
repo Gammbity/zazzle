@@ -36,6 +36,14 @@ export default function ProductDetailClient({ product }: Props) {
   const [mugCompositeUrl, setMugCompositeUrl] = useState<string | null>(null);
 
   const isMug = product.slug === 'mug';
+  
+  // Get printableArea from first angle (fallback to default if not available)
+  const printableArea = product.angles[0]?.printableArea ?? {
+    x: 10,
+    y: 10,
+    width: 80,
+    height: 80,
+  };
 
   const downloadDesign = useCallback(() => {
     const url = isMug ? mugCompositeUrl : previewDataUrl;
@@ -89,23 +97,17 @@ export default function ProductDetailClient({ product }: Props) {
               <ProductGallery
                 angles={product.angles}
                 productName={product.name}
-                designUrl={!isMug ? previewDataUrl : undefined}
+                designUrl={!isMug && previewDataUrl ? previewDataUrl : undefined}
                 overlayBox={product.overlayBox}
               />
             )}
 
-            {/* Action buttons (only when the user has generated a preview) */}
-            {previewDataUrl && (
+            {/* Action buttons (only when the user has a design) */}
+            {previewDataUrl && previewDataUrl.length > 0 && (
               <div className="flex gap-2">
                 <button
-                  onClick={() => { setPreviewDataUrl(null); setMugCompositeUrl(null); }}
-                  className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Clear Preview
-                </button>
-                <button
                   onClick={downloadDesign}
-                  className="flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+                  className="w-full rounded-xl bg-primary-600 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
                 >
                   Download Design
                 </button>
@@ -153,13 +155,12 @@ export default function ProductDetailClient({ product }: Props) {
                 Design your {product.name.toLowerCase()}
               </h2>
               <p className="mb-4 text-sm text-gray-500">
-                Upload an image, add text or stickers, then hit &quot;Generate Preview&quot;
-                to see it on the product.
+                Upload an image, add text or stickers — your design appears on the product instantly!
               </p>
 
               <EditorPanel
                 productSlug={product.slug}
-                printableArea={product.printableArea}
+                printableArea={printableArea}
                 canvasAspect={product.canvasAspect}
                 onPreviewGenerated={setPreviewDataUrl}
               />

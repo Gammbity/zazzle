@@ -3,8 +3,11 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from django.db.models import Q, Min, Max, Count
+from django.db.models import Q, Min, Max, Count, Prefetch
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
 
 from .models import ProductType, ProductVariant, ProductAssetTemplate
 from .serializers import (
@@ -24,8 +27,12 @@ class ProductListView(generics.ListAPIView):
     Returns all active product types with pricing and variant information.
     """
     
+    # Optimized queryset with selective prefetch
     queryset = ProductType.objects.filter(is_active=True).prefetch_related(
-        'variants', 'asset_templates'
+        Prefetch('variants', queryset=ProductVariant.objects.filter(is_active=True).only(
+            'id', 'size', 'color', 'color_hex', 'sale_price', 'is_active', 'is_default', 'product_type_id'
+        )),
+        'asset_templates'
     )
     serializer_class = ProductTypeListSerializer
     permission_classes = [permissions.AllowAny]
@@ -36,6 +43,11 @@ class ProductListView(generics.ListAPIView):
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'sort_order', 'created_at']
     ordering = ['sort_order', 'name']
+    
+    # Cache product list for 5 minutes
+    @method_decorator(cache_page(60 * 5))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
     
     def get_queryset(self):
         """Enhanced queryset with price and variant filtering."""
@@ -78,10 +90,16 @@ class ProductDetailView(generics.RetrieveAPIView):
     """
     
     queryset = ProductType.objects.filter(is_active=True).prefetch_related(
-        'variants', 'asset_templates'
+        Prefetch('variants', queryset=ProductVariant.objects.filter(is_active=True)),
+        'asset_templates'
     )
     permission_classes = [permissions.AllowAny]
     lookup_field = 'id'
+    
+    # Cache product detail for 5 minutes
+    @method_decorator(cache_page(60 * 5))
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
     
     def get_serializer_class(self):
         """Return specialized serializer based on product category."""
@@ -113,13 +131,22 @@ class ProductVariantListView(generics.ListAPIView):
     ordering_fields = ['size', 'color', 'sale_price']
     ordering = ['size', 'color']
     
+    # Cache variants list for 5 minutes
+    @method_decorator(cache_page(60 * 5))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+    
     def get_queryset(self):
         """Get variants for specific product type."""
         product_id = self.kwargs['product_id']
         return ProductVariant.objects.filter(
             product_type_id=product_id,
             is_active=True
-        ).select_related('product_type')
+        ).select_related('product_type').only(
+            'id', 'product_type_id', 'size', 'color', 'sku',
+            'base_price', 'sale_price', 'stock', 'is_active', 'is_default',
+            'product_type__name', 'product_type__category'
+        )
 
 
 class ProductVariantDetailView(generics.RetrieveAPIView):
@@ -133,6 +160,11 @@ class ProductVariantDetailView(generics.RetrieveAPIView):
     serializer_class = ProductVariantDetailSerializer
     permission_classes = [permissions.AllowAny]
     lookup_field = 'id'
+    
+    # Cache variant detail for 5 minutes
+    @method_decorator(cache_page(60 * 5))
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
     
     def get_queryset(self):
         """Get variant for specific product type."""

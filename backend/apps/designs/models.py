@@ -103,6 +103,13 @@ class Design(models.Model):
         verbose_name = _('Design')
         verbose_name_plural = _('Designs')
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['created_by', 'status']),
+            models.Index(fields=['status', 'is_public']),
+            models.Index(fields=['category', 'status']),
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['design_type', 'status']),
+        ]
         
     def __str__(self):
         return f"{self.title} by {self.created_by.get_full_name()}"

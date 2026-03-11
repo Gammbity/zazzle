@@ -63,6 +63,12 @@ class Order(models.Model):
         verbose_name = _('Order')
         verbose_name_plural = _('Orders')
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['customer', 'status']),
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['order_number']),
+            models.Index(fields=['-created_at']),
+        ]
         
     def __str__(self):
         return f"Order {self.order_number} - {self.customer.email}"
@@ -195,6 +201,9 @@ class OrderItem(models.Model):
     class Meta:
         verbose_name = _('Order Item')
         verbose_name_plural = _('Order Items')
+        indexes = [
+            models.Index(fields=['order', 'production_status']),
+        ]
         
     def __str__(self):
         return f"{self.product_name} ({self.size}, {self.color}) x{self.quantity}"
@@ -245,6 +254,10 @@ class Payment(models.Model):
         verbose_name = _('Payment')
         verbose_name_plural = _('Payments')
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['order', 'status']),
+            models.Index(fields=['payment_method', 'status']),
+        ]
         
     def __str__(self):
         return f"Payment {self.payment_id} - {self.amount} {self.currency}"

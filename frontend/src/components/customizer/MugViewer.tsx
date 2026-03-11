@@ -2,7 +2,7 @@
 
 import { useRef, Suspense, useEffect, useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ContactShadows } from '@react-three/drei';
+import { ContactShadows } from '@react-three/drei/core/ContactShadows';
 import * as THREE from 'three';
 import { fabric } from 'fabric';
 import { Camera } from 'lucide-react';

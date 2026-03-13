@@ -1,42 +1,30 @@
 'use client';
 
+import { lazy, Suspense, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
-  lazy,
-  Suspense,
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-  useMemo,
-} from 'react';
-import type {
-  Layer,
-  TextLayer,
-  ImageLayer,
-  StickerLayer,
-  StickerAsset,
-  HistoryEntry,
-  FontFamily,
-} from '@/lib/editor/types';
-import { FONT_FAMILIES } from '@/lib/editor/types';
-import type { PrintableArea } from '@/lib/products/catalog';
+  useEditorStore,
+  useActiveLayers,
+  useSelectedLayer,
+  useHistoryFlags,
+} from '@/store/editorStore';
+import { uid } from '@/lib/editor/serialize';
+import { getProductConfig } from '@/lib/products/surfaces';
 import {
-  uid,
-  saveDraft,
-  loadDraft,
-  normaliseZIndexes,
-  bringForward,
-  sendBackward,
-} from '@/lib/editor/serialize';
+  fitLayerScale,
+  getDefaultLayerPosition,
+} from '@/lib/products/printAreas';
+import { STICKER_ASSETS } from '@/types/layer';
+import type { ImageLayer, TextLayer, StickerLayer, Layer } from '@/types/layer';
 import type { DesignCanvasHandle } from './DesignCanvas';
+import LayerList from './LayerList';
+import TextControls from '@/components/controls/TextControls';
 import Modal from '@/components/Modal';
 import StickerPicker from './StickerPicker';
 import { cn } from '@/lib/utils';
 
-/** Re-export handle type so parent can reference it. */
+/** Re-export for parent components */
 export type { DesignCanvasHandle };
 
-/* Dynamically import DesignCanvas with SSR disabled (Konva needs DOM). */
 const DesignCanvas = lazy(() => import('./DesignCanvas'));
 
 function CanvasSkeleton() {
@@ -46,792 +34,7 @@ function CanvasSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const CANVAS_SIZE = 500; // px — square base; adjusted by canvasAspect
-const MAX_HISTORY = 60;
-
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
-interface EditorPanelProps {
-  productSlug: string;
-  printableArea: PrintableArea;
-  canvasAspect: number;
-  /** Called with a data-URL whenever the user generates a preview. */
-  onPreviewGenerated: (dataUrl: string) => void;
-}
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-export default function EditorPanel({
-  productSlug,
-  printableArea,
-  canvasAspect,
-  onPreviewGenerated,
-}: EditorPanelProps) {
-  // --- Canvas dimensions (responsive) ---
-  const canvasWidth = CANVAS_SIZE;
-  const canvasHeight = Math.round(CANVAS_SIZE / canvasAspect);
-  const textInputRef = useRef<HTMLInputElement>(null);
-  const printableBounds = useMemo(() => {
-    const x = (printableArea.x / 100) * canvasWidth;
-    const y = (printableArea.y / 100) * canvasHeight;
-    const width = (printableArea.width / 100) * canvasWidth;
-    const height = (printableArea.height / 100) * canvasHeight;
-
-    return {
-      x,
-      y,
-      width,
-      height,
-      centerX: x + width / 2,
-      centerY: y + height / 2,
-    };
-  }, [canvasHeight, canvasWidth, printableArea]);
-
-  // --- Layer state ---
-  const [layers, setLayers] = useState<Layer[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // --- History (undo / redo) ---
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const skipHistoryRef = useRef(false);
-
-  // --- UI toggles ---
-  const [showStickerPicker, setShowStickerPicker] = useState(false);
-  const [editingTextId, setEditingTextId] = useState<string | null>(null);
-
-  // --- Canvas handle for export (set via onReady callback, not ref) ---
-  const canvasHandleRef = useRef<DesignCanvasHandle | null>(null);
-
-  // --- File input ref ---
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // ========================================================================
-  // History helpers
-  // ========================================================================
-
-  const pushHistory = useCallback(
-    (newLayers: Layer[]) => {
-      if (skipHistoryRef.current) {
-        skipHistoryRef.current = false;
-        return;
-      }
-      setHistory(prev => {
-        const trimmed = prev.slice(0, historyIndex + 1);
-        const next = [...trimmed, { layers: newLayers }];
-        if (next.length > MAX_HISTORY) next.shift();
-        return next;
-      });
-      setHistoryIndex(prev => Math.min(prev + 1, MAX_HISTORY - 1));
-    },
-    [historyIndex]
-  );
-
-  const undo = useCallback(() => {
-    if (historyIndex <= 0) return;
-    const newIdx = historyIndex - 1;
-    setHistoryIndex(newIdx);
-    skipHistoryRef.current = true;
-    setLayers(history[newIdx].layers);
-  }, [history, historyIndex]);
-
-  const redo = useCallback(() => {
-    if (historyIndex >= history.length - 1) return;
-    const newIdx = historyIndex + 1;
-    setHistoryIndex(newIdx);
-    skipHistoryRef.current = true;
-    setLayers(history[newIdx].layers);
-  }, [history, historyIndex]);
-
-  // ========================================================================
-  // Persist & restore
-  // ========================================================================
-
-  /* Restore from localStorage on mount */
-  useEffect(() => {
-    const draft = loadDraft(productSlug);
-    if (draft) {
-      setLayers(draft.layers);
-      pushHistory(draft.layers);
-    } else {
-      pushHistory([]);
-    }
-  }, [productSlug]);
-
-  /* Auto-save on layer change (debounced) */
-  useEffect(() => {
-    const t = setTimeout(() => {
-      saveDraft({
-        productSlug,
-        selectedAngle: 'front',
-        layers,
-        canvasWidth,
-        canvasHeight,
-        updatedAt: new Date().toISOString(),
-      });
-    }, 400);
-    return () => clearTimeout(t);
-  }, [layers, productSlug, canvasWidth, canvasHeight]);
-
-  // ========================================================================
-  // Layer mutations
-  // ========================================================================
-
-  const updateLayers = useCallback(
-    (fn: (prev: Layer[]) => Layer[]) => {
-      setLayers(prev => {
-        const next = fn(prev);
-        pushHistory(next);
-        return next;
-      });
-    },
-    [pushHistory]
-  );
-
-  const addLayer = useCallback(
-    (layer: Layer) => {
-      updateLayers(prev => normaliseZIndexes([...prev, layer]));
-      setSelectedId(layer.id);
-    },
-    [updateLayers]
-  );
-
-  const deleteLayer = useCallback(
-    (id: string) => {
-      updateLayers(prev => normaliseZIndexes(prev.filter(l => l.id !== id)));
-      if (selectedId === id) setSelectedId(null);
-    },
-    [updateLayers, selectedId]
-  );
-
-  const handleTransform = useCallback(
-    (id: string, attrs: Record<string, unknown>) => {
-      updateLayers(prev =>
-        prev.map(l => (l.id === id ? ({ ...l, ...attrs } as Layer) : l))
-      );
-    },
-    [updateLayers]
-  );
-
-  // ========================================================================
-  // Add actions
-  // ========================================================================
-
-  const handleImageUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try {
-        const reader = new FileReader();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(String(reader.result));
-          reader.onerror = () => reject(new Error('Failed to read image file'));
-          reader.readAsDataURL(file);
-        });
-
-        const img = new window.Image();
-        img.onload = () => {
-          const aspect = img.width / img.height;
-          const maxW = printableBounds.width * 0.8;
-          const maxH = printableBounds.height * 0.8;
-          const size = Math.min(maxW, maxH);
-          const w = aspect >= 1 ? size : size * aspect;
-          const h = aspect >= 1 ? size / aspect : size;
-          const layer: ImageLayer = {
-            id: uid(),
-            type: 'image',
-            name: file.name.slice(0, 20),
-            src: dataUrl,
-            x: printableBounds.centerX - w / 2,
-            y: printableBounds.centerY - h / 2,
-            width: w,
-            height: h,
-            scaleX: 1,
-            scaleY: 1,
-            rotation: 0,
-            opacity: 1,
-            zIndex: layers.length,
-            visible: true,
-          };
-          addLayer(layer);
-        };
-        img.src = dataUrl;
-      } finally {
-        e.target.value = '';
-      }
-    },
-    [addLayer, layers.length, printableBounds]
-  );
-
-  const addText = useCallback(() => {
-    const layer: TextLayer = {
-      id: uid(),
-      type: 'text',
-      name: 'Text',
-      text: 'Your text',
-      fontFamily: 'Inter',
-      fontSize: 32,
-      fontStyle: '',
-      fill: '#000000',
-      align: 'center',
-      x: printableBounds.x + printableBounds.width * 0.1,
-      y: printableBounds.centerY - 25,
-      width: printableBounds.width * 0.8,
-      height: 50,
-      scaleX: 1,
-      scaleY: 1,
-      rotation: 0,
-      opacity: 1,
-      zIndex: layers.length,
-      visible: true,
-    };
-    addLayer(layer);
-    setEditingTextId(layer.id);
-  }, [addLayer, layers.length, printableBounds]);
-
-  const addSticker = useCallback(
-    (sticker: StickerAsset) => {
-      const size =
-        Math.min(printableBounds.width, printableBounds.height) * 0.22;
-      const layer: StickerLayer = {
-        id: uid(),
-        type: 'sticker',
-        name: sticker.label,
-        stickerId: sticker.id,
-        src: sticker.src,
-        x: printableBounds.centerX - size / 2,
-        y: printableBounds.centerY - size / 2,
-        width: size,
-        height: size,
-        scaleX: 1,
-        scaleY: 1,
-        rotation: 0,
-        opacity: 1,
-        zIndex: layers.length,
-        visible: true,
-      };
-      addLayer(layer);
-    },
-    [addLayer, layers.length, printableBounds]
-  );
-
-  const resetDesign = useCallback(() => {
-    updateLayers(() => []);
-    setSelectedId(null);
-  }, [updateLayers]);
-
-  // ========================================================================
-  // Export
-  // ========================================================================
-
-  const generatePreview = useCallback(() => {
-    const dataUrl = canvasHandleRef.current?.exportPng();
-    if (dataUrl) onPreviewGenerated(dataUrl);
-  }, [onPreviewGenerated]);
-
-  // ========================================================================
-  // Real-time preview generation (debounced)
-  // ========================================================================
-
-  useEffect(() => {
-    // Skip if no layers
-    if (layers.length === 0) {
-      onPreviewGenerated('');
-      return;
-    }
-
-    // Debounce preview generation to avoid excessive calls
-    const timer = setTimeout(() => {
-      generatePreview();
-    }, 150); // 150ms debounce for smooth real-time updates
-
-    return () => clearTimeout(timer);
-  }, [layers, generatePreview, onPreviewGenerated]);
-
-  // ========================================================================
-  // Keyboard shortcuts
-  // ========================================================================
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Delete / Backspace — remove selected layer
-      if (
-        (e.key === 'Delete' || e.key === 'Backspace') &&
-        selectedId &&
-        !editingTextId
-      ) {
-        e.preventDefault();
-        deleteLayer(selectedId);
-      }
-      // Ctrl+Z — undo
-      if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      }
-      // Ctrl+Shift+Z — redo
-      if (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
-        e.preventDefault();
-        redo();
-      }
-      // Escape — deselect
-      if (e.key === 'Escape') {
-        setSelectedId(null);
-        setEditingTextId(null);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [selectedId, editingTextId, deleteLayer, undo, redo]);
-
-  // ========================================================================
-  // Selected layer helpers
-  // ========================================================================
-
-  const selectedLayer = useMemo(
-    () => layers.find(l => l.id === selectedId) ?? null,
-    [layers, selectedId]
-  );
-
-  const isTextSelected = selectedLayer?.type === 'text';
-  const textLayer = isTextSelected ? (selectedLayer as TextLayer) : null;
-
-  useEffect(() => {
-    if (!isTextSelected || !textLayer) return;
-    const timer = window.setTimeout(() => {
-      textInputRef.current?.focus();
-      textInputRef.current?.select();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [isTextSelected, selectedId, textLayer]);
-
-  // ========================================================================
-  // Render
-  // ========================================================================
-
-  return (
-    <div className='flex flex-col gap-4'>
-      {/* ───── Toolbar ───── */}
-      <div className='flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-2'>
-        {/* Upload image */}
-        <input
-          ref={fileInputRef}
-          type='file'
-          accept='image/png,image/jpeg,image/webp'
-          onChange={handleImageUpload}
-          className='hidden'
-        />
-        <ToolBtn
-          label='Image'
-          icon={
-            <svg
-              className='h-4 w-4'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
-              />
-            </svg>
-          }
-          onClick={() => fileInputRef.current?.click()}
-        />
-
-        {/* Add text */}
-        <ToolBtn
-          label='Text'
-          icon={
-            <svg
-              className='h-4 w-4'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
-              />
-            </svg>
-          }
-          onClick={addText}
-        />
-
-        {/* Stickers */}
-        <ToolBtn
-          label='Sticker'
-          icon={
-            <svg
-              className='h-4 w-4'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-              />
-            </svg>
-          }
-          onClick={() => setShowStickerPicker(true)}
-        />
-
-        <div className='mx-1 h-6 w-px bg-gray-200' />
-
-        {/* Undo / Redo */}
-        <ToolBtn
-          label='Undo'
-          onClick={undo}
-          disabled={historyIndex <= 0}
-          icon={
-            <svg
-              className='h-4 w-4'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4'
-              />
-            </svg>
-          }
-        />
-        <ToolBtn
-          label='Redo'
-          onClick={redo}
-          disabled={historyIndex >= history.length - 1}
-          icon={
-            <svg
-              className='h-4 w-4'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4'
-              />
-            </svg>
-          }
-        />
-
-        <div className='mx-1 h-6 w-px bg-gray-200' />
-
-        {/* Z-index controls (only when a layer is selected) */}
-        {selectedId && (
-          <>
-            <ToolBtn
-              label='Forward'
-              icon={
-                <svg
-                  className='h-4 w-4'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M5 15l7-7 7 7'
-                  />
-                </svg>
-              }
-              onClick={() =>
-                updateLayers(prev => bringForward(prev, selectedId))
-              }
-            />
-            <ToolBtn
-              label='Backward'
-              icon={
-                <svg
-                  className='h-4 w-4'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M19 9l-7 7-7-7'
-                  />
-                </svg>
-              }
-              onClick={() =>
-                updateLayers(prev => sendBackward(prev, selectedId))
-              }
-            />
-            <ToolBtn
-              label='Delete'
-              icon={
-                <svg
-                  className='h-4 w-4'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
-                  />
-                </svg>
-              }
-              onClick={() => deleteLayer(selectedId)}
-              danger
-            />
-          </>
-        )}
-
-        {/* Spacer */}
-        <div className='flex-1' />
-
-        {/* Reset */}
-        <ToolBtn
-          label='Reset'
-          onClick={resetDesign}
-          icon={
-            <svg
-              className='h-4 w-4'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
-              />
-            </svg>
-          }
-          danger
-        />
-      </div>
-
-      {/* ───── Text editing panel (visible when a text layer is selected) ───── */}
-      {isTextSelected && textLayer && (
-        <div className='flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-3'>
-          {/* Text content */}
-          <input
-            ref={textInputRef}
-            type='text'
-            value={textLayer.text}
-            onChange={e =>
-              handleTransform(textLayer.id, {
-                text: e.target.value,
-              } as Partial<TextLayer>)
-            }
-            className='w-40 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-1 focus:ring-primary-400'
-            placeholder='Enter text'
-          />
-
-          {/* Font family */}
-          <select
-            value={textLayer.fontFamily}
-            onChange={e =>
-              handleTransform(textLayer.id, {
-                fontFamily: e.target.value as FontFamily,
-              } as Partial<TextLayer>)
-            }
-            className='rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-primary-400 focus:outline-none'
-          >
-            {FONT_FAMILIES.map(f => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
-
-          {/* Font size */}
-          <input
-            type='number'
-            min={8}
-            max={200}
-            value={textLayer.fontSize}
-            onChange={e =>
-              handleTransform(textLayer.id, {
-                fontSize: Number(e.target.value),
-              } as Partial<TextLayer>)
-            }
-            className='w-16 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-primary-400 focus:outline-none'
-          />
-
-          {/* Color */}
-          <input
-            type='color'
-            value={textLayer.fill}
-            onChange={e =>
-              handleTransform(textLayer.id, {
-                fill: e.target.value,
-              } as Partial<TextLayer>)
-            }
-            className='h-8 w-8 cursor-pointer rounded border border-gray-200'
-          />
-
-          {/* Bold */}
-          <button
-            onClick={() => {
-              const isBold = textLayer.fontStyle.includes('bold');
-              const newStyle = isBold
-                ? textLayer.fontStyle.replace('bold', '').trim()
-                : `bold ${textLayer.fontStyle}`.trim();
-              handleTransform(textLayer.id, {
-                fontStyle: newStyle as TextLayer['fontStyle'],
-              } as Partial<TextLayer>);
-            }}
-            className={cn(
-              'rounded-lg border px-2.5 py-1.5 text-sm font-bold transition-colors',
-              textLayer.fontStyle.includes('bold')
-                ? 'border-primary-400 bg-primary-50 text-primary-700'
-                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
-            )}
-            aria-label='Toggle bold'
-          >
-            B
-          </button>
-
-          {/* Italic */}
-          <button
-            onClick={() => {
-              const isItalic = textLayer.fontStyle.includes('italic');
-              const newStyle = isItalic
-                ? textLayer.fontStyle.replace('italic', '').trim()
-                : `${textLayer.fontStyle} italic`.trim();
-              handleTransform(textLayer.id, {
-                fontStyle: newStyle as TextLayer['fontStyle'],
-              } as Partial<TextLayer>);
-            }}
-            className={cn(
-              'rounded-lg border px-2.5 py-1.5 text-sm italic transition-colors',
-              textLayer.fontStyle.includes('italic')
-                ? 'border-primary-400 bg-primary-50 text-primary-700'
-                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
-            )}
-            aria-label='Toggle italic'
-          >
-            I
-          </button>
-        </div>
-      )}
-
-      {/* ───── Canvas ───── */}
-      <div className='flex justify-center overflow-auto'>
-        <Suspense fallback={<CanvasSkeleton />}>
-          <DesignCanvas
-            layers={layers}
-            selectedLayerId={selectedId}
-            printableArea={printableArea}
-            canvasWidth={canvasWidth}
-            canvasHeight={canvasHeight}
-            onSelectLayer={setSelectedId}
-            onTransformLayer={handleTransform}
-            onDoubleClickText={setEditingTextId}
-            onReady={handle => {
-              canvasHandleRef.current = handle;
-            }}
-          />
-        </Suspense>
-      </div>
-
-      {/* ───── Layer list ───── */}
-      <p className='text-xs text-gray-500'>
-        Elementlar ko&apos;k print area ichida ushlab turiladi. Matn
-        qo&apos;shilgach, shu paneldagi input avtomatik fokuslanadi.
-      </p>
-
-      {layers.length > 0 && (
-        <div className='rounded-xl border border-gray-100 bg-gray-50 p-3'>
-          <p className='mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400'>
-            Layers ({layers.length})
-          </p>
-          <ul className='flex flex-col gap-1'>
-            {[...layers]
-              .sort((a, b) => b.zIndex - a.zIndex)
-              .map(l => (
-                <li
-                  key={l.id}
-                  className={cn(
-                    'flex cursor-pointer items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-colors',
-                    l.id === selectedId
-                      ? 'bg-primary-50 font-medium text-primary-700'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  )}
-                  onClick={() => setSelectedId(l.id)}
-                >
-                  <span className='flex items-center gap-2 truncate'>
-                    <span className='text-[10px] uppercase text-gray-400'>
-                      {l.type}
-                    </span>
-                    {l.name}
-                  </span>
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      deleteLayer(l.id);
-                    }}
-                    className='rounded p-0.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500'
-                    aria-label={`Delete ${l.name}`}
-                  >
-                    <svg
-                      className='h-3.5 w-3.5'
-                      fill='none'
-                      viewBox='0 0 24 24'
-                      stroke='currentColor'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M6 18L18 6M6 6l12 12'
-                      />
-                    </svg>
-                  </button>
-                </li>
-              ))}
-          </ul>
-        </div>
-      )}
-
-      {/* ───── Sticker picker modal ───── */}
-      <Modal
-        open={showStickerPicker}
-        onClose={() => setShowStickerPicker(false)}
-        title='Choose a sticker'
-        maxWidth='max-w-lg'
-      >
-        <StickerPicker
-          onSelect={addSticker}
-          onClose={() => setShowStickerPicker(false)}
-        />
-      </Modal>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Small toolbar button
+// Small reusable toolbar button
 // ---------------------------------------------------------------------------
 
 function ToolBtn({
@@ -852,18 +55,520 @@ function ToolBtn({
       onClick={onClick}
       disabled={disabled}
       title={label}
-      aria-label={label}
       className={cn(
-        'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
-        disabled
-          ? 'cursor-not-allowed text-gray-300'
-          : danger
-            ? 'text-red-500 hover:bg-red-50'
-            : 'text-gray-600 hover:bg-white hover:text-primary-600 hover:shadow-sm'
+        'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition-colors',
+        danger
+          ? 'border-red-200 bg-white text-red-500 hover:bg-red-50 disabled:opacity-40'
+          : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-40'
       )}
     >
       {icon}
       <span className='hidden sm:inline'>{label}</span>
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Canvas size constants
+// ---------------------------------------------------------------------------
+
+const CANVAS_BASE = 500;
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+
+interface EditorPanelProps {
+  productSlug: string;
+  /** Called with a data-URL whenever the design changes (for live preview). */
+  onPreviewGenerated: (dataUrl: string) => void;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export default function EditorPanel({
+  productSlug,
+  onPreviewGenerated,
+}: EditorPanelProps) {
+  // ── Store ────────────────────────────────────────────────────────────────
+  const {
+    activeSurfaceId,
+    surfaces,
+    selectedLayerId,
+    isDraftLoaded,
+    addLayer,
+    updateLayer,
+    updateLayerCommit,
+    deleteLayer,
+    selectLayer,
+    bringLayerForward,
+    sendLayerBackward,
+    setActiveSurface,
+    hydrateDraft,
+    persistDraft,
+    resetDraft,
+    undo,
+    redo,
+  } = useEditorStore();
+
+  const layers = useActiveLayers();
+  const selectedLayer = useSelectedLayer();
+  const { canUndo, canRedo } = useHistoryFlags();
+
+  // ── Product config ────────────────────────────────────────────────────────
+  const productConfig = useMemo(
+    () => getProductConfig(productSlug),
+    [productSlug]
+  );
+  const activeSurface = useMemo(
+    () => productConfig?.surfaces.find(s => s.id === activeSurfaceId),
+    [productConfig, activeSurfaceId]
+  );
+
+  const canvasWidth = CANVAS_BASE;
+  const canvasHeight = activeSurface
+    ? Math.round(CANVAS_BASE / activeSurface.canvasAspect)
+    : CANVAS_BASE;
+
+  const printArea = activeSurface?.printArea ?? {
+    x: 5,
+    y: 5,
+    width: 90,
+    height: 90,
+  };
+
+  // ── Hydrate draft on mount ────────────────────────────────────────────────
+  useEffect(() => {
+    hydrateDraft(productSlug);
+  }, [productSlug, hydrateDraft]);
+
+  // ── Debounced auto-save ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isDraftLoaded) return;
+    const t = setTimeout(() => {
+      persistDraft();
+    }, 500);
+    return () => clearTimeout(t);
+  }, [layers, isDraftLoaded, persistDraft]);
+
+  // ── Canvas handle for export ──────────────────────────────────────────────
+  const canvasHandleRef = useRef<DesignCanvasHandle | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showStickerPicker, setShowStickerPicker] = [false, () => {}]; // placeholder – see below
+  const [_showStickerPicker, _setShowStickerPicker] = [
+    false,
+    (_: boolean) => {},
+  ];
+
+  // ── Live preview generation ───────────────────────────────────────────────
+  useEffect(() => {
+    if (layers.length === 0) {
+      onPreviewGenerated('');
+      return;
+    }
+    const t = setTimeout(() => {
+      const url = canvasHandleRef.current?.exportPng();
+      if (url) onPreviewGenerated(url);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [layers, onPreviewGenerated]);
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedLayerId) {
+        e.preventDefault();
+        deleteLayer(selectedLayerId);
+      }
+      if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      }
+      if (e.key === 'Escape') selectLayer(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedLayerId, deleteLayer, undo, redo, selectLayer]);
+
+  // ── Add image ─────────────────────────────────────────────────────────────
+  const handleImageUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(file);
+        });
+
+        const img = new window.Image();
+        img.onload = () => {
+          const scale = fitLayerScale(
+            printArea,
+            canvasWidth,
+            canvasHeight,
+            img.width,
+            img.height
+          );
+          const w = img.width * scale;
+          const h = img.height * scale;
+          const pos = getDefaultLayerPosition(
+            printArea,
+            canvasWidth,
+            canvasHeight,
+            w,
+            h
+          );
+
+          addLayer({
+            type: 'image',
+            name: file.name.slice(0, 20),
+            src: dataUrl,
+            x: pos.x,
+            y: pos.y,
+            width: img.width,
+            height: img.height,
+            scaleX: scale,
+            scaleY: scale,
+            rotation: 0,
+            opacity: 1,
+            visible: true,
+          } as Omit<ImageLayer, 'id' | 'zIndex'>);
+        };
+        img.src = dataUrl;
+      } finally {
+        e.target.value = '';
+      }
+    },
+    [printArea, canvasWidth, canvasHeight, addLayer]
+  );
+
+  // ── Add text ──────────────────────────────────────────────────────────────
+  const handleAddText = useCallback(() => {
+    const w = (printArea.width / 100) * canvasWidth * 0.8;
+    const pos = getDefaultLayerPosition(
+      printArea,
+      canvasWidth,
+      canvasHeight,
+      w,
+      50
+    );
+    addLayer({
+      type: 'text',
+      name: 'Text',
+      text: 'Your text',
+      fontFamily: 'Inter',
+      fontSize: 32,
+      fontStyle: '',
+      fill: '#000000',
+      align: 'center',
+      x: pos.x,
+      y: pos.y,
+      width: w,
+      height: 50,
+      scaleX: 1,
+      scaleY: 1,
+      rotation: 0,
+      opacity: 1,
+      visible: true,
+    } as Omit<TextLayer, 'id' | 'zIndex'>);
+  }, [printArea, canvasWidth, canvasHeight, addLayer]);
+
+  // ── Add sticker ───────────────────────────────────────────────────────────
+  const handleAddSticker = useCallback(
+    (sticker: (typeof STICKER_ASSETS)[number]) => {
+      const size =
+        Math.min(
+          (printArea.width / 100) * canvasWidth,
+          (printArea.height / 100) * canvasHeight
+        ) * 0.22;
+      const pos = getDefaultLayerPosition(
+        printArea,
+        canvasWidth,
+        canvasHeight,
+        size,
+        size
+      );
+      addLayer({
+        type: 'sticker',
+        name: sticker.label,
+        stickerId: sticker.id,
+        src: sticker.src,
+        x: pos.x,
+        y: pos.y,
+        width: size,
+        height: size,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 1,
+        visible: true,
+      } as Omit<StickerLayer, 'id' | 'zIndex'>);
+    },
+    [printArea, canvasWidth, canvasHeight, addLayer]
+  );
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const handleUpdateText = useCallback(
+    (attrs: Partial<TextLayer>) => {
+      if (selectedLayerId)
+        updateLayer(selectedLayerId, attrs as Partial<Layer>);
+    },
+    [selectedLayerId, updateLayer]
+  );
+
+  const isTextSelected = selectedLayer?.type === 'text';
+
+  // ── Surface tabs (if product has multiple) ────────────────────────────────
+  const hasSurfaces = (productConfig?.surfaces.length ?? 0) > 1;
+
+  return (
+    <div className='flex flex-col gap-4'>
+      {/* Surface tabs */}
+      {hasSurfaces && productConfig && (
+        <div className='flex gap-1 rounded-xl border border-gray-100 bg-gray-50 p-1'>
+          {productConfig.surfaces.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setActiveSurface(s.id)}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                activeSurfaceId === s.id
+                  ? 'bg-white text-primary-700 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className='flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-2'>
+        <input
+          ref={fileInputRef}
+          type='file'
+          accept='image/png,image/jpeg,image/webp'
+          onChange={handleImageUpload}
+          className='hidden'
+        />
+
+        <ToolBtn
+          label='Image'
+          onClick={() => fileInputRef.current?.click()}
+          icon={
+            <svg
+              className='h-4 w-4'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
+              />
+            </svg>
+          }
+        />
+        <ToolBtn
+          label='Text'
+          onClick={handleAddText}
+          icon={
+            <svg
+              className='h-4 w-4'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+              />
+            </svg>
+          }
+        />
+
+        <div className='mx-1 h-6 w-px bg-gray-200' />
+
+        <ToolBtn
+          label='Undo'
+          onClick={undo}
+          disabled={!canUndo}
+          icon={
+            <svg
+              className='h-4 w-4'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4'
+              />
+            </svg>
+          }
+        />
+        <ToolBtn
+          label='Redo'
+          onClick={redo}
+          disabled={!canRedo}
+          icon={
+            <svg
+              className='h-4 w-4'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4'
+              />
+            </svg>
+          }
+        />
+
+        {selectedLayerId && (
+          <>
+            <div className='mx-1 h-6 w-px bg-gray-200' />
+            <ToolBtn
+              label='Forward'
+              onClick={() => bringLayerForward(selectedLayerId)}
+              icon={
+                <svg
+                  className='h-4 w-4'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  stroke='currentColor'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M5 15l7-7 7 7'
+                  />
+                </svg>
+              }
+            />
+            <ToolBtn
+              label='Backward'
+              onClick={() => sendLayerBackward(selectedLayerId)}
+              icon={
+                <svg
+                  className='h-4 w-4'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  stroke='currentColor'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M19 9l-7 7-7-7'
+                  />
+                </svg>
+              }
+            />
+            <ToolBtn
+              label='Delete'
+              onClick={() => deleteLayer(selectedLayerId)}
+              danger
+              icon={
+                <svg
+                  className='h-4 w-4'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  stroke='currentColor'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+                  />
+                </svg>
+              }
+            />
+          </>
+        )}
+
+        <div className='flex-1' />
+        <ToolBtn
+          label='Reset'
+          onClick={resetDraft}
+          danger
+          icon={
+            <svg
+              className='h-4 w-4'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
+              />
+            </svg>
+          }
+        />
+      </div>
+
+      {/* Text controls panel */}
+      {isTextSelected && selectedLayer && (
+        <TextControls
+          layer={selectedLayer as import('@/types/layer').TextLayer}
+          onUpdate={handleUpdateText}
+        />
+      )}
+
+      {/* Canvas */}
+      <div className='flex justify-center overflow-auto'>
+        <Suspense fallback={<CanvasSkeleton />}>
+          <DesignCanvas
+            layers={layers}
+            selectedLayerId={selectedLayerId}
+            printArea={printArea}
+            canvasWidth={canvasWidth}
+            canvasHeight={canvasHeight}
+            onSelectLayer={selectLayer}
+            onChangeLayer={(id, attrs) =>
+              updateLayer(id, attrs as Partial<Layer>)
+            }
+            onCommitLayer={(id, attrs) =>
+              updateLayerCommit(id, attrs as Partial<Layer>)
+            }
+            onReady={h => {
+              canvasHandleRef.current = h;
+            }}
+          />
+        </Suspense>
+      </div>
+
+      {/* Layer list */}
+      <LayerList
+        layers={layers}
+        selectedLayerId={selectedLayerId}
+        onSelect={selectLayer}
+        onDelete={deleteLayer}
+      />
+    </div>
   );
 }

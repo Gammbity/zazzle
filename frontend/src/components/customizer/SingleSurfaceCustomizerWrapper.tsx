@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from 'react';
 import { fabric } from 'fabric';
@@ -32,11 +32,11 @@ export default function SingleSurfaceCustomizerWrapper({
   const [textureUrl, setTextureUrl] = useState('');
 
   return (
-    <div className="app-container">
-      <div className="left-panel">
+    <div className='app-container'>
+      <div className='left-panel'>
         <Viewer textureUrl={textureUrl} />
 
-        <div className="print-editor-wrapper">
+        <div className='print-editor-wrapper'>
           <PrintEditor
             onCanvasReady={setFabricCanvas}
             onTextureUpdate={setTextureUrl}
@@ -44,7 +44,7 @@ export default function SingleSurfaceCustomizerWrapper({
         </div>
       </div>
 
-      <div className="right-panel-container">
+      <div className='right-panel-container'>
         <Sidebar canvas={fabricCanvas} />
       </div>
     </div>

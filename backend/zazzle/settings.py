@@ -54,6 +54,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0,bac
 # Application definition
 
 DJANGO_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -294,6 +295,12 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+JAZZMIN_SETTINGS = {
+    'site_title': 'Zazzle Admin',
+    'site_header': 'Zazzle',
+    'site_brand': 'Zazzle Admin',
+}
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",

@@ -24,12 +24,6 @@ export default function ProductDetailPage({ product }: { product: Product }) {
   const [mugCompositeUrl, setMugCompositeUrl] = useState<string | null>(null);
 
   const isMug = product.slug === 'mug';
-  const printableArea = product.angles[0]?.printableArea ?? {
-    x: 10,
-    y: 10,
-    width: 80,
-    height: 80,
-  };
 
   useEffect(() => {
     document.title = `${product.name} | Zazzle Uzbekistan`;
@@ -151,8 +145,6 @@ export default function ProductDetailPage({ product }: { product: Product }) {
               <Suspense fallback={<EditorSkeleton />}>
                 <EditorPanel
                   productSlug={product.slug}
-                  printableArea={printableArea}
-                  canvasAspect={product.canvasAspect}
                   onPreviewGenerated={setPreviewDataUrl}
                 />
               </Suspense>

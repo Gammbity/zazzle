@@ -2,36 +2,29 @@
 
 import {
   useRef,
-  useState,
   useCallback,
   useEffect,
+  useState,
   forwardRef,
   useImperativeHandle,
+  useMemo,
 } from 'react';
-import {
-  Stage,
-  Layer as KonvaLayer,
-  Rect,
-  Text,
-  Image as KonvaImage,
-  Transformer,
-  Line,
-} from 'react-konva';
+import { Stage, Layer as KonvaLayer, Rect, Text, Line } from 'react-konva';
 import type Konva from 'konva';
-import type {
-  Layer,
-  TextLayer,
-  ImageLayer,
-  StickerLayer,
-} from '@/lib/editor/types';
-import type { PrintableArea } from '@/lib/products/catalog';
+import type { Layer, ImageLayer, TextLayer, StickerLayer } from '@/types/layer';
+import type { PrintArea } from '@/types/product';
+import { printAreaToRect } from '@/lib/editor/bounds';
+import { exportLayerAsPng } from '@/lib/editor/export';
+import ImageLayerNode from './layers/ImageLayerNode';
+import TextLayerNode from './layers/TextLayerNode';
+import StickerLayerNode from './layers/StickerLayerNode';
+import SelectionTransformer from './transformer/SelectionTransformer';
 
 // ---------------------------------------------------------------------------
 // Public handle
 // ---------------------------------------------------------------------------
 
 export interface DesignCanvasHandle {
-  /** Export ONLY the design layer as a transparent‑background PNG data‑URL. */
   exportPng: () => string | null;
 }
 
@@ -42,295 +35,39 @@ export interface DesignCanvasHandle {
 interface DesignCanvasProps {
   layers: Layer[];
   selectedLayerId: string | null;
-  printableArea: PrintableArea;
+  /** Percentage-based print area from product config. */
+  printArea: PrintArea;
   canvasWidth: number;
   canvasHeight: number;
   onSelectLayer: (id: string | null) => void;
-  onTransformLayer: (id: string, attrs: Record<string, unknown>) => void;
+  /** Called during drag/scale – no history entry */
+  onChangeLayer: (id: string, attrs: Record<string, unknown>) => void;
+  /** Called on drag/transform end – pushes history */
+  onCommitLayer: (id: string, attrs: Record<string, unknown>) => void;
   onDoubleClickText?: (id: string) => void;
-  /** Called once on mount with the imperative handle. */
   onReady?: (handle: DesignCanvasHandle) => void;
 }
 
-interface BoundsRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function useImage(src: string | undefined): HTMLImageElement | null {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-
-  useEffect(() => {
-    if (!src) {
-      setImage(null);
-      return;
-    }
-    const img = new window.Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => setImage(img);
-    img.onerror = () => setImage(null);
-    img.src = src;
-    return () => {
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [src]);
-
-  return image;
-}
-
-function getPrintableBounds(
-  printableArea: PrintableArea,
-  canvasWidth: number,
-  canvasHeight: number
-): BoundsRect {
-  return {
-    x: (printableArea.x / 100) * canvasWidth,
-    y: (printableArea.y / 100) * canvasHeight,
-    width: (printableArea.width / 100) * canvasWidth,
-    height: (printableArea.height / 100) * canvasHeight,
-  };
-}
-
-function clampPosition(
-  pos: { x: number; y: number },
-  nodeWidth: number,
-  nodeHeight: number,
-  bounds: BoundsRect
-) {
-  const maxX = Math.max(bounds.x, bounds.x + bounds.width - nodeWidth);
-  const maxY = Math.max(bounds.y, bounds.y + bounds.height - nodeHeight);
-
-  return {
-    x: Math.min(Math.max(pos.x, bounds.x), maxX),
-    y: Math.min(Math.max(pos.y, bounds.y), maxY),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Layer node renderers — selection via onMouseDown for instant feedback
-// ---------------------------------------------------------------------------
-
-function ImageLayerNode({
-  layer,
-  onSelect,
-  onTransform,
-  dragBounds,
-}: {
-  layer: ImageLayer;
-  onSelect: () => void;
-  onTransform: (attrs: Partial<Layer>) => void;
-  dragBounds: BoundsRect;
-}) {
-  const shapeRef = useRef<Konva.Image>(null);
-  const image = useImage(layer.src);
-
-  if (!image) return null;
-
-  return (
-    <KonvaImage
-      ref={shapeRef}
-      name={layer.id}
-      image={image}
-      x={layer.x}
-      y={layer.y}
-      width={layer.width}
-      height={layer.height}
-      scaleX={layer.scaleX}
-      scaleY={layer.scaleY}
-      rotation={layer.rotation}
-      opacity={layer.opacity}
-      draggable
-      dragBoundFunc={pos =>
-        clampPosition(
-          pos,
-          layer.width * layer.scaleX,
-          layer.height * layer.scaleY,
-          dragBounds
-        )
-      }
-      perfectDrawEnabled={false}
-      onMouseDown={onSelect}
-      onTouchStart={onSelect}
-      onDragEnd={e => {
-        onTransform({ x: e.target.x(), y: e.target.y() });
-      }}
-      onTransformEnd={() => {
-        const node = shapeRef.current;
-        if (!node) return;
-        onTransform({
-          x: node.x(),
-          y: node.y(),
-          width: node.width(),
-          height: node.height(),
-          scaleX: node.scaleX(),
-          scaleY: node.scaleY(),
-          rotation: node.rotation(),
-        });
-      }}
-    />
-  );
-}
-
-function TextLayerNode({
-  layer,
-  onSelect,
-  onTransform,
-  onDoubleClick,
-  dragBounds,
-}: {
-  layer: TextLayer;
-  onSelect: () => void;
-  onTransform: (attrs: Partial<Layer>) => void;
-  onDoubleClick?: () => void;
-  dragBounds: BoundsRect;
-}) {
-  const shapeRef = useRef<Konva.Text>(null);
-
-  return (
-    <Text
-      ref={shapeRef}
-      name={layer.id}
-      text={layer.text}
-      x={layer.x}
-      y={layer.y}
-      width={layer.width}
-      fontSize={layer.fontSize}
-      fontFamily={layer.fontFamily}
-      fontStyle={layer.fontStyle || 'normal'}
-      fill={layer.fill}
-      align={layer.align}
-      scaleX={layer.scaleX}
-      scaleY={layer.scaleY}
-      rotation={layer.rotation}
-      opacity={layer.opacity}
-      draggable
-      dragBoundFunc={pos =>
-        clampPosition(
-          pos,
-          layer.width * layer.scaleX,
-          layer.height * layer.scaleY,
-          dragBounds
-        )
-      }
-      hitStrokeWidth={6}
-      onMouseDown={onSelect}
-      onTouchStart={onSelect}
-      onDblClick={() => onDoubleClick?.()}
-      onDblTap={() => onDoubleClick?.()}
-      onDragEnd={e => {
-        onTransform({ x: e.target.x(), y: e.target.y() });
-      }}
-      onTransformEnd={() => {
-        const node = shapeRef.current;
-        if (!node) return;
-        const sx = node.scaleX();
-        const sy = node.scaleY();
-        node.scaleX(1);
-        node.scaleY(1);
-        onTransform({
-          x: node.x(),
-          y: node.y(),
-          width: Math.max(20, node.width() * sx),
-          fontSize: Math.max(8, layer.fontSize * sy),
-          scaleX: 1,
-          scaleY: 1,
-          rotation: node.rotation(),
-        });
-      }}
-    />
-  );
-}
-
-function StickerLayerNode({
-  layer,
-  onSelect,
-  onTransform,
-  dragBounds,
-}: {
-  layer: StickerLayer;
-  onSelect: () => void;
-  onTransform: (attrs: Partial<Layer>) => void;
-  dragBounds: BoundsRect;
-}) {
-  const shapeRef = useRef<Konva.Image>(null);
-  const image = useImage(layer.src);
-
-  if (!image) return null;
-
-  return (
-    <KonvaImage
-      ref={shapeRef}
-      name={layer.id}
-      image={image}
-      x={layer.x}
-      y={layer.y}
-      width={layer.width}
-      height={layer.height}
-      scaleX={layer.scaleX}
-      scaleY={layer.scaleY}
-      rotation={layer.rotation}
-      opacity={layer.opacity}
-      draggable
-      dragBoundFunc={pos =>
-        clampPosition(
-          pos,
-          layer.width * layer.scaleX,
-          layer.height * layer.scaleY,
-          dragBounds
-        )
-      }
-      perfectDrawEnabled={false}
-      onMouseDown={onSelect}
-      onTouchStart={onSelect}
-      onDragEnd={e => {
-        onTransform({ x: e.target.x(), y: e.target.y() });
-      }}
-      onTransformEnd={() => {
-        const node = shapeRef.current;
-        if (!node) return;
-        onTransform({
-          x: node.x(),
-          y: node.y(),
-          width: node.width(),
-          height: node.height(),
-          scaleX: node.scaleX(),
-          scaleY: node.scaleY(),
-          rotation: node.rotation(),
-        });
-      }}
-    />
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Safe‑area guides  — rendered in a SEPARATE non‑export layer
+// Safe-area guide components (non-exported, render-only)
 // ---------------------------------------------------------------------------
 
 function SafeAreaGuides({
-  printableArea,
+  printArea,
   canvasWidth,
   canvasHeight,
 }: {
-  printableArea: PrintableArea;
+  printArea: PrintArea;
   canvasWidth: number;
   canvasHeight: number;
 }) {
-  // Guard against undefined printableArea
-  if (!printableArea) return null;
-
+  if (!printArea) return null;
   const {
     x,
     y,
     width: w,
     height: h,
-  } = getPrintableBounds(printableArea, canvasWidth, canvasHeight);
+  } = printAreaToRect(printArea, canvasWidth, canvasHeight);
 
   return (
     <>
@@ -413,7 +150,7 @@ function CenterGuides({
 }
 
 // ---------------------------------------------------------------------------
-// Main Canvas component
+// Main canvas
 // ---------------------------------------------------------------------------
 
 const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
@@ -421,11 +158,12 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
     {
       layers,
       selectedLayerId,
-      printableArea,
+      printArea,
       canvasWidth,
       canvasHeight,
       onSelectLayer,
-      onTransformLayer,
+      onChangeLayer,
+      onCommitLayer,
       onDoubleClickText,
       onReady,
     },
@@ -436,77 +174,36 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
     const guidesLayerRef = useRef<Konva.Layer>(null);
     const trRef = useRef<Konva.Transformer>(null);
     const [showGuides, setShowGuides] = useState(false);
-    const printableBounds = getPrintableBounds(
-      printableArea,
-      canvasWidth,
-      canvasHeight
+
+    // Compute pixel rect once per render – passed to child nodes and transformer
+    const printAreaRect = useMemo(
+      () => printAreaToRect(printArea, canvasWidth, canvasHeight),
+      [printArea, canvasWidth, canvasHeight]
     );
 
-    // -------------------------------------------------------------------
-    // Export: design layer only (guides hidden, transformer hidden)
-    // -------------------------------------------------------------------
-
+    // ── Export handle ────────────────────────────────────────────────────
     const handleRef = useRef<DesignCanvasHandle>({
       exportPng() {
-        const designLayer = designLayerRef.current;
-        if (!designLayer) return null;
-
-        // Temporarily hide the transformer so it's excluded from export
-        const tr = trRef.current;
-        tr?.visible(false);
-        designLayer.batchDraw();
-
-        const url = designLayer.toDataURL({ pixelRatio: 2 });
-
-        tr?.visible(true);
-        designLayer.batchDraw();
-
-        return url;
+        return exportLayerAsPng(designLayerRef.current!, trRef.current, 2);
       },
     });
-
     useImperativeHandle(ref, () => handleRef.current);
+    useEffect(() => { onReady?.(handleRef.current); }, []); // eslint-disable-line
 
-    useEffect(() => {
-      onReady?.(handleRef.current);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // -------------------------------------------------------------------
-    // Persistent Transformer — update nodes when selection changes
-    // -------------------------------------------------------------------
-
+    // ── Clear transformer when selection is removed ───────────────────────
     useEffect(() => {
       const tr = trRef.current;
-      const designLayer = designLayerRef.current;
-      if (!tr || !designLayer) return;
-
+      if (!tr) return;
       if (!selectedLayerId) {
         tr.nodes([]);
         tr.getLayer()?.batchDraw();
-        return;
       }
+    }, [selectedLayerId]);
 
-      // Find the Konva node by the `name` prop which equals layer.id
-      const node = designLayer.findOne(`.${selectedLayerId}`);
-      if (node) {
-        tr.nodes([node as Konva.Node]);
-        tr.getLayer()?.batchDraw();
-      } else {
-        tr.nodes([]);
-        tr.getLayer()?.batchDraw();
-      }
-    }, [selectedLayerId, layers]); // re-run when layers change too
-
-    // -------------------------------------------------------------------
-    // Stage events — mousedown for instant deselect
-    // -------------------------------------------------------------------
-
+    // ── Stage click → deselect ────────────────────────────────────────────
     const handleStageMouseDown = useCallback(
       (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-        if (e.target === e.target.getStage()) {
-          onSelectLayer(null);
-        }
+        if (e.target === e.target.getStage()) onSelectLayer(null);
       },
       [onSelectLayer]
     );
@@ -514,7 +211,10 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
     const handleDragStart = useCallback(() => setShowGuides(true), []);
     const handleDragEnd = useCallback(() => setShowGuides(false), []);
 
-    const sorted = [...layers].sort((a, b) => a.zIndex - b.zIndex);
+    const sorted = useMemo(
+      () => [...layers].sort((a, b) => a.zIndex - b.zIndex),
+      [layers]
+    );
 
     return (
       <div
@@ -528,10 +228,10 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
           onMouseDown={handleStageMouseDown}
           onTouchStart={handleStageMouseDown}
         >
-          {/* ── Guides Layer: non‑listening, hidden during export ── */}
+          {/* Guides – non-listening, excluded from export */}
           <KonvaLayer ref={guidesLayerRef} listening={false}>
             <SafeAreaGuides
-              printableArea={printableArea}
+              printArea={printArea}
               canvasWidth={canvasWidth}
               canvasHeight={canvasHeight}
             />
@@ -542,7 +242,7 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
             />
           </KonvaLayer>
 
-          {/* ── Design Layer: exported as PNG ── */}
+          {/* Design layer – exported as PNG */}
           <KonvaLayer
             ref={designLayerRef}
             onDragStart={handleDragStart}
@@ -550,40 +250,53 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
           >
             {sorted.map(layer => {
               if (!layer.visible) return null;
-              const handleTransform = (attrs: Partial<Layer>) =>
-                onTransformLayer(layer.id, attrs);
-              const handleSelect = () => onSelectLayer(layer.id);
+              const id = layer.id;
+              const isSelected = selectedLayerId === id;
+              const select = () => onSelectLayer(id);
+              const change = (attrs: Partial<Layer>) =>
+                onChangeLayer(id, attrs as Record<string, unknown>);
+              const commit = (attrs: Partial<Layer>) =>
+                onCommitLayer(id, attrs as Record<string, unknown>);
 
               switch (layer.type) {
                 case 'image':
                   return (
                     <ImageLayerNode
-                      key={layer.id}
+                      key={id}
                       layer={layer as ImageLayer}
-                      onSelect={handleSelect}
-                      onTransform={handleTransform}
-                      dragBounds={printableBounds}
+                      isSelected={isSelected}
+                      dragBounds={printAreaRect}
+                      transformerRef={trRef}
+                      onSelect={select}
+                      onChange={change}
+                      onCommit={commit}
                     />
                   );
                 case 'text':
                   return (
                     <TextLayerNode
-                      key={layer.id}
+                      key={id}
                       layer={layer as TextLayer}
-                      onSelect={handleSelect}
-                      onTransform={handleTransform}
-                      onDoubleClick={() => onDoubleClickText?.(layer.id)}
-                      dragBounds={printableBounds}
+                      isSelected={isSelected}
+                      dragBounds={printAreaRect}
+                      transformerRef={trRef}
+                      onSelect={select}
+                      onChange={change}
+                      onCommit={commit}
+                      onDoubleClick={() => onDoubleClickText?.(id)}
                     />
                   );
                 case 'sticker':
                   return (
                     <StickerLayerNode
-                      key={layer.id}
+                      key={id}
                       layer={layer as StickerLayer}
-                      onSelect={handleSelect}
-                      onTransform={handleTransform}
-                      dragBounds={printableBounds}
+                      isSelected={isSelected}
+                      dragBounds={printAreaRect}
+                      transformerRef={trRef}
+                      onSelect={select}
+                      onChange={change}
+                      onCommit={commit}
                     />
                   );
                 default:
@@ -591,40 +304,7 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
               }
             })}
 
-            {/* Single persistent Transformer — always mounted, nodes updated via effect */}
-            <Transformer
-              ref={trRef}
-              rotateEnabled
-              enabledAnchors={[
-                'top-left',
-                'top-center',
-                'top-right',
-                'middle-left',
-                'middle-right',
-                'bottom-left',
-                'bottom-center',
-                'bottom-right',
-              ]}
-              boundBoxFunc={(oldBox, newBox) => {
-                // Minimum size constraint
-                if (newBox.width < 10 || newBox.height < 10) return oldBox;
-
-                if (
-                  newBox.x < printableBounds.x ||
-                  newBox.y < printableBounds.y ||
-                  newBox.x + newBox.width >
-                    printableBounds.x + printableBounds.width ||
-                  newBox.y + newBox.height >
-                    printableBounds.y + printableBounds.height
-                ) {
-                  return oldBox;
-                }
-
-                return newBox;
-              }}
-              ignoreStroke
-              padding={4}
-            />
+            <SelectionTransformer ref={trRef} printAreaRect={printAreaRect} />
           </KonvaLayer>
         </Stage>
       </div>

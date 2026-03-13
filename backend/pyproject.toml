@@ -17,6 +17,7 @@ dependencies = [
     "djangorestframework>=3.14.0",
     "django-cors-headers>=4.3.0",
     "django-filter>=23.3",
+    "django-jazzmin>=3.0.1",
     "dj-rest-auth>=5.0.0",
     "django-allauth>=0.57.0",
     

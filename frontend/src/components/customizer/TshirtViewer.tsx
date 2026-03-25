@@ -18,7 +18,7 @@ export default function TshirtViewer({
 
   const handleExport = () => {
     if (!containerRef.current) return;
-    alert('T-Shirt export functionality will render the composite image.');
+    alert('Futbolka eksportida yakuniy birlashtirilgan rasm tayyorlanadi.');
   };
 
   const imageSrc =
@@ -63,7 +63,7 @@ export default function TshirtViewer({
       >
         <img
           src={imageSrc}
-          alt={`T-shirt ${viewSide}`}
+          alt={`Futbolka ${viewSide === 'front' ? 'oldi' : 'orqasi'}`}
           style={{
             width: '100%',
             height: '100%',
@@ -76,7 +76,7 @@ export default function TshirtViewer({
         {textureUrl && (
           <img
             src={textureUrl}
-            alt='Design print overlay'
+            alt='Dizayn bosma qatlami'
             style={{
               position: 'absolute',
               top: '20%',

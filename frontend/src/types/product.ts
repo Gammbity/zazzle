@@ -30,10 +30,26 @@ export interface ProductSurface {
   previewSrc: string;
   /** Alt text for the preview image */
   previewAlt: string;
-  /** Print-safe area for this surface */
+  /**
+   * Print-safe area for this surface, expressed as **% of the editor canvas**.
+   * Used by the flat editor to position/constrain layers.
+   * DO NOT use this to position the design on the product photo — use previewBox.
+   */
   printArea: PrintArea;
   /** Recommended canvas aspect ratio (width / height) */
   canvasAspect: number;
+  /**
+   * Design placement box for the product preview image, expressed as
+   * **% of the base product photo dimensions**.
+   *
+   * This is different from printArea when the editor canvas and the product
+   * photo have different aspect ratios (e.g. the mug editor canvas is 1.40
+   * but the mug photograph is roughly square).
+   *
+   * If omitted, the preview renderer falls back to printArea (which works
+   * when canvas and photo share the same aspect ratio).
+   */
+  previewBox?: { x: number; y: number; width: number; height: number };
   /**
    * Target print dimensions in pixels at the intended print DPI.
    * Used for export coordinate mapping. Optional for MVP.

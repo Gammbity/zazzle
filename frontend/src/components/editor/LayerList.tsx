@@ -10,9 +10,15 @@ interface LayerListProps {
   onDelete: (id: string) => void;
 }
 
+const LAYER_TYPE_LABELS: Record<Layer['type'], string> = {
+  image: 'Rasm',
+  text: 'Matn',
+  sticker: 'Stiker',
+};
+
 /**
  * Displays the layers panel sorted by descending z-index (top layer first).
- * Pure presentation – all actions come from props.
+ * Pure presentation - all actions come from props.
  */
 export default function LayerList({
   layers,
@@ -25,35 +31,40 @@ export default function LayerList({
   const sorted = [...layers].sort((a, b) => b.zIndex - a.zIndex);
 
   return (
-    <div className='rounded-xl border border-gray-100 bg-gray-50 p-3'>
-      <p className='mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400'>
-        Layers ({layers.length})
+    <div className='rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4'>
+      <p className='mb-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400'>
+        Qatlamlar
+      </p>
+      <p className='mb-3 text-sm text-slate-500'>
+        Yuqoridagi qatlam ko'rinishda tepada ko'rinadi. Jami: {layers.length}{' '}
+        ta.
       </p>
       <ul className='flex flex-col gap-1'>
         {sorted.map(layer => (
           <li
             key={layer.id}
             className={cn(
-              'flex cursor-pointer items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-colors',
+              'flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors',
               layer.id === selectedLayerId
-                ? 'bg-primary-50 font-medium text-primary-700'
-                : 'text-gray-600 hover:bg-gray-100'
+                ? 'bg-sky-50 font-medium text-sky-700'
+                : 'text-slate-600 hover:bg-white'
             )}
             onClick={() => onSelect(layer.id)}
           >
             <span className='flex items-center gap-2 truncate'>
-              <span className='text-[10px] uppercase text-gray-400'>
-                {layer.type}
+              <span className='text-[10px] uppercase tracking-[0.2em] text-slate-400'>
+                {LAYER_TYPE_LABELS[layer.type]}
               </span>
               {layer.name}
             </span>
             <button
-              onClick={e => {
-                e.stopPropagation();
+              type='button'
+              onClick={event => {
+                event.stopPropagation();
                 onDelete(layer.id);
               }}
-              className='rounded p-0.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500'
-              aria-label={`Delete ${layer.name}`}
+              className='rounded-lg p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500'
+              aria-label={`${layer.name} qatlamini o'chirish`}
             >
               <svg
                 className='h-3.5 w-3.5'

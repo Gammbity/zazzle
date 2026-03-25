@@ -65,7 +65,7 @@ export default function SingleSurfaceViewer({
         {textureUrl ? (
           <img
             src={textureUrl}
-            alt='Design print overlay'
+            alt='Dizayn bosma qatlami'
             style={{
               position: 'absolute',
               objectFit: 'contain',

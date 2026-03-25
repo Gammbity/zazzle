@@ -2,6 +2,12 @@
 
 import { useEffect, useRef } from 'react';
 import { fabric } from 'fabric';
+import {
+  MUG_EDITOR_CANVAS_HEIGHT,
+  MUG_EDITOR_CANVAS_WIDTH,
+  MUG_HANDLE_MARGIN_CM_TEXT,
+  MUG_HANDLE_MARGIN_PX,
+} from './mugPrintConstants';
 
 interface PrintEditorProps {
   onCanvasReady: (canvas: fabric.Canvas) => void;
@@ -12,12 +18,8 @@ interface PrintEditorProps {
 }
 
 // Resolution: 540x200 (2.7:1 ratio for 11oz mugs, height calibrated to 3D)
-const CANVAS_W = 540;
-const CANVAS_H = 200;
-
-// 11oz mug circumference ≈ 29.5cm → 1cm ≈ 18px
-// Safe margin on each side next to the handle seam
-const HANDLE_MARGIN_PX = 18;
+const CANVAS_W = MUG_EDITOR_CANVAS_WIDTH;
+const CANVAS_H = MUG_EDITOR_CANVAS_HEIGHT;
 
 export default function PrintEditor({
   onCanvasReady,
@@ -62,9 +64,9 @@ export default function PrintEditor({
     // stays fully white while objects are hard-clipped at the guide lines.
     const makeSafeClip = () =>
       new fabric.Rect({
-        left: HANDLE_MARGIN_PX,
+        left: MUG_HANDLE_MARGIN_PX,
         top: 0,
-        width: width - HANDLE_MARGIN_PX * 2,
+        width: width - MUG_HANDLE_MARGIN_PX * 2,
         height,
         absolutePositioned: true,
       });
@@ -170,7 +172,7 @@ export default function PrintEditor({
     <div className='print-editor-sidebar'>
       <div className='canvas-header'>
         <h3 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-          Print Hududi (Krujka Aylanasi)
+          Bosma hududi (krujka aylanasi)
         </h3>
       </div>
       {/* Canvas wrapper with complete isolation for controls */}
@@ -190,14 +192,14 @@ export default function PrintEditor({
         {/* Left margin (handle-side edge) */}
         <div
           className='handle-zone handle-zone-left'
-          style={{ width: HANDLE_MARGIN_PX }}
+          style={{ width: MUG_HANDLE_MARGIN_PX }}
         >
           <span className='handle-zone-label'>✋</span>
         </div>
         {/* Right margin (handle-side edge) */}
         <div
           className='handle-zone handle-zone-right'
-          style={{ width: HANDLE_MARGIN_PX }}
+          style={{ width: MUG_HANDLE_MARGIN_PX }}
         >
           <span className='handle-zone-label'>✋</span>
         </div>
@@ -205,11 +207,11 @@ export default function PrintEditor({
         {/* Dashed guide lines */}
         <div
           className='handle-guide handle-guide-left'
-          style={{ left: HANDLE_MARGIN_PX }}
+          style={{ left: MUG_HANDLE_MARGIN_PX }}
         />
         <div
           className='handle-guide handle-guide-right'
-          style={{ right: HANDLE_MARGIN_PX }}
+          style={{ right: MUG_HANDLE_MARGIN_PX }}
         />
       </div>
 
@@ -217,7 +219,7 @@ export default function PrintEditor({
       <div className='handle-legend'>
         <span className='handle-legend-dot' />
         <span>
-          Tutqich yaqinida {HANDLE_MARGIN_PX}px (≈1 sm) bo'sh hudud — rasm shu
+          Tutqich yaqinida {MUG_HANDLE_MARGIN_PX}px (≈{MUG_HANDLE_MARGIN_CM_TEXT} sm) bo'sh hudud — rasm shu
           zonaga tushmasa yaxshi
         </span>
       </div>

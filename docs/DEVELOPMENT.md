@@ -77,6 +77,24 @@ make logs
 make dev-down
 ```
 
+### Real-Time Docker Updates
+
+Frontend container now uses bind mount + polling watcher, so local file changes should reflect inside Docker without rebuilding the image.
+
+```bash
+# first start or after Docker config changes
+docker compose up --build
+
+# next runs
+docker compose up
+```
+
+If Docker was already running before this config update, restart the frontend service once:
+
+```bash
+docker compose up -d --build frontend
+```
+
 ### Environment Variables
 
 Edit [.env](.env) file with your configuration:

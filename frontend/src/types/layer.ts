@@ -75,16 +75,16 @@ export interface StickerAsset {
 }
 
 export const STICKER_ASSETS: StickerAsset[] = [
-  { id: 'star', label: 'Star', src: '/stickers/star.png' },
-  { id: 'heart', label: 'Heart', src: '/stickers/heart.png' },
-  { id: 'fire', label: 'Fire', src: '/stickers/fire.png' },
-  { id: 'smile', label: 'Smile', src: '/stickers/smile.png' },
-  { id: 'thumbsup', label: 'Thumbs Up', src: '/stickers/thumbsup.png' },
-  { id: 'lightning', label: 'Lightning', src: '/stickers/lightning.png' },
-  { id: 'crown', label: 'Crown', src: '/stickers/crown.png' },
-  { id: 'rocket', label: 'Rocket', src: '/stickers/rocket.png' },
-  { id: 'rainbow', label: 'Rainbow', src: '/stickers/rainbow.png' },
-  { id: 'check', label: 'Check', src: '/stickers/check.png' },
-  { id: 'sparkle', label: 'Sparkle', src: '/stickers/sparkle.png' },
-  { id: 'flower', label: 'Flower', src: '/stickers/flower.png' },
+  { id: 'star', label: 'Yulduz', src: '/stickers/star.png' },
+  { id: 'heart', label: 'Yurak', src: '/stickers/heart.png' },
+  { id: 'fire', label: 'Olov', src: '/stickers/fire.png' },
+  { id: 'smile', label: 'Tabassum', src: '/stickers/smile.png' },
+  { id: 'thumbsup', label: 'Bosh barmoq', src: '/stickers/thumbsup.png' },
+  { id: 'lightning', label: 'Chaqmoq', src: '/stickers/lightning.png' },
+  { id: 'crown', label: 'Toj', src: '/stickers/crown.png' },
+  { id: 'rocket', label: 'Raketa', src: '/stickers/rocket.png' },
+  { id: 'rainbow', label: 'Kamalak', src: '/stickers/rainbow.png' },
+  { id: 'check', label: 'Tasdiq', src: '/stickers/check.png' },
+  { id: 'sparkle', label: 'Yaltirash', src: '/stickers/sparkle.png' },
+  { id: 'flower', label: 'Gul', src: '/stickers/flower.png' },
 ];

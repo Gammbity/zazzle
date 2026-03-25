@@ -6,8 +6,8 @@ const CustomizerWrapper = dynamic(
 );
 
 export const metadata = {
-    title: "Create your Mug | Zazzle Clone",
-    description: "Customize your own mug in standard 3D quality.",
+    title: 'Krujka dizayni | Zazzle Uzbekistan',
+    description: "Krujkangiz uchun dizayn tayyorlang va ko'rinishini tekshiring.",
 };
 
 export default function CustomizerPage() {

@@ -27,11 +27,20 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000'),
   title: {
-    default: 'Zazzle Uzbekistan - Custom Print on Demand',
+    default: 'Zazzle Uzbekistan - Dizayn va bosma platformasi',
     template: '%s | Zazzle Uzbekistan',
   },
-  description: 'Create custom designs and print them on high-quality products. T-shirts, mugs, posters and more. Made in Uzbekistan.',
-  keywords: ['print on demand', 'custom designs', 't-shirts', 'mugs', 'posters', 'Uzbekistan', 'custom printing'],
+  description:
+    "Futbolka, krujka va boshqa mahsulotlar uchun dizayn tayyorlang va bosmaga yuboring. O'zbekistonda tayyorlanadi.",
+  keywords: [
+    'bosma',
+    'maxsus dizayn',
+    'futbolka',
+    'krujka',
+    'vizitka',
+    "O'zbekiston",
+    'dizayn',
+  ],
   authors: [{ name: 'Zazzle Uzbekistan' }],
   creator: 'Zazzle Uzbekistan',
   publisher: 'Zazzle Uzbekistan',
@@ -48,16 +57,18 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    locale: 'en_US',
+    locale: 'uz_UZ',
     url: 'https://zazzle.uz',
-    title: 'Zazzle Uzbekistan - Custom Print on Demand',
-    description: 'Create custom designs and print them on high-quality products.',
+    title: 'Zazzle Uzbekistan - Dizayn va bosma platformasi',
+    description:
+      'Mahsulotlarga dizayn tushiring va bosmaga tayyor ko‘rinishda tekshiring.',
     siteName: 'Zazzle Uzbekistan',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Zazzle Uzbekistan - Custom Print on Demand',
-    description: 'Create custom designs and print them on high-quality products.',
+    title: 'Zazzle Uzbekistan - Dizayn va bosma platformasi',
+    description:
+      'Mahsulotlarga dizayn tushiring va bosmaga tayyor ko‘rinishda tekshiring.',
     creator: '@zazzle_uz',
   },
 };
@@ -68,7 +79,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang='en' className={`${inter.variable} ${poppins.variable}`}>
+    <html lang='uz' className={`${inter.variable} ${poppins.variable}`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

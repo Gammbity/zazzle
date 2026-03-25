@@ -25,7 +25,7 @@ import SelectionTransformer from './transformer/SelectionTransformer';
 // ---------------------------------------------------------------------------
 
 export interface DesignCanvasHandle {
-  exportPng: () => string | null;
+  exportPng: (options?: { cropToPrintArea?: boolean }) => string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -180,11 +180,26 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
       () => printAreaToRect(printArea, canvasWidth, canvasHeight),
       [printArea, canvasWidth, canvasHeight]
     );
-
     // ── Export handle ────────────────────────────────────────────────────
+    //
+    // IMPORTANT: export the FULL design layer, not a print-area crop.
+    //
+    // The mug renderer's designBox (from catalog overlayBox) was calibrated
+    // for the full-stage image.  If we export only the print area and draw
+    // it at overlayBox.x=18%, the content shifts 3% further left than the
+    // calibration expects — pushing left-edge glyphs into the handle shadow.
+    //
+    // Glyph-edge safety is handled in the renderer by expanding dBoxW/dBoxH
+    // (see getPreviewRectFromSurface / applyPreviewPadding), never by
+    // cropping the source canvas.
     const handleRef = useRef<DesignCanvasHandle>({
-      exportPng() {
-        return exportLayerAsPng(designLayerRef.current!, trRef.current, 2);
+      exportPng(options) {
+        return exportLayerAsPng(
+          designLayerRef.current!,
+          trRef.current,
+          2,
+          options?.cropToPrintArea ? printAreaRect : undefined
+        );
       },
     });
     useImperativeHandle(ref, () => handleRef.current);

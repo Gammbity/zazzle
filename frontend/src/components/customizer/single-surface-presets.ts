@@ -33,8 +33,8 @@ export interface SingleSurfaceCustomizerConfig {
 export const businessCardCustomizerConfig: SingleSurfaceCustomizerConfig = {
   viewer: {
     productImageSrc: '/products/business-card/front.jpg',
-    productImageAlt: 'Business Card',
-    exportMessage: 'Business Card export composite render bilan ishlaydi.',
+    productImageAlt: 'Vizitka',
+    exportMessage: 'Vizitka uchun yakuniy birlashtirilgan rasm tayyorlanadi.',
     stageStyle: {
       position: 'relative',
       width: '90%',
@@ -53,13 +53,13 @@ export const businessCardCustomizerConfig: SingleSurfaceCustomizerConfig = {
   editor: {
     canvasWidth: 630,
     canvasHeight: 360,
-    title: "Print Hududi (Tashrif Qog'ozi)",
+    title: 'Bosma hududi (vizitka)',
     legend: 'Sahifa maydoni: 630x360 px (3.5" x 2" nisbatda)',
   },
   sidebar: {
-    title: "Tashrif Qog'ozi Dizayneri",
-    description: "O'z biznes kartangizni yarating.",
-    defaultText: "Tashrif qog'ozi matni",
+    title: 'Vizitka dizayneri',
+    description: "O'z vizitkangizni yarating.",
+    defaultText: 'Vizitka matni',
     defaultTextFontSize: 24,
     stickerFontSize: 40,
     stickers: [
@@ -82,8 +82,9 @@ export const businessCardCustomizerConfig: SingleSurfaceCustomizerConfig = {
 export const calendarCustomizerConfig: SingleSurfaceCustomizerConfig = {
   viewer: {
     productImageSrc: '/products/desk-calendar/front.jpg',
-    productImageAlt: 'Desk Calendar',
-    exportMessage: 'Desk Calendar export composite render bilan ishlaydi.',
+    productImageAlt: 'Stol kalendari',
+    exportMessage:
+      'Stol kalendari uchun yakuniy birlashtirilgan rasm tayyorlanadi.',
     stageStyle: {
       position: 'relative',
       height: '90%',
@@ -91,10 +92,10 @@ export const calendarCustomizerConfig: SingleSurfaceCustomizerConfig = {
       aspectRatio: '4 / 3',
     },
     overlayStyle: {
-      top: '15.6%',
-      left: '7.94%',
-      width: '84.12%',
-      height: '81.6%',
+      top: '18%',
+      left: '11.5%',
+      width: '77%',
+      height: '67%',
       aspectRatio: '560 / 400',
       borderRadius: '4px',
     },
@@ -102,11 +103,11 @@ export const calendarCustomizerConfig: SingleSurfaceCustomizerConfig = {
   editor: {
     canvasWidth: 560,
     canvasHeight: 400,
-    title: 'Print Hududi (Kalendar Sahifasi)',
+    title: 'Bosma hududi (kalendar sahifasi)',
     legend: 'Sahifa maydoni: 560x400 px',
   },
   sidebar: {
-    title: 'Kalendar Dizayneri',
+    title: 'Kalendar dizayneri',
     description: "Kalendar sahifasini o'zingizga moslashtiring.",
     defaultText: 'Tahrirlash uchun bosing',
     defaultTextFontSize: 40,
@@ -131,8 +132,9 @@ export const calendarCustomizerConfig: SingleSurfaceCustomizerConfig = {
 export const shopperBagCustomizerConfig: SingleSurfaceCustomizerConfig = {
   viewer: {
     productImageSrc: '/products/shopper_bag/front.jpg',
-    productImageAlt: 'Shopper Bag',
-    exportMessage: 'Shopper Bag export composite render bilan ishlaydi.',
+    productImageAlt: 'Xarid sumkasi',
+    exportMessage:
+      'Xarid sumkasi uchun yakuniy birlashtirilgan rasm tayyorlanadi.',
     stageStyle: {
       position: 'relative',
       width: '90%',
@@ -151,13 +153,13 @@ export const shopperBagCustomizerConfig: SingleSurfaceCustomizerConfig = {
   editor: {
     canvasWidth: 600,
     canvasHeight: 800,
-    title: 'Print Hududi (Xaridor Xaltasi)',
+    title: 'Bosma hududi (xarid sumkasi)',
     legend: 'Sahifa maydoni: 600x800 px (3:4 nisbatda)',
   },
   sidebar: {
-    title: 'Xaridor Xaltasi Dizayneri',
-    description: "Shopper bag yuzasini o'zingizga moslashtiring.",
-    defaultText: 'Shopper bag matni',
+    title: 'Xarid sumkasi dizayneri',
+    description: "Xarid sumkasi yuzasini o'zingizga moslashtiring.",
+    defaultText: 'Xarid sumkasi matni',
     defaultTextFontSize: 28,
     stickerFontSize: 40,
     stickers: [

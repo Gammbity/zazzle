@@ -7,13 +7,9 @@ import { cn } from '@/lib/utils';
 import Modal from '@/components/Modal';
 
 interface ProductMockPreviewProps {
-  /** Base product image path */
   baseImage: string;
-  /** Exported design data-URL (from canvas export) */
   designUrl: string;
-  /** Bounding box for design placement (percentage-based) */
   overlayBox: OverlayBox;
-  /** Render style: flat (cards/calendars) or perspective (mugs/tees) */
   previewStyle: 'flat' | 'perspective';
   productName: string;
 }
@@ -29,16 +25,17 @@ export default function ProductMockPreview({
   const composedRef = useRef<HTMLDivElement>(null);
 
   const downloadPreview = useCallback(() => {
-    // Create a temporary link to download the design data-URL
-    const a = document.createElement('a');
-    a.href = designUrl;
-    a.download = `${productName.toLowerCase().replace(/\s+/g, '-')}-design.png`;
-    a.click();
+    const link = document.createElement('a');
+    link.href = designUrl;
+    link.download = `${productName.toLowerCase().replace(/\s+/g, '-')}-dizayn.png`;
+    link.click();
   }, [designUrl, productName]);
 
   return (
     <div className='flex flex-col gap-3'>
-      <p className='text-sm font-medium text-gray-700'>Preview on product</p>
+      <p className='text-sm font-medium text-gray-700'>
+        Mahsulotdagi ko'rinish
+      </p>
 
       <div
         ref={composedRef}
@@ -48,17 +45,15 @@ export default function ProductMockPreview({
         )}
         style={{ aspectRatio: '1 / 1' }}
       >
-        {/* Base product image */}
         <AppImage
           src={baseImage}
-          alt={`${productName} base`}
+          alt={`${productName} asosiy rasmi`}
           fill
           sizes='(max-width: 768px) 100vw, 400px'
           className='object-contain p-2'
           priority
         />
 
-        {/* Design overlay */}
         <div
           className={cn(
             'absolute overflow-hidden',
@@ -74,7 +69,7 @@ export default function ProductMockPreview({
         >
           <img
             src={designUrl}
-            alt='Your design on product'
+            alt='Mahsulotdagi dizayningiz'
             className={cn(
               'h-full w-full object-contain opacity-85 mix-blend-multiply',
               previewStyle === 'perspective' && 'perspective-design'
@@ -83,31 +78,29 @@ export default function ProductMockPreview({
         </div>
       </div>
 
-      {/* Action buttons */}
       <div className='flex gap-2'>
         <button
           onClick={() => setShowFinal(true)}
           className='flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50'
         >
-          View Final
+          Yakuniy ko'rinish
         </button>
         <button
           onClick={downloadPreview}
           className='flex-1 rounded-xl bg-primary-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700'
         >
-          Download Design
+          Dizaynni yuklab olish
         </button>
       </div>
 
       <p className='text-center text-xs text-gray-400'>
-        This is an approximate preview. Final print may vary slightly.
+        Bu taxminiy ko'rinish. Yakuniy bosma biroz farq qilishi mumkin.
       </p>
 
-      {/* Final preview modal */}
       <Modal
         open={showFinal}
         onClose={() => setShowFinal(false)}
-        title={`${productName} — Final Preview`}
+        title={`${productName} - yakuniy ko'rinish`}
         maxWidth='max-w-3xl'
       >
         <div className='flex flex-col items-center gap-4'>
@@ -120,7 +113,7 @@ export default function ProductMockPreview({
           >
             <AppImage
               src={baseImage}
-              alt={`${productName} base`}
+              alt={`${productName} asosiy rasmi`}
               fill
               sizes='(max-width: 768px) 100vw, 700px'
               className='object-contain p-4'
@@ -139,7 +132,7 @@ export default function ProductMockPreview({
             >
               <img
                 src={designUrl}
-                alt='Design overlay'
+                alt='Dizayn qatlami'
                 className={cn(
                   'h-full w-full object-contain opacity-85 mix-blend-multiply',
                   previewStyle === 'perspective' && 'perspective-design'
@@ -152,12 +145,11 @@ export default function ProductMockPreview({
             onClick={downloadPreview}
             className='w-full max-w-xs rounded-xl bg-primary-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-700'
           >
-            Download Preview
+            Ko'rinishni yuklab olish
           </button>
         </div>
       </Modal>
 
-      {/* Inline styles for perspective effect */}
       <style>{`
         .perspective-container {
           perspective: 800px;

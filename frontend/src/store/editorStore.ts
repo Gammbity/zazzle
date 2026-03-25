@@ -23,6 +23,7 @@ import {
 } from '@/lib/editor/serialize';
 import {
   saveDraft,
+  saveDraftToLocalStorage,
   loadDraft,
   deleteDraft,
   createEmptyDraft,
@@ -91,6 +92,8 @@ interface EditorStore {
    * Should be called from a debounced effect in the UI.
    */
   persistDraft: () => Promise<void>;
+  /** Mirror the current draft to localStorage immediately. */
+  persistDraftSync: () => void;
 
   /** Clear all surfaces and reset undo history. */
   resetDraft: () => void;
@@ -305,6 +308,19 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       updatedAt: new Date().toISOString(),
     };
     await saveDraft(draft);
+  },
+
+  persistDraftSync() {
+    const state = get();
+    if (!state.isDraftLoaded) return;
+    const draft: EditorDraft = {
+      version: 1,
+      productId: state.productId,
+      activeSurfaceId: state.activeSurfaceId,
+      surfaces: state.surfaces,
+      updatedAt: new Date().toISOString(),
+    };
+    saveDraftToLocalStorage(draft);
   },
 
   resetDraft() {

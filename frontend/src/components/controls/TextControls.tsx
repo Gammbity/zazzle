@@ -4,6 +4,21 @@ import { cn } from '@/lib/utils';
 import type { TextLayer } from '@/types/layer';
 import { FONT_FAMILIES } from '@/types/layer';
 
+const TEXT_COLOR_PRESETS = [
+  '#111827',
+  '#2563eb',
+  '#7c3aed',
+  '#db2777',
+  '#dc2626',
+  '#ea580c',
+  '#ca8a04',
+  '#16a34a',
+  '#0f766e',
+  '#0891b2',
+  '#ffffff',
+  '#94a3b8',
+] as const;
+
 interface TextControlsProps {
   layer: TextLayer;
   onUpdate: (attrs: Partial<TextLayer>) => void;
@@ -11,25 +26,27 @@ interface TextControlsProps {
 
 /**
  * Inline toolbar for editing a selected text layer.
- * Pure presentation – receives the layer and an update callback.
+ * Pure presentation - receives the layer and an update callback.
  */
 export default function TextControls({ layer, onUpdate }: TextControlsProps) {
   return (
-    <div className='flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-3'>
+    <div className='flex flex-wrap items-center gap-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3'>
       {/* Text content */}
       <input
         type='text'
         value={layer.text}
         onChange={e => onUpdate({ text: e.target.value })}
-        className='w-40 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-1 focus:ring-primary-400'
-        placeholder='Enter text'
+        className='w-40 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400'
+        placeholder='Matn kiriting'
+        aria-label='Matn mazmuni'
       />
 
       {/* Font family */}
       <select
         value={layer.fontFamily}
         onChange={e => onUpdate({ fontFamily: e.target.value })}
-        className='rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-primary-400 focus:outline-none'
+        className='rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none'
+        aria-label='Shrift'
       >
         {FONT_FAMILIES.map(f => (
           <option key={f} value={f}>
@@ -45,7 +62,8 @@ export default function TextControls({ layer, onUpdate }: TextControlsProps) {
         max={200}
         value={layer.fontSize}
         onChange={e => onUpdate({ fontSize: Number(e.target.value) })}
-        className='w-16 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-primary-400 focus:outline-none'
+        className='w-16 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none'
+        aria-label="Shrift o'lchami"
       />
 
       {/* Color */}
@@ -53,8 +71,28 @@ export default function TextControls({ layer, onUpdate }: TextControlsProps) {
         type='color'
         value={layer.fill}
         onChange={e => onUpdate({ fill: e.target.value })}
-        className='h-8 w-8 cursor-pointer rounded border border-gray-200'
+        className='h-10 w-10 cursor-pointer rounded-xl border border-slate-200 bg-white p-1'
+        aria-label='Matn rangi'
       />
+
+      <div className='flex flex-wrap items-center gap-2'>
+        {TEXT_COLOR_PRESETS.map(color => (
+          <button
+            key={color}
+            type='button'
+            onClick={() => onUpdate({ fill: color })}
+            className={cn(
+              'h-7 w-7 rounded-full border-2 transition-transform hover:scale-105',
+              layer.fill.toLowerCase() === color.toLowerCase()
+                ? 'border-slate-900'
+                : 'border-white shadow-sm shadow-slate-200'
+            )}
+            style={{ backgroundColor: color }}
+            aria-label={`Matn rangini ${color} ga o'zgartirish`}
+            title={color}
+          />
+        ))}
+      </div>
 
       {/* Bold */}
       <button
@@ -68,12 +106,12 @@ export default function TextControls({ layer, onUpdate }: TextControlsProps) {
           onUpdate({ fontStyle: newStyle });
         }}
         className={cn(
-          'rounded-lg border px-2.5 py-1.5 text-sm font-bold transition-colors',
+          'rounded-xl border px-3 py-2 text-sm font-bold transition-colors',
           layer.fontStyle?.includes('bold')
-            ? 'border-primary-400 bg-primary-50 text-primary-700'
-            : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
+            ? 'border-sky-400 bg-sky-50 text-sky-700'
+            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
         )}
-        aria-label='Toggle bold'
+        aria-label='Qalin qilish'
       >
         B
       </button>
@@ -90,12 +128,12 @@ export default function TextControls({ layer, onUpdate }: TextControlsProps) {
           onUpdate({ fontStyle: newStyle });
         }}
         className={cn(
-          'rounded-lg border px-2.5 py-1.5 text-sm italic transition-colors',
+          'rounded-xl border px-3 py-2 text-sm italic transition-colors',
           layer.fontStyle?.includes('italic')
-            ? 'border-primary-400 bg-primary-50 text-primary-700'
-            : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100'
+            ? 'border-sky-400 bg-sky-50 text-sky-700'
+            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
         )}
-        aria-label='Toggle italic'
+        aria-label='Kursiv qilish'
       >
         I
       </button>

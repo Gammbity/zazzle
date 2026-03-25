@@ -6,8 +6,8 @@ const BusinessCardWrapper = dynamic(
 );
 
 export const metadata = {
-    title: "Create your Business Card | Zazzle Clone",
-    description: "Customize your own Business Card.",
+    title: 'Vizitka dizayni | Zazzle Uzbekistan',
+    description: "Vizitkangiz uchun dizayn tayyorlang va ko'rinishini tekshiring.",
 };
 
 export default function BusinessCardPage() {

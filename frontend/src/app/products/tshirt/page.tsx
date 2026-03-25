@@ -6,8 +6,8 @@ const TshirtWrapper = dynamic(
 );
 
 export const metadata = {
-    title: "Create your T-Shirt | Zazzle Clone",
-    description: "Customize your own T-Shirt with high-quality prints.",
+    title: 'Futbolka dizayni | Zazzle Uzbekistan',
+    description: "Futbolkangiz uchun dizayn tayyorlang va bosmaga mos holatda tekshiring.",
 };
 
 export default function TshirtPage() {

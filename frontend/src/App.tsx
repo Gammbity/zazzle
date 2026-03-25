@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import HeroSection from '@/components/HeroSection';
+import HomeConfidenceSection from '@/components/HomeConfidenceSection';
 import NavigationProgress from '@/components/NavigationProgress';
 import ProductGrid from '@/components/ProductGrid';
 import { getProductBySlug } from '@/lib/products/catalog';
@@ -26,20 +27,21 @@ const ShopperBagCustomizer = lazy(
 function PageLoading() {
   return (
     <div className='flex min-h-[40vh] items-center justify-center'>
-      <div className='h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600' />
+      <div className='h-10 w-10 animate-spin rounded-full border-4 border-sky-100 border-t-sky-600' />
     </div>
   );
 }
 
 function HomePage() {
   useEffect(() => {
-    document.title = 'Zazzle Uzbekistan - Custom Print on Demand';
+    document.title = 'Zazzle Uzbekistan - Dizayn va bosma platformasi';
   }, []);
 
   return (
     <main className='min-h-screen'>
       <HeroSection />
       <ProductGrid />
+      <HomeConfidenceSection />
     </main>
   );
 }
@@ -56,9 +58,24 @@ function PlaceholderPage({
   }, [title]);
 
   return (
-    <main className='mx-auto flex min-h-screen max-w-4xl flex-col gap-4 px-4 py-8'>
-      <h1 className='text-2xl font-semibold text-gray-900'>{title}</h1>
-      <p className='max-w-2xl text-gray-500'>{description}</p>
+    <main className='mx-auto flex min-h-screen max-w-4xl flex-col justify-center px-4 py-12'>
+      <div className='rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm shadow-slate-200/60'>
+        <p className='text-sm font-semibold uppercase tracking-[0.3em] text-sky-700'>
+          Tez orada
+        </p>
+        <h1 className='mt-4 text-3xl font-semibold text-slate-900'>{title}</h1>
+        <p className='mt-3 max-w-2xl text-base leading-7 text-slate-600'>
+          {description}
+        </p>
+        <div className='mt-6'>
+          <Link
+            to='/'
+            className='inline-flex items-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700'
+          >
+            Mahsulotlarga qaytish
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }
@@ -119,65 +136,65 @@ export default function App() {
   } else if (location.pathname === '/cart') {
     page = (
       <PlaceholderPage
-        title='Cart'
-        description='Cart page React SPA ga ko‘chirildi. Backend bilan ulash keyingi bosqichda davom ettiriladi.'
+        title='Savatcha'
+        description="Savatcha sahifasi SPA oqimiga ko'chirildi. Keyingi bosqichda backend bilan to'liq ulanish qo'shilishi mumkin."
       />
     );
   } else if (location.pathname === '/checkout') {
     page = (
       <PlaceholderPage
-        title='Checkout'
-        description='Checkout sahifasi React router ostida ishlaydi. API integratsiyasi hozirgi backend bilan keyin ulanishi mumkin.'
+        title='Buyurtmani yakunlash'
+        description="To'lov va buyurtma yakunlash sahifasi uchun frontend oqimi tayyor. API ulanishi keyingi integratsiya bosqichida davom etadi."
       />
     );
   } else if (location.pathname === '/orders') {
     page = (
       <PlaceholderPage
-        title='My Orders'
-        description='Buyurtmalar sahifasi React SPA ichiga ko‘chirildi.'
+        title='Buyurtmalarim'
+        description="Buyurtmalar bo'limi yangi SPA ichiga ko'chirildi va keyinroq real ma'lumotlar bilan ulanadi."
       />
     );
   } else if (orderMatch?.id) {
     page = (
       <PlaceholderPage
-        title={`Order ${orderMatch.id}`}
-        description='Buyurtma tafsilotlari sahifasi React router orqali ochiladi.'
+        title={`Buyurtma ${orderMatch.id}`}
+        description="Buyurtma tafsilotlari sahifasi router ichida tayyorlangan. Hozircha demo ko'rinish saqlanib turibdi."
       />
     );
   } else if (editorMatch?.draftId) {
     page = (
       <PlaceholderPage
-        title={`Editor - Draft ${editorMatch.draftId}`}
-        description='Draft editor sahifasi React router ostida placeholder ko‘rinishda saqlab qolindi.'
+        title={`Qoralama ${editorMatch.draftId}`}
+        description="Alohida qoralama muharriri sahifasi uchun joy qoldirilgan. Asosiy dizayn oqimi hozir mahsulot sahifalarida qulaylashtirildi."
       />
     );
   } else if (location.pathname === '/products/tshirt') {
     page = (
-      <LegacyCustomizerPage title='Create your T-Shirt'>
+      <LegacyCustomizerPage title='Futbolka dizayni'>
         <TshirtCustomizer />
       </LegacyCustomizerPage>
     );
   } else if (location.pathname === '/products/mug') {
     page = (
-      <LegacyCustomizerPage title='Create your Mug'>
+      <LegacyCustomizerPage title='Krujka dizayni'>
         <MugCustomizer />
       </LegacyCustomizerPage>
     );
   } else if (location.pathname === '/products/business-card') {
     page = (
-      <LegacyCustomizerPage title='Create your Business Card'>
+      <LegacyCustomizerPage title='Vizitka dizayni'>
         <BusinessCardCustomizer />
       </LegacyCustomizerPage>
     );
   } else if (location.pathname === '/products/desk-calendar') {
     page = (
-      <LegacyCustomizerPage title='Create your Desk Calendar'>
+      <LegacyCustomizerPage title='Stol kalendari dizayni'>
         <DeskCalendarCustomizer />
       </LegacyCustomizerPage>
     );
   } else if (location.pathname === '/products/shopper-bag') {
     page = (
-      <LegacyCustomizerPage title='Create your Shopper Bag'>
+      <LegacyCustomizerPage title='Xarid sumkasi dizayni'>
         <ShopperBagCustomizer />
       </LegacyCustomizerPage>
     );
@@ -190,14 +207,18 @@ export default function App() {
     <>
       <NavigationProgress />
       {page}
-      <footer className='border-t border-gray-100 bg-white px-4 py-6 text-center text-sm text-gray-500'>
-        <p>
-          React SPA frontend running on the Django backend.{' '}
+      <footer className='border-t border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500'>
+        <p className='font-medium text-slate-700'>Zazzle Uzbekistan</p>
+        <p className='mt-2'>
+          Mahsulot tanlash, dizayn qilish va ko'rinishni tekshirish uchun
+          soddalashtirilgan sayt.
+        </p>
+        <p className='mt-3'>
           <Link
             to='/'
-            className='font-medium text-primary-600 hover:text-primary-700'
+            className='font-medium text-sky-700 transition-colors hover:text-sky-800'
           >
-            Home
+            Bosh sahifa
           </Link>
         </p>
       </footer>

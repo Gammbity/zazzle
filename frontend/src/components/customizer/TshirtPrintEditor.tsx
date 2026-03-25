@@ -153,7 +153,7 @@ export default function TshirtPrintEditor({
     <div className='print-editor-sidebar'>
       <div className='canvas-header'>
         <h3 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-          Print Hududi ({viewSide === 'front' ? 'Oldi' : 'Orqa'})
+          Bosma hududi ({viewSide === 'front' ? 'Oldi' : 'Orqa'})
         </h3>
       </div>
 

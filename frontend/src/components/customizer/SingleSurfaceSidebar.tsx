@@ -38,6 +38,18 @@ const ALLOWED_TYPES = [
   'image/gif',
   'image/svg+xml',
 ];
+const TEXT_COLOR_PRESETS = [
+  '#111827',
+  '#2563eb',
+  '#7c3aed',
+  '#db2777',
+  '#dc2626',
+  '#ea580c',
+  '#ca8a04',
+  '#16a34a',
+  '#0891b2',
+  '#ffffff',
+] as const;
 
 function addCanvasObject(canvas: fabric.Canvas, object: fabric.Object): void {
   canvas.add(object);
@@ -100,6 +112,7 @@ export default function SingleSurfaceSidebar({
   const [errorMessage, setErrorMessage] = useState('');
   const [imageState, setImageState] = useState<ImageState | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [textColor, setTextColor] = useState('#2563eb');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetUploadState = useCallback((): void => {
@@ -107,6 +120,28 @@ export default function SingleSurfaceSidebar({
     setErrorMessage('');
     setImageState(null);
   }, []);
+
+  const applyTextColor = useCallback(
+    (color: string): void => {
+      setTextColor(color);
+
+      if (!canvas) {
+        return;
+      }
+
+      const activeObject = canvas.getActiveObject();
+      if (!activeObject) {
+        return;
+      }
+
+      if (['i-text', 'textbox', 'text'].includes(activeObject.type ?? '')) {
+        activeObject.set('fill', color);
+        canvas.requestRenderAll();
+        canvas.fire('object:modified', { target: activeObject });
+      }
+    },
+    [canvas]
+  );
 
   const loadImageToCanvas = useCallback(
     (file: File): void => {
@@ -210,7 +245,7 @@ export default function SingleSurfaceSidebar({
     const text = new fabric.IText(config.defaultText, {
       fontFamily: 'sans-serif',
       fontSize: config.defaultTextFontSize,
-      fill: '#1e293b',
+      fill: textColor,
       selectable: true,
       evented: true,
     });
@@ -355,7 +390,7 @@ export default function SingleSurfaceSidebar({
                     <strong>Rasm tashlang</strong> yoki bosing
                   </p>
                   <span className='upload-hint'>
-                    PNG, JPG, WebP - Max {MAX_FILE_SIZE_MB} MB
+                    PNG, JPG, WebP - eng ko'pi {MAX_FILE_SIZE_MB} MB
                   </span>
                 </div>
               ) : null}
@@ -365,7 +400,7 @@ export default function SingleSurfaceSidebar({
               <div className='thumbnail-card'>
                 <img
                   src={imageState.thumbnail}
-                  alt='preview'
+                  alt='Yuklangan rasm'
                   className='thumbnail-img'
                 />
                 <div className='thumbnail-info'>
@@ -407,8 +442,37 @@ export default function SingleSurfaceSidebar({
         {activeTab === 'text' ? (
           <div className='panel'>
             <button className='action-btn primary' onClick={handleAddText}>
-              <Type size={16} /> Yangi Matn Qo'shish
+              <Type size={16} /> Yangi matn qo'shish
             </button>
+            <div className='mt-4'>
+              <p className='hint-text'>Matn rangi</p>
+              <div className='mt-3 flex flex-wrap items-center gap-2'>
+                <input
+                  type='color'
+                  value={textColor}
+                  onChange={event => applyTextColor(event.target.value)}
+                  className='h-10 w-10 cursor-pointer rounded-xl border border-slate-200 bg-white p-1'
+                  aria-label='Matn rangini tanlash'
+                />
+                {TEXT_COLOR_PRESETS.map(color => (
+                  <button
+                    key={color}
+                    type='button'
+                    onClick={() => applyTextColor(color)}
+                    className='h-8 w-8 rounded-full border-2 transition-transform hover:scale-105'
+                    style={{
+                      backgroundColor: color,
+                      borderColor:
+                        textColor.toLowerCase() === color.toLowerCase()
+                          ? '#0f172a'
+                          : '#ffffff',
+                    }}
+                    aria-label={`Matn rangini ${color} ga o'zgartirish`}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -430,7 +494,7 @@ export default function SingleSurfaceSidebar({
 
         <div className='global-actions'>
           <button className='action-btn danger' onClick={handleDeleteSelected}>
-            <Trash2 size={16} /> Tanlanganni O'chirish
+            <Trash2 size={16} /> Tanlanganni o'chirish
           </button>
         </div>
       </div>

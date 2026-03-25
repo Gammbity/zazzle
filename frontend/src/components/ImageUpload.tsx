@@ -5,10 +5,9 @@ import AppImage from '@/components/AppImage';
 import { cn } from '@/lib/utils';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
 interface ImageUploadProps {
-  /** Called with the object URL of the selected file (or null on clear). */
   onImageSelected: (url: string | null) => void;
   className?: string;
 }
@@ -27,17 +26,18 @@ export default function ImageUpload({
       setError(null);
 
       if (!ACCEPTED_TYPES.includes(file.type)) {
-        setError('Please upload a PNG, JPG, or WebP image.');
+        setError('Iltimos, PNG, JPG yoki WebP rasm yuklang.');
         return;
       }
 
       if (file.size > MAX_SIZE_BYTES) {
-        setError('File size must be under 5 MB.');
+        setError("Fayl hajmi 5 MB dan kichik bo'lishi kerak.");
         return;
       }
 
-      // Revoke previous object URL to avoid memory leaks
-      if (preview) URL.revokeObjectURL(preview);
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
 
       const url = URL.createObjectURL(file);
       setPreview(url);
@@ -47,51 +47,58 @@ export default function ImageUpload({
   );
 
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) processFile(file);
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        processFile(file);
+      }
     },
     [processFile]
   );
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
+    (event: React.DragEvent) => {
+      event.preventDefault();
       setIsDragOver(false);
-      const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
+      const file = event.dataTransfer.files[0];
+      if (file) {
+        processFile(file);
+      }
     },
     [processFile]
   );
 
   const handleClear = useCallback(() => {
-    if (preview) URL.revokeObjectURL(preview);
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
     setPreview(null);
     setError(null);
     onImageSelected(null);
-    if (inputRef.current) inputRef.current.value = '';
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
   }, [onImageSelected, preview]);
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       <label className='text-sm font-medium text-gray-700'>
-        Upload your design
+        Dizayn rasmini yuklang
       </label>
 
-      {/* Drop zone */}
       <div
         role='button'
         tabIndex={0}
-        aria-label='Upload design image'
+        aria-label='Dizayn rasmini yuklash'
         onClick={() => inputRef.current?.click()}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
             inputRef.current?.click();
           }
         }}
-        onDragOver={e => {
-          e.preventDefault();
+        onDragOver={event => {
+          event.preventDefault();
           setIsDragOver(true);
         }}
         onDragLeave={() => setIsDragOver(false)}
@@ -107,7 +114,7 @@ export default function ImageUpload({
           <div className='relative h-32 w-32'>
             <AppImage
               src={preview}
-              alt='Uploaded design preview'
+              alt="Yuklangan dizayn ko'rinishi"
               fill
               className='rounded-lg object-contain'
               unoptimized
@@ -130,11 +137,11 @@ export default function ImageUpload({
               />
             </svg>
             <p className='text-sm text-gray-600'>
-              <span className='font-medium text-primary-600'>Click</span> or
-              drag &amp; drop
+              <span className='font-medium text-primary-600'>Bosing</span> yoki
+              sudrab tashlang
             </p>
             <p className='text-xs text-gray-400'>
-              PNG, JPG, or WebP — max 5 MB
+              PNG, JPG yoki WebP, eng ko'pi 5 MB
             </p>
           </>
         )}
@@ -161,7 +168,7 @@ export default function ImageUpload({
           onClick={handleClear}
           className='self-start text-sm font-medium text-gray-500 underline transition-colors hover:text-gray-700'
         >
-          Remove image
+          Rasmni olib tashlash
         </button>
       )}
     </div>

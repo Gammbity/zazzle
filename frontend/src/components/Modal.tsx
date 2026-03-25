@@ -68,7 +68,7 @@ export default function Modal({
         ref={dialogRef}
         role='dialog'
         aria-modal='true'
-        aria-label={title ?? 'Dialog'}
+        aria-label={title ?? 'Oyna'}
         tabIndex={-1}
         className={cn(
           'relative z-10 mx-4 w-full rounded-2xl bg-white p-6 shadow-2xl outline-none',
@@ -82,7 +82,7 @@ export default function Modal({
             <button
               onClick={onClose}
               className='rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600'
-              aria-label='Close dialog'
+              aria-label='Oynani yopish'
             >
               <svg
                 className='h-5 w-5'

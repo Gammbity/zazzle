@@ -6,8 +6,8 @@ const ShopperBagWrapper = dynamic(
 );
 
 export const metadata = {
-    title: "Create your Shopper Bag | Zazzle Clone",
-    description: "Customize your own Shopper Bag.",
+    title: 'Xarid sumkasi dizayni | Zazzle Uzbekistan',
+    description: "Xarid sumkasi uchun dizayn tayyorlang va ko'rinishini tekshiring.",
 };
 
 export default function ShopperBagPage() {

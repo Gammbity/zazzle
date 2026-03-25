@@ -1,7 +1,7 @@
 'use client';
 
 import AppImage from '@/components/AppImage';
-import { STICKER_ASSETS, type StickerAsset } from '@/lib/editor/types';
+import { STICKER_ASSETS, type StickerAsset } from '@/types/layer';
 import { cn } from '@/lib/utils';
 
 interface StickerPickerProps {
@@ -19,8 +19,9 @@ export default function StickerPicker({
 }: StickerPickerProps) {
   return (
     <div className='flex flex-col gap-4'>
-      <p className='text-sm text-gray-500'>
-        Tap a sticker to add it to your design.
+      <p className='text-sm text-slate-500'>
+        Kerakli stiker ustiga bosing va u avtomatik ravishda dizaynga
+        qo'shiladi.
       </p>
 
       <div className='grid grid-cols-4 gap-3 sm:grid-cols-6'>
@@ -32,11 +33,11 @@ export default function StickerPicker({
               onClose();
             }}
             className={cn(
-              'group flex flex-col items-center gap-1 rounded-xl border border-gray-100 bg-gray-50 p-3',
-              'transition-all hover:border-primary-300 hover:bg-primary-50 hover:shadow-sm',
-              'outline-none focus-visible:ring-2 focus-visible:ring-primary-500'
+              'group flex flex-col items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-3',
+              'transition-all hover:border-sky-300 hover:bg-sky-50 hover:shadow-sm',
+              'outline-none focus-visible:ring-2 focus-visible:ring-sky-500'
             )}
-            aria-label={`Add ${s.label} sticker`}
+            aria-label={`${s.label} stikerini qo'shish`}
           >
             <div className='relative h-10 w-10'>
               <AppImage
@@ -47,7 +48,7 @@ export default function StickerPicker({
                 unoptimized
               />
             </div>
-            <span className='text-[10px] font-medium text-gray-500 group-hover:text-primary-600'>
+            <span className='text-[10px] font-medium text-slate-500 group-hover:text-sky-700'>
               {s.label}
             </span>
           </button>

@@ -49,6 +49,18 @@ const ALLOWED_TYPES = [
   'image/gif',
   'image/svg+xml',
 ];
+const TEXT_COLOR_PRESETS = [
+  '#111827',
+  '#2563eb',
+  '#7c3aed',
+  '#db2777',
+  '#dc2626',
+  '#ea580c',
+  '#ca8a04',
+  '#16a34a',
+  '#0891b2',
+  '#ffffff',
+] as const;
 
 type UploadStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -74,6 +86,7 @@ export default function Sidebar({
   const [errorMsg, setErrorMsg] = useState('');
   const [imageState, setImageState] = useState<ImageState | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [textColor, setTextColor] = useState('#2563eb');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Core image loading logic ────────────────────────────────────────────
@@ -95,7 +108,7 @@ export default function Sidebar({
       if (sizeMb > MAX_FILE_SIZE_MB) {
         setUploadStatus('error');
         setErrorMsg(
-          `Fayl hajmi ${sizeMb.toFixed(1)} MB — ${MAX_FILE_SIZE_MB} MB dan oshmasligi kerak.`
+          `Fayl hajmi ${sizeMb.toFixed(1)} MB - ${MAX_FILE_SIZE_MB} MB dan oshmasligi kerak.`
         );
         return;
       }
@@ -253,6 +266,21 @@ export default function Sidebar({
     setImageState(null);
   };
 
+  const applyTextColor = (color: string) => {
+    setTextColor(color);
+
+    if (!canvas) return;
+
+    const activeObject = canvas.getActiveObject();
+    if (!activeObject) return;
+
+    if (['i-text', 'textbox', 'text'].includes(activeObject.type ?? '')) {
+      activeObject.set('fill', color);
+      canvas.requestRenderAll();
+      canvas.fire('object:modified', { target: activeObject });
+    }
+  };
+
   // ── Text / Stickers / Delete helpers ───────────────────────────────────
   const handleAddText = () => {
     if (!canvas) return;
@@ -263,7 +291,7 @@ export default function Sidebar({
       originY: 'center',
       fontFamily: 'sans-serif',
       fontSize: 70,
-      fill: '#1e293b',
+      fill: textColor,
       hasBorders: true,
       hasControls: true,
       cornerSize: 12,
@@ -314,7 +342,7 @@ export default function Sidebar({
   return (
     <div className='modern-sidebar'>
       <div className='sidebar-header'>
-        <h2>Dizayn Asboblari</h2>
+        <h2>Dizayn asboblari</h2>
         <p>Professional darajadagi tahrirlash tajribasi.</p>
       </div>
 
@@ -378,13 +406,13 @@ export default function Sidebar({
               {uploadStatus === 'loading' ? (
                 <div className='upload-zone-inner'>
                   <Loader2 size={32} className='spin-icon' />
-                  <p>Yuklanmoqda…</p>
+                  <p>Yuklanmoqda...</p>
                 </div>
               ) : uploadStatus === 'error' ? (
                 <div className='upload-zone-inner'>
                   <AlertCircle size={32} color='#ef4444' />
                   <p className='upload-error-text'>{errorMsg}</p>
-                  <span className='upload-retry'>Qayta urinish ↩</span>
+                  <span className='upload-retry'>Qayta urinish</span>
                 </div>
               ) : imageState && uploadStatus === 'success' ? (
                 <div className='upload-zone-inner'>
@@ -399,7 +427,7 @@ export default function Sidebar({
                     <strong>Rasm tashlang</strong> yoki bosing
                   </p>
                   <span className='upload-hint'>
-                    PNG, JPG, WebP · Max {MAX_FILE_SIZE_MB} MB
+                    PNG, JPG, WebP - eng ko'pi {MAX_FILE_SIZE_MB} MB
                   </span>
                 </div>
               )}
@@ -410,7 +438,7 @@ export default function Sidebar({
               <div className='thumbnail-card'>
                 <img
                   src={imageState.thumbnail}
-                  alt='preview'
+                  alt='Yuklangan rasm'
                   className='thumbnail-img'
                 />
                 <div className='thumbnail-info'>
@@ -449,7 +477,7 @@ export default function Sidebar({
             </div>
 
             <p className='hint-text'>
-              Rasm yuklangandan so'ng Print Area da suring va kattalashtiring.
+              Rasm yuklangandan so'ng bosma hududida suring va kattalashtiring.
             </p>
           </div>
         )}
@@ -458,10 +486,39 @@ export default function Sidebar({
         {activeTab === 'text' && (
           <div className='panel'>
             <button className='action-btn primary' onClick={handleAddText}>
-              <Type size={16} /> Yangi Matn Qo'shish
+              <Type size={16} /> Yangi matn qo'shish
             </button>
+            <div className='mt-4'>
+              <p className='hint-text'>Matn rangi</p>
+              <div className='mt-3 flex flex-wrap items-center gap-2'>
+                <input
+                  type='color'
+                  value={textColor}
+                  onChange={e => applyTextColor(e.target.value)}
+                  className='h-10 w-10 cursor-pointer rounded-xl border border-slate-200 bg-white p-1'
+                  aria-label='Matn rangini tanlash'
+                />
+                {TEXT_COLOR_PRESETS.map(color => (
+                  <button
+                    key={color}
+                    type='button'
+                    onClick={() => applyTextColor(color)}
+                    className='h-8 w-8 rounded-full border-2 transition-transform hover:scale-105'
+                    style={{
+                      backgroundColor: color,
+                      borderColor:
+                        textColor.toLowerCase() === color.toLowerCase()
+                          ? '#0f172a'
+                          : '#ffffff',
+                    }}
+                    aria-label={`Matn rangini ${color} ga o'zgartirish`}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
             <p className='hint-text'>
-              Matnni tahrirlash uchun Print Area ustiga ikki marta bosing.
+              Matnni tahrirlash uchun bosma hududi ustiga ikki marta bosing.
             </p>
           </div>
         )}
@@ -471,18 +528,18 @@ export default function Sidebar({
           <div className='panel'>
             <div className='sticker-grid'>
               {[
-                '⭐',
-                '❤️',
-                '🔥',
-                '☕',
-                '🐱',
-                '🌹',
-                '💻',
-                '🚀',
-                '🎨',
-                '🎵',
-                '🌈',
-                '✨',
+                '\u2B50',
+                '\u2764\uFE0F',
+                '\uD83D\uDD25',
+                '\u2615',
+                '\uD83D\uDC31',
+                '\uD83C\uDF39',
+                '\uD83D\uDCBB',
+                '\uD83D\uDE80',
+                '\uD83C\uDFA8',
+                '\uD83C\uDFB5',
+                '\uD83C\uDF08',
+                '\u2728',
               ].map(emoji => (
                 <button
                   key={emoji}
@@ -500,7 +557,7 @@ export default function Sidebar({
         {activeTab === 'config' && (
           <div className='panel'>
             <div className='config-section'>
-              <h4 className='config-title'>Mug Rangi</h4>
+              <h4 className='config-title'>Krujka rangi</h4>
               <div className='color-palette'>
                 {MUG_COLORS.map(color => (
                   <button
@@ -523,9 +580,9 @@ export default function Sidebar({
             </div>
 
             <div className='config-section'>
-              <h4 className='config-title'>Tekstura Sozlamalari</h4>
+              <h4 className='config-title'>To'qima sozlamalari</h4>
               <label className='slider-label'>
-                <span>Repeat X: {textureRepeat.x.toFixed(2)}</span>
+                <span>Takrorlash X: {textureRepeat.x.toFixed(2)}</span>
                 <input
                   type='range'
                   min='0.1'
@@ -541,7 +598,7 @@ export default function Sidebar({
                 />
               </label>
               <label className='slider-label'>
-                <span>Offset X: {textureOffset.x.toFixed(2)}</span>
+                <span>Siljitish X: {textureOffset.x.toFixed(2)}</span>
                 <input
                   type='range'
                   min='-1'
@@ -563,7 +620,7 @@ export default function Sidebar({
         {/* ── Global delete ─────────────────────────────────────── */}
         <div className='global-actions'>
           <button className='action-btn danger' onClick={deleteSelected}>
-            <Trash2 size={16} /> Tanlanganni O'chirish
+            <Trash2 size={16} /> Tanlanganni o'chirish
           </button>
         </div>
       </div>

@@ -6,8 +6,8 @@ const CalendarWrapper = dynamic(
 );
 
 export const metadata = {
-    title: "Create your Desk Calendar | Zazzle Clone",
-    description: "Customize your own Desk Calendar.",
+    title: 'Stol kalendari dizayni | Zazzle Uzbekistan',
+    description: "Stol kalendari uchun dizayn tayyorlang va ko'rinishini tekshiring.",
 };
 
 export default function CalendarPage() {

@@ -17,6 +17,10 @@ import {
 } from 'three';
 import { fabric } from 'fabric';
 import { Camera } from 'lucide-react';
+import {
+  MUG_PRINT_COVERAGE,
+  MUG_PRINT_GAP_RATIO,
+} from './mugPrintConstants';
 
 interface MugModelProps {
   fabricCanvas: fabric.Canvas | null;
@@ -76,8 +80,8 @@ const ProceduralMug = ({
   const tubeGeo = useMemo(() => new TorusGeometry(1.2, 0.3, 16, 32), []);
 
   // Print Decal geometry (Partial wrap, slightly larger, slightly shorter to leave the rim alone)
-  const PRINT_COVERAGE = 0.85;
-  const GAP = 1.0 - PRINT_COVERAGE;
+  const GAP = MUG_PRINT_GAP_RATIO;
+  const PRINT_COVERAGE = MUG_PRINT_COVERAGE;
 
   // Gap size in radians is GAP * 2 * PI. Half gap is GAP * PI.
   // The printed geometry should START at: PI/2 + GAP*PI.
@@ -125,12 +129,8 @@ const ProceduralMug = ({
       tex.wrapT = ClampToEdgeWrapping;
 
       // The Fabric canvas contains the FULL 100% circumference, including the red margins.
-      // But our outer geometry only covers 85% of the circumference.
-      // We need to map only the middle 85% of the image onto the geometry.
-      // So we start reading the texture from U = 0.075 (which is GAP / 2).
-      // And we squeeze the texture so the geometry consumes exactly 85% of the image.
-      const PRINT_COVERAGE = 0.85;
-      const GAP = 1.0 - PRINT_COVERAGE;
+      // We map exactly the printable band from PrintEditor into the decal geometry.
+      // GAP is derived from PrintEditor margins, so 2D and 3D stay in sync.
       tex.offset.set(textureOffset.x + GAP / 2, textureOffset.y);
       tex.repeat.set(textureRepeat.x * PRINT_COVERAGE, textureRepeat.y || 1);
 

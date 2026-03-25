@@ -2,6 +2,13 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
+const usePolling =
+  process.env.VITE_USE_POLLING === 'true' ||
+  process.env.CHOKIDAR_USEPOLLING === 'true';
+const pollInterval = Number(
+  process.env.VITE_POLL_INTERVAL ?? process.env.CHOKIDAR_INTERVAL ?? 300
+);
+
 function resolveManualChunk(id: string): string | undefined {
   const normalizedId = id.split(path.sep).join('/');
 
@@ -103,6 +110,12 @@ export default defineConfig({
   server: {
     allowedHosts: ['frontend', 'localhost', '127.0.0.1'],
     port: 3000,
+    watch: usePolling
+      ? {
+          usePolling: true,
+          interval: Number.isFinite(pollInterval) ? pollInterval : 300,
+        }
+      : undefined,
   },
   preview: {
     port: 3000,

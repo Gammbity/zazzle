@@ -145,7 +145,7 @@ function generateShading(w, h) {
       val += (0.5 - ny) * 20;
 
       // Subtle secondary highlight at ~60%
-      const spec2Dist = Math.abs(nx - 0.60);
+      const spec2Dist = Math.abs(nx - 0.6);
       if (spec2Dist < 0.05) {
         val += (1 - spec2Dist / 0.05) * 25;
       }
@@ -202,7 +202,10 @@ console.log('  ✔ mask.png');
 fs.writeFileSync(path.join(outDir, 'shading.png'), generateShading(W, H));
 console.log('  ✔ shading.png');
 
-fs.writeFileSync(path.join(outDir, 'displacement.png'), generateDisplacement(W, H));
+fs.writeFileSync(
+  path.join(outDir, 'displacement.png'),
+  generateDisplacement(W, H)
+);
 console.log('  ✔ displacement.png');
 
 console.log('Done! Place real PSD-derived assets here for production quality.');

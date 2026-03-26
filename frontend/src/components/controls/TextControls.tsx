@@ -1,5 +1,3 @@
-'use client';
-
 import { cn } from '@/lib/utils';
 import type { TextLayer } from '@/types/layer';
 import { FONT_FAMILIES } from '@/types/layer';

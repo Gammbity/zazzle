@@ -1,5 +1,3 @@
-'use client';
-
 import {
   useRef,
   useCallback,
@@ -9,7 +7,7 @@ import {
   useImperativeHandle,
   useMemo,
 } from 'react';
-import { Stage, Layer as KonvaLayer, Rect, Text, Line } from 'react-konva';
+import { Stage, Layer as KonvaLayer, Rect, Line } from 'react-konva';
 import type Konva from 'konva';
 import type { Layer, ImageLayer, TextLayer, StickerLayer } from '@/types/layer';
 import type { PrintArea } from '@/types/product';
@@ -203,7 +201,9 @@ const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(
       },
     });
     useImperativeHandle(ref, () => handleRef.current);
-    useEffect(() => { onReady?.(handleRef.current); }, []); // eslint-disable-line
+    useEffect(() => {
+      onReady?.(handleRef.current);
+    }, []); // eslint-disable-line
 
     // ── Clear transformer when selection is removed ───────────────────────
     useEffect(() => {

@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useRef, useState } from 'react';
 import AppImage from '@/components/AppImage';
 import { cn } from '@/lib/utils';

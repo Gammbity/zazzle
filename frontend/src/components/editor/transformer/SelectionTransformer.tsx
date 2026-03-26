@@ -1,5 +1,3 @@
-'use client';
-
 import { forwardRef } from 'react';
 import { Transformer } from 'react-konva';
 import type Konva from 'konva';

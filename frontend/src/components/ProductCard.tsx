@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useState } from 'react';
 import { ArrowUpRight, Clock3 } from 'lucide-react';
 import AppImage from '@/components/AppImage';

@@ -6,12 +6,10 @@ export default function NotFoundPage() {
       <p className='text-sm font-semibold uppercase tracking-[0.35em] text-sky-700'>
         404
       </p>
-      <h1 className='text-4xl font-bold text-slate-900'>
-        Sahifa topilmadi
-      </h1>
+      <h1 className='text-4xl font-bold text-slate-900'>Sahifa topilmadi</h1>
       <p className='max-w-md text-base leading-7 text-slate-600'>
-        Kiritilgan manzil mavjud emas yoki yangi SPA oqimiga hali
-        ko'chirilmagan bo'lishi mumkin.
+        Kiritilgan manzil mavjud emas yoki yangi SPA oqimiga hali ko'chirilmagan
+        bo'lishi mumkin.
       </p>
       <Link
         to='/'

@@ -1,5 +1,3 @@
-'use client';
-
 import AppImage from '@/components/AppImage';
 import { STICKER_ASSETS, type StickerAsset } from '@/types/layer';
 import { cn } from '@/lib/utils';

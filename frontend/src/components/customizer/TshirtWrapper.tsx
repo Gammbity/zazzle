@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import TshirtViewer from './TshirtViewer';
 import TshirtPrintEditor from './TshirtPrintEditor';

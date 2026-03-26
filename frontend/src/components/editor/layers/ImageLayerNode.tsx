@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Image as KonvaImage } from 'react-konva';
 import type Konva from 'konva';
@@ -54,6 +52,24 @@ export default function ImageLayerNode({
   const shapeRef = useRef<Konva.Image>(null);
   const image = useImage(layer.src);
 
+  const readNodeAttrs = useCallback(
+    (node: Konva.Image): Partial<ImageLayer> => {
+      const scaleX = node.scaleX();
+      const scaleY = node.scaleY();
+
+      return {
+        x: node.x(),
+        y: node.y(),
+        width: node.width(),
+        height: node.height(),
+        scaleX,
+        scaleY,
+        rotation: node.rotation(),
+      };
+    },
+    []
+  );
+
   // Attach transformer only after the image element has loaded
   useEffect(() => {
     if (isSelected && shapeRef.current && transformerRef.current && image) {
@@ -93,19 +109,17 @@ export default function ImageLayerNode({
       dragBoundFunc={handleDragBound}
       onMouseDown={onSelect}
       onTouchStart={onSelect}
+      onDragMove={e => onChange({ x: e.target.x(), y: e.target.y() })}
       onDragEnd={e => onCommit({ x: e.target.x(), y: e.target.y() })}
+      onTransform={() => {
+        const node = shapeRef.current;
+        if (!node) return;
+        onChange(readNodeAttrs(node));
+      }}
       onTransformEnd={() => {
         const node = shapeRef.current;
         if (!node) return;
-        onCommit({
-          x: node.x(),
-          y: node.y(),
-          width: node.width(),
-          height: node.height(),
-          scaleX: node.scaleX(),
-          scaleY: node.scaleY(),
-          rotation: node.rotation(),
-        });
+        onCommit(readNodeAttrs(node));
       }}
     />
   );

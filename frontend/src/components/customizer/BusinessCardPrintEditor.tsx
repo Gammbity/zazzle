@@ -1,5 +1,3 @@
-'use client';
-
 import { fabric } from 'fabric';
 import SingleSurfacePrintEditor from './SingleSurfacePrintEditor';
 import { businessCardCustomizerConfig } from './single-surface-presets';

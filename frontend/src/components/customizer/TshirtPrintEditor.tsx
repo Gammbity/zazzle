@@ -1,7 +1,11 @@
-'use client';
-
 import { useEffect, useRef } from 'react';
 import { fabric } from 'fabric';
+
+type EditableFabricObject = fabric.Object & { isEditing?: boolean };
+type SavedCanvasState = Record<
+  'front' | 'back',
+  ReturnType<fabric.Canvas['toJSON']> | null
+>;
 
 interface TshirtPrintEditorProps {
   onCanvasReady: (canvas: fabric.Canvas) => void;
@@ -21,7 +25,7 @@ export default function TshirtPrintEditor({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<fabric.Canvas | null>(null);
   // Store JSON states for front and back designs
-  const savedState = useRef<Record<string, any>>({ front: null, back: null });
+  const savedState = useRef<SavedCanvasState>({ front: null, back: null });
   const prevViewSide = useRef(viewSide);
 
   const exportTexture = (canvas: fabric.Canvas, side: 'front' | 'back') => {
@@ -94,7 +98,9 @@ export default function TshirtPrintEditor({
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const active = canvas.getActiveObjects();
         if (active.length) {
-          const isEditing = active.some(obj => (obj as any).isEditing);
+          const isEditing = active.some(
+            obj => (obj as EditableFabricObject).isEditing
+          );
           if (!isEditing) {
             e.preventDefault();
             canvas.discardActiveObject();

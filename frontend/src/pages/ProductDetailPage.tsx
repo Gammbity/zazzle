@@ -1,5 +1,3 @@
-'use client';
-
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BadgeCheck, Clock3, PackageCheck } from 'lucide-react';
 import type { Product } from '@/lib/products/catalog';
@@ -9,6 +7,7 @@ import ProductSurfacePreviewGrid from '@/components/ProductSurfacePreviewGrid';
 import { Link } from '@/lib/router';
 import { renderSurfacePreview } from '@/lib/editor/renderSurfacePreview';
 import { useEditorStore } from '@/store/editorStore';
+import ProductPurchasePanel from '@/components/commerce/ProductPurchasePanel';
 
 const EditorPanel = lazy(() => import('@/components/editor/EditorPanel'));
 const MugRealisticPreview = lazy(
@@ -31,9 +30,6 @@ function EditorSkeleton() {
 
 export default function ProductDetailPage({ product }: { product: Product }) {
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
-  const [cylindricalCompositeUrl, setCylindricalCompositeUrl] = useState<
-    string | null
-  >(null);
   const [surfacePreviewUrls, setSurfacePreviewUrls] = useState<
     Record<string, string | null>
   >({});
@@ -165,12 +161,12 @@ export default function ProductDetailPage({ product }: { product: Product }) {
                 {isMug && previewDataUrl ? (
                   <MugRealisticPreview
                     designDataUrl={previewDataUrl}
-                    onCompositeReady={setCylindricalCompositeUrl}
+                    onCompositeReady={() => undefined}
                   />
                 ) : isPen && previewDataUrl ? (
                   <PenRealisticPreview
                     designDataUrl={previewDataUrl}
-                    onCompositeReady={setCylindricalCompositeUrl}
+                    onCompositeReady={() => undefined}
                   />
                 ) : isTshirt ? (
                   <ProductSurfacePreviewGrid
@@ -340,6 +336,11 @@ export default function ProductDetailPage({ product }: { product: Product }) {
                 />
               </Suspense>
             </div>
+
+            <ProductPurchasePanel
+              product={product}
+              previewDataUrl={previewDataUrl}
+            />
 
             {!isTshirt && (
               <div className='rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60'>

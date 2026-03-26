@@ -1,3 +1,6 @@
+import logging
+from decimal import Decimal
+
 from django.db import models, transaction
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -40,6 +43,71 @@ from .services import (
     is_operator,
     validate_status_transition,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _build_order_items(order, cart_items):
+    order_items = []
+    subtotal = Decimal('0.00')
+    item_count = 0
+
+    for cart_item in cart_items:
+        variant = cart_item.draft.product_variant
+        total_price = cart_item.total_price
+        subtotal += total_price
+        item_count += cart_item.quantity
+
+        order_items.append(
+            OrderItem(
+                order=order,
+                product_name=cart_item.product_name,
+                product_type=variant.product_type.name,
+                product_sku=getattr(variant, 'sku', ''),
+                size=variant.size or '',
+                color=variant.color or '',
+                design=None,
+                design_title=cart_item.draft.name or '',
+                design_file_url='',
+                unit_price=cart_item.unit_price,
+                quantity=cart_item.quantity,
+                total_price=total_price,
+                print_specifications={
+                    'draft_uuid': str(cart_item.draft.uuid),
+                    'editor_state': cart_item.draft.editor_state,
+                },
+            )
+        )
+
+    OrderItem.objects.bulk_create(order_items)
+    return subtotal, item_count
+
+
+def _parse_callback_success(payload) -> bool:
+    status_value = str(
+        payload.get('status') or payload.get('payment_status') or ''
+    ).strip().lower()
+    if status_value:
+        if status_value in {'paid', 'success', 'succeeded', 'completed', 'ok'}:
+            return True
+        if status_value in {'failed', 'failure', 'cancelled', 'canceled', 'error'}:
+            return False
+
+    success_flag = payload.get('success', True)
+    if isinstance(success_flag, bool):
+        return success_flag
+    if isinstance(success_flag, (int, float)):
+        return success_flag != 0
+    if isinstance(success_flag, str):
+        return success_flag.strip().lower() in {
+            '1',
+            'true',
+            'yes',
+            'ok',
+            'paid',
+            'success',
+        }
+    return bool(success_flag)
 
 
 class OrderListView(generics.ListAPIView):
@@ -135,16 +203,19 @@ def checkout(request):
     Simplified checkout endpoint.
     Creates an order from the current user's cart and stores only contact info and optional note.
     """
-    from apps.cart.models import Cart  # Imported here to avoid circular imports.
+    from apps.cart.models import Cart
+    from apps.cart.services import get_user_cart_queryset
 
     serializer = CheckoutSerializer(data=request.data, context={'request': request})
     serializer.is_valid(raise_exception=True)
 
     try:
         with transaction.atomic():
-            cart = Cart.objects.select_related('customer').prefetch_related(
-                'items__draft__product_variant'
-            ).get(customer=request.user)
+            cart = get_user_cart_queryset(
+                request.user,
+                include_items=True,
+                include_assets=True,
+            ).get()
 
             if cart.is_empty:
                 return Response(
@@ -165,48 +236,34 @@ def checkout(request):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
+            shipping_method = serializer.validated_data.get('shipping_method')
+
             order = Order.objects.create(
                 customer=request.user,
-                shipping_name=serializer.validated_data['contact_name'],
-                shipping_email=serializer.validated_data['contact_email'],
-                shipping_phone=serializer.validated_data['contact_phone'],
-                shipping_address='',
-                shipping_city='',
-                shipping_state='',
-                shipping_postal_code='',
-                shipping_country='Uzbekistan',
-                customer_notes=serializer.validated_data.get('note', ''),
+                shipping_name=serializer.validated_data['shipping_name'],
+                shipping_email=serializer.validated_data['shipping_email'],
+                shipping_phone=serializer.validated_data['shipping_phone'],
+                shipping_address=serializer.validated_data['shipping_address'],
+                shipping_city=serializer.validated_data['shipping_city'],
+                shipping_state=serializer.validated_data['shipping_state'],
+                shipping_postal_code=serializer.validated_data['shipping_postal_code'],
+                shipping_country=serializer.validated_data['shipping_country'],
+                customer_notes=serializer.validated_data['customer_notes'],
+                shipping_method=shipping_method,
                 status='PAYMENT_PENDING',
             )
 
-            from apps.products.models import ProductVariant
-
-            for cart_item in cart_items:
-                variant: ProductVariant = cart_item.draft.product_variant
-                OrderItem.objects.create(
-                    order=order,
-                    product_name=cart_item.product_name,
-                    product_type=variant.product_type.name,
-                    product_sku=getattr(variant, 'sku', ''),
-                    size=variant.size or '',
-                    color=variant.color or '',
-                    design=None,
-                    design_title=cart_item.draft.name or '',
-                    design_file_url='',
-                    unit_price=cart_item.unit_price,
-                    quantity=cart_item.quantity,
-                    total_price=cart_item.total_price,
-                    print_specifications={
-                        'draft_uuid': str(cart_item.draft.uuid),
-                        'editor_state': cart_item.draft.editor_state,
-                    },
-                )
-
-            order.subtotal = sum(item.total_price for item in order.items.all())
+            order.subtotal, item_count = _build_order_items(order, cart_items)
             order.tax_amount = 0
-            order.shipping_cost = 0
+            if shipping_method:
+                order.shipping_cost = shipping_method.calculate_cost(
+                    item_count=item_count,
+                    country=order.shipping_country,
+                ) or 0
+            else:
+                order.shipping_cost = 0
             order.discount_amount = 0
-            order.total_amount = order.subtotal
+            order.total_amount = order.subtotal + order.shipping_cost
             order.save(
                 update_fields=[
                     'subtotal',
@@ -214,6 +271,7 @@ def checkout(request):
                     'shipping_cost',
                     'discount_amount',
                     'total_amount',
+                    'updated_at',
                 ]
             )
 
@@ -221,6 +279,7 @@ def checkout(request):
 
             return Response(
                 {
+                    'order': OrderDetailSerializer(order).data,
                     'order_number': order.order_number,
                     'order_id': order.id,
                     'total_amount': order.total_amount,
@@ -233,10 +292,11 @@ def checkout(request):
             {'error': 'Cart is empty.'},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    except Exception as exc:
+    except Exception:
+        logger.exception('Checkout failed for user %s', request.user.pk)
         return Response(
-            {'error': f'Checkout failed: {exc}'},
-            status=status.HTTP_400_BAD_REQUEST,
+            {'error': 'Checkout could not be completed right now.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
@@ -359,7 +419,7 @@ def payment_init(request):
 
         if created and order.status == 'NEW':
             order.status = 'PAYMENT_PENDING'
-            order.save(update_fields=['status'])
+            order.save(update_fields=['status', 'updated_at'])
 
         init_result = init_payment_for_provider(transaction_obj)
 
@@ -398,7 +458,7 @@ def payment_callback(request, provider: str):
 
     payload = request.data or {}
     external_id = str(payload.get('external_id') or payload.get('transaction_id') or '')
-    success_flag = payload.get('success', True)
+    success_flag = _parse_callback_success(payload)
 
     if not external_id:
         return Response(
@@ -433,7 +493,7 @@ def payment_callback(request, provider: str):
         if success_flag:
             tx.status = PaymentTransaction.Status.SUCCESS
             tx.order.status = 'PAID'
-            tx.order.save(update_fields=['status'])
+            tx.order.save(update_fields=['status', 'updated_at'])
         else:
             tx.status = PaymentTransaction.Status.FAILED
 

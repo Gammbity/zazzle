@@ -14,10 +14,9 @@ A modern, production-ready print-on-demand platform built specifically for the U
 - **Stripe** for payment processing
 
 ### Frontend
-- **Next.js 14+** with App Router
+- **React 18 + Vite 5** single-page application
 - **TypeScript** for type safety
 - **Tailwind CSS** for styling
-- **React Query** for data fetching
 - **Zustand** for state management
 
 ### Infrastructure
@@ -32,25 +31,24 @@ A modern, production-ready print-on-demand platform built specifically for the U
 
 ## 🏗️ Project Structure
 
-```
+```text
 zazzle/
-├── backend/                    # Django API backend
-│   ├── apps/
-│   │   ├── users/             # User management
-│   │   ├── products/          # Product catalog
-│   │   ├── designs/           # Custom designs
-│   │   └── orders/            # Order processing
-│   ├── zazzle/               # Django settings
-│   └── requirements files
-├── frontend/                  # Next.js frontend
-│   ├── src/
-│   │   ├── app/              # Next.js app router
-│   │   ├── components/       # React components
-│   │   ├── lib/             # Utilities & config
-│   │   └── types/           # TypeScript definitions
-└── infra/                    # Infrastructure
-    ├── nginx/               # Nginx config
-    └── scripts/            # Deployment scripts
+|-- backend/                    # Django API backend
+|   |-- apps/
+|   |   |-- users/             # User management
+|   |   |-- products/          # Product catalog
+|   |   |-- designs/           # Custom designs
+|   |   `-- orders/            # Order processing
+|   |-- zazzle/                # Django settings
+|   `-- requirements files
+|-- frontend/                  # React frontend
+|   |-- src/
+|   |   |-- components/        # React components
+|   |   |-- lib/               # Utilities & config
+|   |   `-- types/             # TypeScript definitions
+`-- infra/                     # Infrastructure
+    |-- nginx/                 # Nginx config
+    `-- scripts/               # Deployment scripts
 ```
 
 ## 🚀 Quick Start
@@ -264,3 +262,5 @@ POST /api/orders/<id>/cancel/
 ---
 
 **Built with ❤️ for the Uzbekistan market**
+
+

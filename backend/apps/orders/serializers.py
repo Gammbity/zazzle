@@ -93,11 +93,12 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         
     def get_customer(self, obj):
         """Get customer information."""
+        profile = getattr(obj.customer, 'profile', None)
         return {
             'id': obj.customer.id,
             'email': obj.customer.email,
             'full_name': obj.customer.get_full_name(),
-            'phone_number': obj.customer.phone_number,
+            'phone_number': getattr(profile, 'phone_number', ''),
         }
 
 
@@ -178,12 +179,43 @@ class CouponValidationSerializer(serializers.Serializer):
 
 
 class CheckoutSerializer(serializers.Serializer):
-    """Serializer for simplified checkout process (no delivery)."""
-    
+    """Serializer for the SPA checkout flow."""
+
     contact_name = serializers.CharField(max_length=100)
     contact_email = serializers.EmailField()
     contact_phone = serializers.CharField(max_length=20)
     note = serializers.CharField(required=False, allow_blank=True)
+    shipping_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    shipping_email = serializers.EmailField(required=False, allow_blank=True)
+    shipping_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    shipping_address = serializers.CharField(required=False, allow_blank=True)
+    shipping_city = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    shipping_state = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    shipping_postal_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    shipping_country = serializers.CharField(
+        max_length=100,
+        required=False,
+        allow_blank=True,
+        default='Uzbekistan',
+    )
+    customer_notes = serializers.CharField(required=False, allow_blank=True)
+    shipping_method = serializers.PrimaryKeyRelatedField(
+        queryset=ShippingMethod.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
+
+    def validate(self, attrs):
+        attrs['shipping_name'] = attrs.get('shipping_name') or attrs['contact_name']
+        attrs['shipping_email'] = attrs.get('shipping_email') or attrs['contact_email']
+        attrs['shipping_phone'] = attrs.get('shipping_phone') or attrs['contact_phone']
+        attrs['shipping_address'] = attrs.get('shipping_address', '')
+        attrs['shipping_city'] = attrs.get('shipping_city', '')
+        attrs['shipping_state'] = attrs.get('shipping_state', '')
+        attrs['shipping_postal_code'] = attrs.get('shipping_postal_code', '')
+        attrs['shipping_country'] = attrs.get('shipping_country') or 'Uzbekistan'
+        attrs['customer_notes'] = attrs.get('customer_notes') or attrs.get('note', '')
+        return attrs
 
 
 class OrderStatusUpdateSerializer(serializers.ModelSerializer):

@@ -1,5 +1,3 @@
-'use client';
-
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei/core/ContactShadows';
@@ -72,14 +70,14 @@ function PenModel({ designTexture }: { designTexture: Texture | null }) {
 
       <mesh position={[-4.38, 0, 0]} castShadow>
         <sphereGeometry args={[0.055, 28, 28]} />
-        <meshStandardMaterial
-          color='#9da7b3'
-          roughness={0.16}
-          metalness={1}
-        />
+        <meshStandardMaterial color='#9da7b3' roughness={0.16} metalness={1} />
       </mesh>
 
-      <mesh position={[3.28, 0.02, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh
+        position={[3.28, 0.02, 0]}
+        rotation={[0, 0, Math.PI / 2]}
+        castShadow
+      >
         <cylinderGeometry args={[0.36, 0.36, 2.32, 96, 1]} />
         <meshPhysicalMaterial
           color='#fcfcfb'
@@ -90,12 +88,24 @@ function PenModel({ designTexture }: { designTexture: Texture | null }) {
         />
       </mesh>
 
-      <mesh position={[2.08, 0.01, 0]} rotation={[0, Math.PI / 2, 0]} castShadow>
+      <mesh
+        position={[2.08, 0.01, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        castShadow
+      >
         <torusGeometry args={[0.36, 0.012, 20, 72]} />
-        <meshStandardMaterial color='#d7dce2' roughness={0.42} metalness={0.1} />
+        <meshStandardMaterial
+          color='#d7dce2'
+          roughness={0.42}
+          metalness={0.1}
+        />
       </mesh>
 
-      <mesh position={[4.55, 0.14, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh
+        position={[4.55, 0.14, 0]}
+        rotation={[0, 0, Math.PI / 2]}
+        castShadow
+      >
         <cylinderGeometry args={[0.17, 0.17, 0.52, 40, 1]} />
         <meshPhysicalMaterial
           color='#f3f4f6'
@@ -302,13 +312,14 @@ export default function PenRealisticPreview({
           </button>
         </div>
 
-        <div className='absolute bottom-4 left-4 z-10 max-w-[18rem] rounded-2xl border border-white/80 bg-white/88 px-4 py-3 text-left shadow-lg shadow-slate-200/70 backdrop-blur'>
+        <div className='bg-white/88 absolute bottom-4 left-4 z-10 max-w-[18rem] rounded-2xl border border-white/80 px-4 py-3 text-left shadow-lg shadow-slate-200/70 backdrop-blur'>
           <p className='text-xs font-semibold uppercase tracking-[0.22em] text-sky-700'>
             3D / 360 preview
           </p>
           <p className='mt-1 text-sm leading-5 text-slate-600'>
             Gorizontal suring `Y`, vertikal suring `X` o&apos;qida aylansin.
-            Dizayn barrel bo&apos;ylab to&apos;liq o&apos;ralgan holda ko&apos;rinadi.
+            Dizayn barrel bo&apos;ylab to&apos;liq o&apos;ralgan holda
+            ko&apos;rinadi.
           </p>
         </div>
 

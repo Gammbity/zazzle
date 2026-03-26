@@ -1,5 +1,3 @@
-'use client';
-
 import type { Layer } from '@/types/layer';
 import { cn } from '@/lib/utils';
 

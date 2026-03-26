@@ -38,9 +38,9 @@ urlpatterns = [
     
     # API
     path('api/', include(api_urlpatterns)),
-    path('api/checkout', order_views.checkout, name='api-checkout'),
-    path('api/payments/init', order_views.payment_init, name='api-payment-init'),
-    path('api/payments/<str:provider>/callback', order_views.payment_callback, name='api-payment-callback'),
+    path('api/checkout/', order_views.checkout, name='api-checkout'),
+    path('api/payments/init/', order_views.payment_init, name='api-payment-init'),
+    path('api/payments/<str:provider>/callback/', order_views.payment_callback, name='api-payment-callback'),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

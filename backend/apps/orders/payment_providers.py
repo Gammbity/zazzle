@@ -40,6 +40,9 @@ def init_payment_for_provider(transaction: PaymentTransaction) -> PaymentInitRes
     """
     Entry point for provider-specific payment initialization.
     """
+    transaction.status = PaymentTransaction.Status.INITIATED
+    transaction.external_id = f"{transaction.provider}-{transaction.id}"
+    transaction.save(update_fields=['status', 'external_id', 'updated_at'])
     payload = _build_dummy_payload(transaction)
     return PaymentInitResult(transaction=transaction, provider_payload=payload)
 

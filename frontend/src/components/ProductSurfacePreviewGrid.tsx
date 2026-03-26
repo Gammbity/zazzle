@@ -1,5 +1,3 @@
-'use client';
-
 import { cn } from '@/lib/utils';
 import AppImage from '@/components/AppImage';
 import type { OverlayBox, ProductAngle } from '@/lib/products/catalog';

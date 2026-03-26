@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef, useEffect, useCallback } from 'react';
 import { Text } from 'react-konva';
 import type Konva from 'konva';

@@ -1,5 +1,3 @@
-'use client';
-
 import { fabric } from 'fabric';
 import SingleSurfacePrintEditor from './SingleSurfacePrintEditor';
 import { calendarCustomizerConfig } from './single-surface-presets';

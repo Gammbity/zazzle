@@ -12,6 +12,14 @@ class CartItemSerializer(serializers.ModelSerializer):
     draft_uuid = serializers.UUIDField(source='draft.uuid', read_only=True)
     draft_name = serializers.CharField(source='draft.name', read_only=True)
     product_name = serializers.CharField(read_only=True)
+    product_category = serializers.CharField(
+        source='draft.product_type.category',
+        read_only=True,
+    )
+    product_type_name = serializers.CharField(
+        source='draft.product_type.name',
+        read_only=True,
+    )
     variant_display = serializers.CharField(read_only=True)
     total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
@@ -22,6 +30,8 @@ class CartItemSerializer(serializers.ModelSerializer):
             'draft_uuid',
             'draft_name',
             'product_name',
+            'product_category',
+            'product_type_name',
             'variant_display',
             'quantity',
             'unit_price',
@@ -45,6 +55,30 @@ class CartItemSerializer(serializers.ModelSerializer):
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
     total_items = serializers.IntegerField(read_only=True)
+    subtotal = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+        source='total_amount',
+    )
+    shipping_cost = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+        default='0.00',
+    )
+    tax_amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+        default='0.00',
+    )
+    discount_amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+        default='0.00',
+    )
     total_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
@@ -52,6 +86,10 @@ class CartSerializer(serializers.ModelSerializer):
         fields = [
             'uuid',
             'total_items',
+            'subtotal',
+            'shipping_cost',
+            'tax_amount',
+            'discount_amount',
             'total_amount',
             'is_empty',
             'items',
@@ -74,4 +112,8 @@ class CartItemCreateSerializer(serializers.Serializer):
 
         attrs['draft'] = draft
         return attrs
+
+
+class CartItemUpdateSerializer(serializers.Serializer):
+    quantity = serializers.IntegerField(min_value=0)
 

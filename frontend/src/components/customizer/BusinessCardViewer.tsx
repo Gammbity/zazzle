@@ -1,5 +1,3 @@
-'use client';
-
 import SingleSurfaceViewer from './SingleSurfaceViewer';
 import { businessCardCustomizerConfig } from './single-surface-presets';
 

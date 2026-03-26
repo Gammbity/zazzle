@@ -21,7 +21,7 @@ This guide covers the development setup, architecture, and best practices for th
 ```
 zazzle/
 ├── backend/           # Django REST API
-├── frontend/          # Next.js application
+├── frontend/          # React + Vite application
 ├── infra/            # Infrastructure configs
 ├── docs/             # Documentation
 ├── docker-compose.yml
@@ -40,11 +40,10 @@ zazzle/
 - Stripe for payments
 
 **Frontend:**
-- Next.js 14+ with App Router
+- React 18 + Vite 5 SPA
 - TypeScript for type safety
 - Tailwind CSS for styling
-- React Query for API state management
-- Zustand for client state management
+- - Zustand for client state management
 
 **Infrastructure:**
 - Docker and Docker Compose
@@ -223,17 +222,16 @@ coverage report
 
 ### Project Structure
 
-```
+```text
 frontend/
-├── src/
-│   ├── app/          # Next.js App Router pages
-│   ├── components/   # Reusable components
-│   ├── lib/          # Utilities and configurations
-│   ├── types/        # TypeScript type definitions
-│   └── styles/       # Global styles
-├── public/           # Static assets
-├── package.json
-└── Dockerfile
+|-- src/
+|   |-- components/   # Reusable components
+|   |-- lib/          # Utilities and configurations
+|   |-- types/        # TypeScript type definitions
+|   `-- styles/       # Global styles
+|-- public/           # Static assets
+|-- package.json
+`-- Dockerfile
 ```
 
 ### Component Development
@@ -314,7 +312,7 @@ export const useCartStore = create<CartStore>()(
 ### API Integration
 
 ```tsx
-// src/lib/api.ts
+// src/lib/api-client.ts
 import axios from 'axios';
 import { API_CONFIG } from './constants';
 
@@ -575,8 +573,8 @@ make reset-db
 rm -rf node_modules package-lock.json
 npm install
 
-# Clear Next.js cache
-rm -rf .next
+# Clear Vite cache and build output
+rm -rf node_modules/.vite dist
 ```
 
 **Permission Issues:**
@@ -614,3 +612,5 @@ For more detailed information, refer to:
 - [API Documentation](API.md)
 - [Deployment Guide](DEPLOYMENT.md)
 - Individual app README files
+
+

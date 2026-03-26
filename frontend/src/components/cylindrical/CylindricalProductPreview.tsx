@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { composeMugPreview, loadImage } from '@/lib/render/mugRenderer';
 import { getProductSurface } from '@/lib/products/surfaces';

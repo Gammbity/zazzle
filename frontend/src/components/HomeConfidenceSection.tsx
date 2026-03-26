@@ -1,6 +1,10 @@
-'use client';
-
-import { Clock3, MousePointerSquareDashed, ShieldCheck, Sparkles, Upload } from 'lucide-react';
+import {
+  Clock3,
+  MousePointerSquareDashed,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+} from 'lucide-react';
 import { HOME_BENEFITS, HOME_STEPS } from '@/lib/products/content';
 
 const STEP_ICONS = [Upload, MousePointerSquareDashed, Sparkles] as const;

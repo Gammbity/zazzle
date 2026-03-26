@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef } from 'react';
 import { Camera } from 'lucide-react';
 import type { SingleSurfaceViewerConfig } from './single-surface-presets';

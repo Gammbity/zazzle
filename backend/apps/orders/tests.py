@@ -130,6 +130,35 @@ class PaymentIdempotencyTests(TestCase):
         self.assertEqual(tx.status, PaymentTransaction.Status.SUCCESS)
         self.assertEqual(self.order.status, 'PAID')
 
+    def test_payment_callback_treats_false_string_as_failure(self):
+        tx = PaymentTransaction.objects.create(
+            order=self.order,
+            provider=PaymentTransaction.Providers.CLICK,
+            amount_uzs=self.order.total_amount,
+            currency='UZS',
+            status=PaymentTransaction.Status.NEW,
+            external_id='ext-false',
+            idempotency_key='idem-false',
+        )
+
+        callback_url = reverse(
+            'api-payment-callback',
+            kwargs={'provider': PaymentTransaction.Providers.CLICK},
+        )
+
+        response = self.client.post(
+            callback_url,
+            data={'external_id': 'ext-false', 'success': 'false'},
+            format='json',
+        )
+
+        tx.refresh_from_db()
+        self.order.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(tx.status, PaymentTransaction.Status.FAILED)
+        self.assertEqual(self.order.status, 'PAYMENT_PENDING')
+
 
 class ProductionWorkflowPermissionTests(TestCase):
     def setUp(self):

@@ -18,14 +18,13 @@ zazzle/
 │   ├── pyproject.toml            # Python dependencies
 │   ├── Dockerfile               # Development container
 │   └── Dockerfile.prod          # Production container
-├── 📂 frontend/                   # Next.js 14 application
+├── 📂 frontend/                   # React + Vite application
 │   ├── 📂 src/                   # Source code
-│   │   ├── 📂 app/               # App Router pages & layouts
 │   │   ├── 📂 lib/               # Utilities & configurations
 │   │   └── 📂 types/             # TypeScript definitions
 │   ├── package.json             # Node.js dependencies
 │   ├── tailwind.config.js       # Tailwind CSS configuration
-│   ├── next.config.js           # Next.js configuration
+│   ├── vite.config.ts           # Vite configuration
 │   └── Dockerfile.prod          # Production container
 ├── 📂 infra/                     # Infrastructure & deployment
 │   ├── 📂 nginx/                # Nginx reverse proxy
@@ -55,13 +54,13 @@ zazzle/
 - ✅ Admin interface for platform management
 - ✅ Comprehensive API with serializers & viewsets
 
-**Frontend (Next.js 14 + TypeScript):**
-- ✅ App Router architecture setup
+**Frontend (React + Vite + TypeScript):**
+- ✅ SPA routing architecture setup
 - ✅ TypeScript configuration with strict types
 - ✅ Tailwind CSS with custom design system
 - ✅ Component library foundation
 - ✅ State management setup (Zustand)
-- ✅ API integration utilities
+- ✅ API integration utilities for Django backend
 - ✅ Responsive design system
 
 **Infrastructure & DevOps:**
@@ -168,7 +167,7 @@ make dev-down
 
 1. **Complete Monorepo Structure** ✅
 2. **Django Backend with 4 Apps** ✅
-3. **Next.js Frontend Configuration** ✅
+3. **React Frontend Configuration** ✅
 4. **Docker Containerization** ✅
 5. **Environment Variables Template** ✅
 6. **Development Makefile** ✅
@@ -180,3 +179,4 @@ make dev-down
 **Total Files Created**: 80+ files across backend, frontend, infrastructure, and documentation
 
 This is now a **complete, production-ready monorepo** that can be immediately deployed and used to start building the Zazzle Uzbekistan platform! 🚀
+

@@ -1,30 +1,10 @@
-'use client';
-
-import { ArrowRight, PackageCheck, Palette, ShieldCheck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import AppImage from '@/components/AppImage';
 import { cn } from '@/lib/utils';
 
 const HERO_SISTERS_PHOTO =
   'https://images.pexels.com/photos/6945632/pexels-photo-6945632.jpeg?cs=srgb&dl=pexels-polina-tankilevitch-6945632.jpg&fm=jpg';
-
-const HERO_STATS = [
-  {
-    title: "Jonli ko'rinish",
-    description: "Dizayn qayerga tushishini darhol ko'rasiz.",
-    icon: Palette,
-  },
-  {
-    title: 'Tez tayyor',
-    description: 'Ommabop mahsulotlar 1-3 ish kunida tayyorlanadi.',
-    icon: PackageCheck,
-  },
-  {
-    title: 'Xotirjam jarayon',
-    description: 'Avtomatik saqlash va aniq bosma hududi bilan ishlaysiz.',
-    icon: ShieldCheck,
-  },
-] as const;
 
 interface FloatingProductCardProps {
   className: string;

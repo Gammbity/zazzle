@@ -1,49 +1,26 @@
-# Multi-stage production Dockerfile for Next.js frontend
+# Multi-stage production Dockerfile for Vite React frontend
+FROM node:20-alpine AS builder
 
-FROM node:20-alpine AS base
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies
-FROM base AS deps
 COPY package.json package-lock.json* ./
-RUN npm install --only=production
-
-# Build stage
-FROM base AS builder
-COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Production stage
-FROM base AS runner
+FROM node:20-alpine AS runner
 
-# Set environment
+WORKDIR /app
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create nextjs user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN npm install -g serve
 
-# Copy built application
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000 || exit 1
+COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
-CMD ["node", "server.js"]
+CMD ["serve", "-s", "dist", "-l", "3000"]

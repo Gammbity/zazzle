@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Image as KonvaImage } from 'react-konva';
 import type Konva from 'konva';

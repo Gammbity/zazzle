@@ -1,5 +1,3 @@
-'use client';
-
 import { fabric } from 'fabric';
 import SingleSurfaceSidebar from './SingleSurfaceSidebar';
 import { businessCardCustomizerConfig } from './single-surface-presets';

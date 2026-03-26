@@ -5,7 +5,11 @@ import NavigationProgress from '@/components/NavigationProgress';
 import ProductGrid from '@/components/ProductGrid';
 import { getProductBySlug } from '@/lib/products/catalog';
 import { Link, matchPath, navigate, useLocation } from '@/lib/router';
+import CartPage from '@/pages/CartPage';
+import CheckoutPage from '@/pages/CheckoutPage';
 import NotFoundPage from '@/pages/NotFoundPage';
+import OrderDetailPage from '@/pages/OrderDetailPage';
+import OrdersPage from '@/pages/OrdersPage';
 import ProductDetailPage from '@/pages/ProductDetailPage';
 
 const MugCustomizer = lazy(
@@ -134,38 +138,18 @@ export default function App() {
   } else if (location.pathname === '/products') {
     page = <Redirect to='/#products' replace />;
   } else if (location.pathname === '/cart') {
-    page = (
-      <PlaceholderPage
-        title='Savatcha'
-        description="Savatcha sahifasi SPA oqimiga ko'chirildi. Keyingi bosqichda backend bilan to'liq ulanish qo'shilishi mumkin."
-      />
-    );
+    page = <CartPage />;
   } else if (location.pathname === '/checkout') {
-    page = (
-      <PlaceholderPage
-        title='Buyurtmani yakunlash'
-        description="To'lov va buyurtma yakunlash sahifasi uchun frontend oqimi tayyor. API ulanishi keyingi integratsiya bosqichida davom etadi."
-      />
-    );
+    page = <CheckoutPage />;
   } else if (location.pathname === '/orders') {
-    page = (
-      <PlaceholderPage
-        title='Buyurtmalarim'
-        description="Buyurtmalar bo'limi yangi SPA ichiga ko'chirildi va keyinroq real ma'lumotlar bilan ulanadi."
-      />
-    );
+    page = <OrdersPage />;
   } else if (orderMatch?.id) {
-    page = (
-      <PlaceholderPage
-        title={`Buyurtma ${orderMatch.id}`}
-        description="Buyurtma tafsilotlari sahifasi router ichida tayyorlangan. Hozircha demo ko'rinish saqlanib turibdi."
-      />
-    );
+    page = <OrderDetailPage orderLookup={orderMatch.id} />;
   } else if (editorMatch?.draftId) {
     page = (
       <PlaceholderPage
         title={`Qoralama ${editorMatch.draftId}`}
-        description="Alohida qoralama muharriri sahifasi uchun joy qoldirilgan. Asosiy dizayn oqimi hozir mahsulot sahifalarida qulaylashtirildi."
+        description='Alohida qoralama muharriri sahifasi uchun joy qoldirilgan. Asosiy dizayn oqimi hozir mahsulot sahifalarida qulaylashtirildi.'
       />
     );
   } else if (location.pathname === '/products/tshirt') {

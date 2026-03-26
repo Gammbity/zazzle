@@ -1,5 +1,3 @@
-'use client';
-
 import SingleSurfaceViewer from './SingleSurfaceViewer';
 import { calendarCustomizerConfig } from './single-surface-presets';
 

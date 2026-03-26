@@ -43,10 +43,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Next.js
-.next/
+# Frontend build artifacts
 out/
-.vercel
 
 # TypeScript
 *.tsbuildinfo

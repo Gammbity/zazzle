@@ -1,5 +1,3 @@
-'use client';
-
 import CylindricalProductPreview, {
   type CylindricalAngleAsset,
 } from '@/components/cylindrical/CylindricalProductPreview';

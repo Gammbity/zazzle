@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useRef } from 'react';
 import { fabric } from 'fabric';
 import {
@@ -8,6 +6,8 @@ import {
   MUG_HANDLE_MARGIN_CM_TEXT,
   MUG_HANDLE_MARGIN_PX,
 } from './mugPrintConstants';
+
+type EditableFabricObject = fabric.Object & { isEditing?: boolean };
 
 interface PrintEditorProps {
   onCanvasReady: (canvas: fabric.Canvas) => void;
@@ -133,7 +133,9 @@ export default function PrintEditor({
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const active = canvas.getActiveObjects();
         if (active.length) {
-          const isEditing = active.some(obj => (obj as any).isEditing);
+          const isEditing = active.some(
+            obj => (obj as EditableFabricObject).isEditing
+          );
           if (!isEditing) {
             e.preventDefault();
             canvas.discardActiveObject();
@@ -219,8 +221,9 @@ export default function PrintEditor({
       <div className='handle-legend'>
         <span className='handle-legend-dot' />
         <span>
-          Tutqich yaqinida {MUG_HANDLE_MARGIN_PX}px (≈{MUG_HANDLE_MARGIN_CM_TEXT} sm) bo'sh hudud — rasm shu
-          zonaga tushmasa yaxshi
+          Tutqich yaqinida {MUG_HANDLE_MARGIN_PX}px (≈
+          {MUG_HANDLE_MARGIN_CM_TEXT} sm) bo'sh hudud — rasm shu zonaga tushmasa
+          yaxshi
         </span>
       </div>
     </div>

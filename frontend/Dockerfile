@@ -1,9 +1,8 @@
-# Development Dockerfile for Next.js frontend
+# Development Dockerfile for Vite React frontend
 FROM node:18-alpine
 
 # Set environment variables
-ENV NODE_ENV=development \
-    NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=development
 
 WORKDIR /app
 

@@ -1,5 +1,3 @@
-'use client';
-
 import SingleSurfaceCustomizer from './SingleSurfaceCustomizer';
 import { shopperBagCustomizerConfig } from './single-surface-presets';
 

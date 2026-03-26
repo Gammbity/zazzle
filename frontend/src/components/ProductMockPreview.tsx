@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useCallback, useRef } from 'react';
 import AppImage from '@/components/AppImage';
 import type { OverlayBox } from '@/lib/products/catalog';

@@ -33,10 +33,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: >
-      sh -c "python manage.py collectstatic --noinput &&
-             python manage.py migrate --noinput &&
-             python manage.py runserver 0.0.0.0:8000"
+    command: sh /app/entrypoint.sh web
     volumes:
       - ./backend:/app
       - media_files:/app/media
@@ -47,7 +44,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - DEBUG=${DEBUG}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
@@ -68,7 +65,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A zazzle worker -l info
+    command: sh /app/entrypoint.sh celery
     volumes:
       - ./backend:/app
       - media_files:/app/media
@@ -78,7 +75,7 @@ services:
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - DEBUG=${DEBUG}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
     depends_on:
       backend:
@@ -95,7 +92,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A zazzle beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: sh /app/entrypoint.sh celery-beat
     volumes:
       - ./backend:/app
       - media_files:/app/media
@@ -105,7 +102,7 @@ services:
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - DEBUG=${DEBUG}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
     depends_on:
       backend:
@@ -129,9 +126,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - VITE_API_URL=${VITE_API_URL}
       - CHOKIDAR_USEPOLLING=true
       - CHOKIDAR_INTERVAL=300
       - VITE_USE_POLLING=true

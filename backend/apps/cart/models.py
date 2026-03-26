@@ -1,10 +1,10 @@
-from django.db import models
 from django.contrib.auth import get_user_model
-from django.utils.translation import gettext_lazy as _
-from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
-from decimal import Decimal
+from django.core.validators import MinValueValidator
+from django.db import models
+from django.utils.translation import gettext_lazy as _
 import uuid
+from decimal import Decimal
 
 User = get_user_model()
 
@@ -33,25 +33,32 @@ class Cart(models.Model):
         verbose_name = _('Shopping Cart')
         verbose_name_plural = _('Shopping Carts')
         ordering = ['-updated_at']
-    
+
+    def _get_items(self):
+        prefetched = getattr(self, '_prefetched_objects_cache', {})
+        return prefetched.get('items', self.items.all())
+
     def __str__(self):
         return f"Cart for {self.customer.email}"
-    
+
     @property
     def total_items(self):
         """Get total number of items in cart."""
-        return sum(item.quantity for item in self.items.all())
-    
+        return sum(item.quantity for item in self._get_items())
+
     @property
     def total_amount(self):
         """Calculate total amount for all items in cart."""
-        return sum(item.total_price for item in self.items.all())
-    
+        return sum((item.total_price for item in self._get_items()), Decimal('0.00'))
+
     @property
     def is_empty(self):
         """Check if cart is empty."""
-        return self.items.count() == 0
-    
+        items = self._get_items()
+        if isinstance(items, list):
+            return len(items) == 0
+        return not items.exists()
+
     def clear(self):
         """Remove all items from cart."""
         self.items.all().delete()
@@ -196,15 +203,33 @@ class CartItem(models.Model):
         Validate that this cart item is ready for checkout.
         Returns (is_valid, error_message) tuple.
         """
-        # Check draft status
-        if self.draft.status != self.draft.DraftStatus.PREVIEW_READY:
-            return False, _('Draft preview must be ready before checkout.')
-        
+        if self.draft.is_deleted:
+            return False, _('Selected draft is no longer available.')
+
+        # The SPA editor currently persists drafts directly from the live editor
+        # without waiting for async preview rendering, so draft status alone
+        # should not block checkout unless the draft is archived.
+        if self.draft.status == self.draft.DraftStatus.ARCHIVED:
+            return False, _('Archived drafts cannot be checked out.')
+
         # Check product variant availability
         if not self.draft.product_variant.is_available:
             return False, _('Selected product variant is no longer available.')
-        
+
+        has_editor_state = bool(self.draft.editor_state)
+        has_text_layers = bool(self.draft.text_layers)
+
+        prefetched = getattr(self.draft, '_prefetched_objects_cache', {})
+        prefetched_assets = prefetched.get('assets')
+        if prefetched_assets is not None:
+            has_assets = bool(prefetched_assets)
+        else:
+            has_assets = self.draft.assets.filter(is_deleted=False).exists()
+
+        if not (has_editor_state or has_text_layers or has_assets):
+            return False, _('Draft must contain at least one design element.')
+
         # Check quantity limits (if any)
         # Could add product-specific quantity limits here
-        
+
         return True, ''

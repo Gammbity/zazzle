@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef, Suspense, useEffect, useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei/core/ContactShadows';
@@ -17,10 +15,7 @@ import {
 } from 'three';
 import { fabric } from 'fabric';
 import { Camera } from 'lucide-react';
-import {
-  MUG_PRINT_COVERAGE,
-  MUG_PRINT_GAP_RATIO,
-} from './mugPrintConstants';
+import { MUG_PRINT_COVERAGE, MUG_PRINT_GAP_RATIO } from './mugPrintConstants';
 
 interface MugModelProps {
   fabricCanvas: fabric.Canvas | null;

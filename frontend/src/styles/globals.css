@@ -4,7 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom CSS Variables */
 :root {
   --primary-50: #eff6ff;
   --primary-100: #dbeafe;
@@ -16,7 +15,6 @@
   --primary-700: #1d4ed8;
   --primary-800: #1e40af;
   --primary-900: #1e3a8a;
-
   --secondary-50: #fdf4ff;
   --secondary-100: #fae8ff;
   --secondary-200: #f5d0fe;
@@ -29,7 +27,6 @@
   --secondary-900: #701a75;
 }
 
-/* Base Styles */
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -54,18 +51,23 @@
   h1 {
     @apply text-4xl md:text-5xl;
   }
+
   h2 {
     @apply text-3xl md:text-4xl;
   }
+
   h3 {
     @apply text-2xl md:text-3xl;
   }
+
   h4 {
     @apply text-xl md:text-2xl;
   }
+
   h5 {
     @apply text-lg md:text-xl;
   }
+
   h6 {
     @apply text-base md:text-lg;
   }
@@ -88,15 +90,12 @@
     @apply transition-colors duration-200;
   }
 
-  /* Focus styles for accessibility */
   *:focus {
     @apply outline-none ring-2 ring-primary-500 ring-offset-2;
   }
 }
 
-/* Component Styles */
 @layer components {
-  /* Buttons */
   .btn {
     @apply inline-flex items-center justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium shadow-sm focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
@@ -121,7 +120,6 @@
     @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
   }
 
-  /* Cards */
   .card {
     @apply overflow-hidden rounded-lg border border-gray-200 bg-white shadow-md;
   }
@@ -130,7 +128,6 @@
     @apply card transition-all duration-200 hover:-translate-y-1 hover:shadow-lg;
   }
 
-  /* Forms */
   .form-input {
     @apply block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:ring-primary-500;
   }
@@ -163,7 +160,6 @@
     @apply mt-1 text-sm text-gray-500;
   }
 
-  /* Containers */
   .container {
     @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
   }
@@ -176,7 +172,6 @@
     @apply mx-auto max-w-lg px-4 sm:px-6;
   }
 
-  /* Typography */
   .text-gradient {
     @apply bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent;
   }

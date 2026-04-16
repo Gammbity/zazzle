@@ -19,6 +19,7 @@ class ProductType(models.Model):
         MUG = 'mug', _('Mug')
         BUSINESS_CARD = 'business_card', _('Business Card')
         DESK_CALENDAR = 'desk_calendar', _('Desk Calendar')
+        PEN = 'pen', _('Pen')
     
     name = models.CharField(_('name'), max_length=100)
     slug = models.SlugField(_('slug'), unique=True, blank=True)

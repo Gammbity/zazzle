@@ -1,7 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei/core/ContactShadows';
-import { Camera, RotateCcw } from 'lucide-react';
 import {
   ClampToEdgeWrapping,
   RepeatWrapping,
@@ -9,6 +8,7 @@ import {
   Texture,
   TextureLoader,
 } from 'three';
+import { PEN_PRINT_COVERAGE } from '@/components/customizer/penPrintConstants';
 
 interface PenRealisticPreviewProps {
   designDataUrl: string;
@@ -17,10 +17,14 @@ interface PenRealisticPreviewProps {
 
 const DEFAULT_ROTATION_X = -0.18;
 const DEFAULT_ROTATION_Y = 0.92;
+const PEN_BODY_LENGTH = 5.9;
+const PEN_PRINT_SLEEVE_LENGTH = PEN_BODY_LENGTH * PEN_PRINT_COVERAGE;
+const DRAG_SENSITIVITY_X = 0.0065;
+const DRAG_SENSITIVITY_Y = 0.009;
 
 function PenModel({ designTexture }: { designTexture: Texture | null }) {
   return (
-    <group position={[0, 0.02, 0]} rotation={[0.16, 0, -0.52]} scale={1.12}>
+    <group position={[-0.04, -0.03, 0]} rotation={[0.16, 0, -0.52]} scale={1.06}>
       <mesh position={[-0.62, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.31, 0.36, 5.9, 96, 1]} />
         <meshPhysicalMaterial
@@ -37,7 +41,9 @@ function PenModel({ designTexture }: { designTexture: Texture | null }) {
         rotation={[0, 0, Math.PI / 2]}
         visible={Boolean(designTexture)}
       >
-        <cylinderGeometry args={[0.314, 0.364, 4.95, 96, 1, true]} />
+        <cylinderGeometry
+          args={[0.314, 0.364, PEN_PRINT_SLEEVE_LENGTH, 96, 1, true]}
+        />
         <meshStandardMaterial
           color='#ffffff'
           map={designTexture}
@@ -180,8 +186,10 @@ export default function PenRealisticPreview({
         texture.anisotropy = 8;
         texture.wrapS = RepeatWrapping;
         texture.wrapT = ClampToEdgeWrapping;
-        texture.repeat.set(-1, 1);
-        texture.offset.set(1, 0);
+        texture.center.set(0.5, 0.5);
+        texture.rotation = -Math.PI / 2;
+        texture.repeat.set(1, -1);
+        texture.offset.set(0, 1);
         texture.needsUpdate = true;
 
         setDesignTexture(previous => {
@@ -238,19 +246,11 @@ export default function PenRealisticPreview({
     return () => window.clearTimeout(timeoutId);
   }, [onCompositeReady, rotationX, rotationY, textureVersion]);
 
-  const handleExport = () => {
-    const canvas = stageRef.current?.querySelector('canvas');
-    if (!canvas) {
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
       return;
     }
 
-    const link = document.createElement('a');
-    link.href = canvas.toDataURL('image/png', 1);
-    link.download = 'ruchka-3d-korinishi.png';
-    link.click();
-  };
-
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     setIsDragging(true);
     dragOriginRef.current = { x: event.clientX, y: event.clientY };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -265,8 +265,8 @@ export default function PenRealisticPreview({
     const deltaY = event.clientY - dragOriginRef.current.y;
     dragOriginRef.current = { x: event.clientX, y: event.clientY };
 
-    setRotationX(previous => previous + deltaY * 0.01);
-    setRotationY(previous => previous + deltaX * 0.012);
+    setRotationX(previous => previous + deltaY * DRAG_SENSITIVITY_X);
+    setRotationY(previous => previous + deltaX * DRAG_SENSITIVITY_Y);
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -281,50 +281,18 @@ export default function PenRealisticPreview({
     <div className='flex flex-col gap-4'>
       <div
         ref={stageRef}
-        className='relative aspect-[16/10] w-full overflow-hidden rounded-[1.75rem] border border-slate-200 bg-[radial-gradient(circle_at_top,_#ffffff_0%,_#f6f8fb_48%,_#e2e8f0_100%)] shadow-inner shadow-white/60'
-        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        className={`relative aspect-[16/10] w-full touch-none overflow-hidden rounded-[1.75rem] border border-slate-200 bg-[radial-gradient(circle_at_top,_#ffffff_0%,_#f6f8fb_48%,_#e2e8f0_100%)] shadow-inner shadow-white/60 ${
+          isDragging ? 'cursor-grabbing' : 'cursor-grab'
+        }`}
+        aria-label="Ruchka ko'rinishi"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerUp}
       >
-        <div className='absolute left-4 top-4 z-10 flex flex-wrap gap-2'>
-          <button
-            type='button'
-            onClick={handleExport}
-            onPointerDown={event => event.stopPropagation()}
-            className='inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm shadow-slate-200/70 transition-colors hover:bg-white'
-          >
-            <Camera className='h-4 w-4' />
-            PNG
-          </button>
-          <button
-            type='button'
-            onClick={() => {
-              setRotationX(DEFAULT_ROTATION_X);
-              setRotationY(DEFAULT_ROTATION_Y);
-            }}
-            onPointerDown={event => event.stopPropagation()}
-            className='inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm shadow-slate-200/70 transition-colors hover:bg-white'
-          >
-            <RotateCcw className='h-4 w-4' />
-            Reset
-          </button>
-        </div>
-
-        <div className='bg-white/88 absolute bottom-4 left-4 z-10 max-w-[18rem] rounded-2xl border border-white/80 px-4 py-3 text-left shadow-lg shadow-slate-200/70 backdrop-blur'>
-          <p className='text-xs font-semibold uppercase tracking-[0.22em] text-sky-700'>
-            3D / 360 preview
-          </p>
-          <p className='mt-1 text-sm leading-5 text-slate-600'>
-            Gorizontal suring `Y`, vertikal suring `X` o&apos;qida aylansin.
-            Dizayn barrel bo&apos;ylab to&apos;liq o&apos;ralgan holda
-            ko&apos;rinadi.
-          </p>
-        </div>
-
         <Canvas
-          camera={{ position: [0, 0.95, 10.6], fov: 33 }}
+          camera={{ position: [0, 1, 11.4], fov: 35 }}
           gl={{ preserveDrawingBuffer: true, antialias: true }}
           style={{ width: '100%', height: '100%' }}
           shadows

@@ -248,9 +248,9 @@ export default function ProductPurchasePanel({
           <div className='mt-6 h-40 animate-pulse rounded-[1.5rem] bg-slate-100' />
         ) : isUnsupported ? (
           <div className='mt-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800'>
-            Bu mahsulot uchun backend checkout yo&apos;li hali ulanmagan.
-            Hozircha savat va order oqimi futbolka, krujka, vizitka va stol
-            kalendari uchun tayyor.
+            Bu mahsulot backend katalogidan topilmadi.
+            Admin panelda mos product type va variantlar yaratilgach,
+            savat/checkout/order oqimi avtomatik faollashadi.
           </div>
         ) : (
           <>
@@ -298,12 +298,7 @@ export default function ProductPurchasePanel({
                                 : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                             }`}
                           >
-                            <span
-                              className='h-3 w-3 rounded-full border border-black/10'
-                              style={{
-                                backgroundColor: color.hex || '#e2e8f0',
-                              }}
-                            />
+                            <span className='h-3 w-3 rounded-full border border-black/10 bg-slate-200' />
                             {color.name}
                           </button>
                         ))}

@@ -32,6 +32,7 @@ import {
   fitLayerScale,
   getDefaultLayerPosition,
 } from '@/lib/products/printAreas';
+import { PEN_EDITOR_CANVAS_WIDTH } from '@/components/customizer/penPrintConstants';
 import { STICKER_ASSETS } from '@/types/layer';
 import type { ImageLayer, Layer, StickerLayer, TextLayer } from '@/types/layer';
 import type { DesignCanvasHandle } from './DesignCanvas';
@@ -151,9 +152,10 @@ export default function EditorPanel({
     [activeSurfaceId, productConfig]
   );
 
-  const canvasWidth = productSlug === 'pen' ? 640 : CANVAS_BASE;
+  const canvasWidth =
+    productSlug === 'pen' ? PEN_EDITOR_CANVAS_WIDTH : CANVAS_BASE;
   const canvasHeight = activeSurface
-    ? Math.round(CANVAS_BASE / activeSurface.canvasAspect)
+    ? Math.round(canvasWidth / activeSurface.canvasAspect)
     : CANVAS_BASE;
   const printArea = activeSurface?.printArea ?? {
     x: 5,
@@ -162,6 +164,11 @@ export default function EditorPanel({
     height: 90,
   };
   const hasSurfaces = (productConfig?.surfaces.length ?? 0) > 1;
+  const isEditorReady =
+    isDraftLoaded &&
+    productConfig !== undefined &&
+    activeSurface !== undefined &&
+    activeSurfaceId.length > 0;
   const isTextSelected = selectedLayer?.type === 'text';
   const layerPlacementScale = Math.min(printArea.defaultScale ?? 0.8, 1);
   const textPlacementScale = Math.min(layerPlacementScale + 0.05, 0.95);
@@ -191,6 +198,20 @@ export default function EditorPanel({
 
     return () => window.clearTimeout(timeoutId);
   }, [activeSurfaceId, isDraftLoaded, layers, persistDraft]);
+
+  useEffect(() => {
+    if (!productConfig || productConfig.surfaces.length === 0) {
+      return;
+    }
+
+    const hasActiveSurface = productConfig.surfaces.some(
+      surface => surface.id === activeSurfaceId
+    );
+
+    if (!hasActiveSurface) {
+      setActiveSurface(productConfig.defaultSurfaceId);
+    }
+  }, [activeSurfaceId, productConfig, setActiveSurface]);
 
   const canvasHandleRef = useRef<DesignCanvasHandle | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -442,22 +463,27 @@ export default function EditorPanel({
           type='file'
           accept='image/png,image/jpeg,image/webp'
           onChange={handleImageUpload}
+          aria-label='Rasm yuklash'
+          title='Rasm yuklash'
           className='hidden'
         />
 
         <ToolBtn
           label='Rasm'
           onClick={() => fileInputRef.current?.click()}
+          disabled={!isEditorReady}
           icon={<ImagePlus className='h-4 w-4' />}
         />
         <ToolBtn
           label='Matn'
           onClick={handleAddText}
+          disabled={!isEditorReady}
           icon={<Type className='h-4 w-4' />}
         />
         <ToolBtn
           label='Stiker'
           onClick={() => setShowStickerPicker(true)}
+          disabled={!isEditorReady}
           icon={<Sticker className='h-4 w-4' />}
         />
 
@@ -536,6 +562,7 @@ export default function EditorPanel({
             <button
               type='button'
               onClick={() => fileInputRef.current?.click()}
+              disabled={!isEditorReady}
               className='rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-700'
             >
               Rasm yuklash
@@ -543,6 +570,7 @@ export default function EditorPanel({
             <button
               type='button'
               onClick={handleAddText}
+              disabled={!isEditorReady}
               className='rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50'
             >
               Matn qo'shish
@@ -550,11 +578,18 @@ export default function EditorPanel({
             <button
               type='button'
               onClick={() => setShowStickerPicker(true)}
+              disabled={!isEditorReady}
               className='rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50'
             >
               Stiker tanlash
             </button>
           </div>
+        </div>
+      )}
+
+      {!isEditorReady && (
+        <div className='rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800'>
+          Editor yuklanmoqda. Rasm yoki matn qo'shish uchun bir necha soniya kuting.
         </div>
       )}
 

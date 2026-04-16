@@ -62,6 +62,7 @@ export default function CheckoutPage() {
     checkout: CheckoutResult;
     payment: PaymentInitResult | null;
   } | null>(null);
+  const [paymentInitError, setPaymentInitError] = useState<string | null>(null);
   const [provider, setProvider] = useState<PaymentProvider>('payme');
   const [form, setForm] = useState({
     contact_name: '',
@@ -132,9 +133,13 @@ export default function CheckoutPage() {
   const canSubmit = useMemo(
     () =>
       Boolean(
-        cart && !cart.is_empty && form.contact_name && form.contact_email
+        cart &&
+          !cart.is_empty &&
+          form.contact_name &&
+          form.contact_email &&
+          form.contact_phone
       ),
-    [cart, form.contact_email, form.contact_name]
+    [cart, form.contact_email, form.contact_name, form.contact_phone]
   );
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -145,6 +150,7 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
     setError(null);
+    setPaymentInitError(null);
 
     try {
       const checkout = await checkoutCart(form);
@@ -157,7 +163,7 @@ export default function CheckoutPage() {
           createIdempotencyKey()
         );
       } catch (paymentError: unknown) {
-        setError(
+        setPaymentInitError(
           getCommerceErrorMessage(
             paymentError,
             "Buyurtma yaratildi, lekin to'lov init bosqichida xatolik bo'ldi."
@@ -233,6 +239,25 @@ export default function CheckoutPage() {
             </p>
           </div>
         </div>
+
+        {paymentInitError && (
+          <div className='mt-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5'>
+            <p className='text-sm font-semibold text-amber-900'>
+              To&apos;lov hozircha ishga tushmadi
+            </p>
+            <p className='mt-2 text-sm leading-6 text-amber-800'>
+              {paymentInitError} Buyurtma saqlangan. Quyidagi tafsilot sahifasida
+              to&apos;lovni qayta boshlashingiz mumkin.
+            </p>
+            <Link
+              to={`/orders/${result.checkout.order_number}`}
+              className='mt-4 inline-flex items-center gap-2 rounded-2xl bg-amber-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-amber-800'
+            >
+              Buyurtmaga o&apos;tib to&apos;lovni qayta boshlash
+              <ArrowRight className='h-4 w-4' />
+            </Link>
+          </div>
+        )}
 
         {result.payment?.provider_payload.redirect_url && (
           <div className='mt-6 rounded-[1.5rem] border border-sky-200 bg-sky-50 p-5'>

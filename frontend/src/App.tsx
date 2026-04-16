@@ -137,6 +137,21 @@ export default function App() {
     page = <HomePage />;
   } else if (location.pathname === '/products') {
     page = <Redirect to='/#products' replace />;
+  } else if (
+    location.pathname === '/basket' ||
+    location.pathname === '/baskets'
+  ) {
+    page = <Redirect to='/cart' replace />;
+  } else if (
+    location.pathname === '/checkouts' ||
+    location.pathname === '/checkouts/'
+  ) {
+    page = <Redirect to='/checkout' replace />;
+  } else if (
+    location.pathname === '/payment' ||
+    location.pathname === '/payments'
+  ) {
+    page = <Redirect to='/orders' replace />;
   } else if (location.pathname === '/cart') {
     page = <CartPage />;
   } else if (location.pathname === '/checkout') {

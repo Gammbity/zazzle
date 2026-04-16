@@ -43,13 +43,21 @@ def config_bool(name, default=False, aliases=()):
 
     return bool(default)
 
+
+def config_list(name, default=''):
+    value = config(name, default=default)
+    return [item.strip() for item in value.split(',') if item.strip()]
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config_bool('DJANGO_DEBUG', default=True, aliases=('DEBUG',))
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0,backend').split(',')
+ALLOWED_HOSTS = config_list(
+    'ALLOWED_HOSTS',
+    default='localhost,127.0.0.1,0.0.0.0,backend',
+)
 
 # Application definition
 
@@ -286,13 +294,16 @@ SPECTACULAR_SETTINGS = {
 }
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost",
-    "http://localhost:80",
-    "http://localhost:3000",
-    "http://127.0.0.1",
-    "http://127.0.0.1:3000",
-]
+CORS_ALLOWED_ORIGINS = config_list(
+    'CORS_ALLOWED_ORIGINS',
+    default=(
+        'http://localhost,'
+        'http://localhost:80,'
+        'http://localhost:3000,'
+        'http://127.0.0.1,'
+        'http://127.0.0.1:3000'
+    ),
+)
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -302,12 +313,10 @@ JAZZMIN_SETTINGS = {
     'site_brand': 'Zazzle Admin',
 }
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost",
-    "http://localhost:80",
-    "http://localhost:3000",
-    "http://127.0.0.1",
-]
+CSRF_TRUSTED_ORIGINS = config_list(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost,http://localhost:80,http://localhost:3000,http://127.0.0.1',
+)
 
 # Celery Configuration
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')

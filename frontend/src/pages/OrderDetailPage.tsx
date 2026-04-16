@@ -72,6 +72,8 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
     () => getOrderStatusMeta(order?.status || 'NEW'),
     [order?.status]
   );
+  const canRetryPayment =
+    order?.status === 'NEW' || order?.status === 'PAYMENT_PENDING';
 
   const handlePaymentInit = async (
     provider: 'payme' | 'click' | 'uzcard_humo'
@@ -321,7 +323,7 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                       </div>
                     </div>
 
-                    {order.status === 'PAYMENT_PENDING' && (
+                    {canRetryPayment && (
                       <div className='mt-6 rounded-[1.5rem] border border-white/10 bg-white/5 p-5'>
                         <div className='flex items-center gap-3'>
                           <CreditCard className='h-5 w-5 text-sky-300' />

@@ -60,7 +60,7 @@ export default function OrdersPage() {
         <div className='mx-auto max-w-7xl'>
           <div className='rounded-[2.2rem] border border-slate-200 bg-white/90 p-6 shadow-sm shadow-slate-200/60 backdrop-blur sm:p-8'>
             <p className='text-sm font-semibold uppercase tracking-[0.3em] text-sky-700'>
-              Orders
+              Buyurtmalar
             </p>
             <h1 className='mt-3 text-4xl font-semibold text-slate-950'>
               Buyurtmalar tarixi
@@ -102,7 +102,9 @@ export default function OrdersPage() {
                   <div className='rounded-[1.6rem] bg-slate-950 p-5 text-white shadow-lg shadow-slate-900/10'>
                     <div className='flex items-center gap-3'>
                       <Boxes className='h-5 w-5 text-sky-300' />
-                      <span className='text-sm text-slate-300'>Jami order</span>
+                      <span className='text-sm text-slate-300'>
+                        Jami buyurtma
+                      </span>
                     </div>
                     <p className='mt-4 text-3xl font-semibold'>
                       {stats.total_orders}

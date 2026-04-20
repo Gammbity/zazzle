@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ArrowRight,
   Package2,
-  ShieldCheck,
   ShoppingBag,
   Trash2,
 } from 'lucide-react';
@@ -162,35 +161,15 @@ export default function CartPage() {
             <div className='flex flex-wrap items-start justify-between gap-4'>
               <div>
                 <p className='text-sm font-semibold uppercase tracking-[0.3em] text-sky-700'>
-                  Basket
+                  Savat
                 </p>
                 <h1 className='mt-3 text-4xl font-semibold text-slate-950'>
                   Savatchangiz
                 </h1>
                 <p className='mt-3 max-w-3xl text-base leading-7 text-slate-600'>
-                  Dizayn qoralamalari va tanlangan variantlar shu yerda
-                  jamlanadi. Keyingi qadami checkout va to&apos;lovni boshlash.
+                  Tanlangan mahsulotlar shu yerda jamlanadi. Miqdorni tekshirib,
+                  keyingi bosqichda checkoutni boshlaysiz.
                 </p>
-              </div>
-
-              <div className='grid gap-3 sm:grid-cols-2'>
-                <div className='rounded-2xl bg-slate-950 px-5 py-4 text-white'>
-                  <p className='text-xs font-semibold uppercase tracking-[0.2em] text-sky-300'>
-                    Xavfsiz oqim
-                  </p>
-                  <p className='mt-2 text-sm text-slate-200'>
-                    Draft, cart va order bir xil hisobga bog&apos;lanadi.
-                  </p>
-                </div>
-                <div className='rounded-2xl bg-slate-100 px-5 py-4 text-slate-700'>
-                  <p className='text-xs font-semibold uppercase tracking-[0.2em] text-slate-500'>
-                    Keyingi qadam
-                  </p>
-                  <p className='mt-2 text-sm'>
-                    Checkout sahifasida kontakt va yetkazib berish
-                    ma&apos;lumotlari to&apos;ldiriladi.
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -333,13 +312,10 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <div className='mt-5 rounded-[1.5rem] border border-white/10 bg-white/5 p-4 text-sm text-slate-200'>
-                  <div className='flex items-start gap-3'>
-                    <ShieldCheck className='mt-0.5 h-5 w-5 text-sky-300' />
-                    Savat checkoutdan keyin orderga aylanadi va to&apos;lov init
-                    statusi kuzatiladi.
-                  </div>
-                </div>
+                <p className='mt-5 text-sm leading-6 text-slate-300'>
+                  Checkout bosqichida aloqa va yetkazib berish ma&apos;lumotlari
+                  so&apos;raladi.
+                </p>
 
                 <div className='mt-6 flex flex-col gap-3'>
                   <Link
@@ -357,12 +333,6 @@ export default function CartPage() {
                   >
                     Savatchani tozalash
                   </button>
-                  <Link
-                    to='/orders'
-                    className='rounded-2xl border border-white/15 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10'
-                  >
-                    Buyurtmalar tarixiga o&apos;tish
-                  </Link>
                 </div>
               </aside>
             </div>

@@ -21,11 +21,9 @@ const INITIAL_LOGIN = {
 };
 
 const INITIAL_REGISTER = {
-  username: '',
   first_name: '',
   last_name: '',
   phone_number: '',
-  display_name: '',
   email: '',
   password: '',
 };
@@ -78,7 +76,7 @@ export default function CommerceAuthModal({
         getCommerceErrorMessage(
           authError,
           "Ro'yxatdan o'tishda xatolik yuz berdi.",
-          ['email', 'password', 'username']
+          ['email', 'password']
         )
       );
     } finally {
@@ -96,26 +94,25 @@ export default function CommerceAuthModal({
       <div className='grid gap-6 md:grid-cols-[0.9fr_1.1fr]'>
         <div className='rounded-[1.75rem] bg-[linear-gradient(160deg,_#0f172a_0%,_#1e293b_58%,_#0ea5e9_100%)] p-6 text-white'>
           <p className='text-xs font-semibold uppercase tracking-[0.3em] text-sky-200'>
-            Commerce
+            Buyurtma
           </p>
           <h3 className='mt-4 text-2xl font-semibold'>
-            Savat, buyurtma va to&apos;lov bir joyda
+            Hammasi bir joyda
           </h3>
           <p className='mt-3 text-sm leading-6 text-slate-200'>
-            Hisob bilan kirganingizdan keyin dizaynlaringiz savatda saqlanadi,
-            buyurtmalar tarixida ko&apos;rinadi va to&apos;lov holati
-            kuzatiladi.
+            Hisobga kirganingizdan keyin savat, buyurtmalar va
+            to&apos;lovlaringizni qulay boshqarasiz.
           </p>
 
           <div className='mt-6 space-y-3 text-sm text-slate-100'>
             <div className='rounded-2xl border border-white/10 bg-white/10 px-4 py-3'>
-              Dizayn savatga backend draft sifatida yoziladi.
+              Savatdagi mahsulotlar saqlanadi.
             </div>
             <div className='rounded-2xl border border-white/10 bg-white/10 px-4 py-3'>
-              Checkoutdan keyin order raqami va status tarixi saqlanadi.
+              Buyurtmalar holatini ko&apos;rib borasiz.
             </div>
             <div className='rounded-2xl border border-white/10 bg-white/10 px-4 py-3'>
-              Payme, Click yoki Uzcard/Humo uchun to&apos;lov init qilinadi.
+              To&apos;lovni bir necha usulda davom ettirasiz.
             </div>
           </div>
         </div>
@@ -245,39 +242,23 @@ export default function CommerceAuthModal({
 
               <label className='block sm:col-span-1'>
                 <span className='mb-1 block text-sm font-medium text-slate-700'>
-                  Username
+                  Telefon
                 </span>
                 <input
                   className='w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-300'
-                  value={registerForm.username}
+                  value={registerForm.phone_number}
                   onChange={event =>
                     setRegisterForm(prev => ({
                       ...prev,
-                      username: event.target.value,
+                      phone_number: event.target.value,
                     }))
                   }
+                  placeholder='+998 90 123 45 67'
                   required
                 />
               </label>
 
               <label className='block sm:col-span-1'>
-                <span className='mb-1 block text-sm font-medium text-slate-700'>
-                  Ko&apos;rinadigan ism
-                </span>
-                <input
-                  className='w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-300'
-                  value={registerForm.display_name}
-                  onChange={event =>
-                    setRegisterForm(prev => ({
-                      ...prev,
-                      display_name: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </label>
-
-              <label className='block sm:col-span-2'>
                 <span className='mb-1 block text-sm font-medium text-slate-700'>
                   Email
                 </span>
@@ -291,24 +272,6 @@ export default function CommerceAuthModal({
                       email: event.target.value,
                     }))
                   }
-                  required
-                />
-              </label>
-
-              <label className='block sm:col-span-1'>
-                <span className='mb-1 block text-sm font-medium text-slate-700'>
-                  Telefon
-                </span>
-                <input
-                  className='w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-300'
-                  value={registerForm.phone_number}
-                  onChange={event =>
-                    setRegisterForm(prev => ({
-                      ...prev,
-                      phone_number: event.target.value,
-                    }))
-                  }
-                  placeholder='+998 90 123 45 67'
                   required
                 />
               </label>
@@ -331,6 +294,11 @@ export default function CommerceAuthModal({
                   required
                 />
               </label>
+
+              <p className='sm:col-span-2 text-sm leading-6 text-slate-500'>
+                Ko&apos;rinadigan ism avtomatik ravishda ism va familiyangizdan
+                olinadi.
+              </p>
 
               <button
                 type='submit'

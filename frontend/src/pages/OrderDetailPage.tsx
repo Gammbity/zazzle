@@ -167,15 +167,15 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                 <div className='flex flex-wrap items-start justify-between gap-4'>
                   <div>
                     <p className='text-sm font-semibold uppercase tracking-[0.3em] text-sky-700'>
-                      Order detail
+                      Buyurtma tafsiloti
                     </p>
                     <h1 className='mt-3 text-4xl font-semibold text-slate-950'>
                       {order.order_number}
                     </h1>
                     <p className='mt-3 max-w-3xl text-base leading-7 text-slate-600'>
                       {new Date(order.created_at).toLocaleString('uz-UZ')} da
-                      yaratilgan buyurtma. Bu sahifada itemlar, shipping va
-                      payment holati jamlangan.
+                      yaratilgan buyurtma. Bu sahifada mahsulotlar, yetkazib
+                      berish va to&apos;lov holati jamlangan.
                     </p>
                   </div>
 
@@ -221,7 +221,7 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                                   .join(' · ') || 'Standart'}
                               </p>
                               <p className='mt-1 text-sm text-slate-600'>
-                                Production status: {item.production_status}
+                                Ishlab chiqarish holati: {item.production_status}
                               </p>
                             </div>
 
@@ -290,11 +290,11 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                 <aside className='space-y-6'>
                   <section className='rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10'>
                     <p className='text-sm font-semibold uppercase tracking-[0.24em] text-sky-300'>
-                      Summary
+                      Buyurtma xulosasi
                     </p>
                     <div className='mt-6 space-y-3 rounded-[1.5rem] border border-white/10 bg-white/5 p-5'>
                       <div className='flex items-center justify-between text-sm text-slate-200'>
-                        <span>Subtotal</span>
+                        <span>Oraliq summa</span>
                         <span>{formatMoney(order.subtotal)}</span>
                       </div>
                       <div className='flex items-center justify-between text-sm text-slate-200'>
@@ -338,7 +338,7 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                             disabled={paymentBusy}
                             className='rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 disabled:opacity-60'
                           >
-                            Payme init
+                            Payme orqali boshlash
                           </button>
                           <button
                             type='button'
@@ -346,7 +346,7 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                             disabled={paymentBusy}
                             className='rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60'
                           >
-                            Click init
+                            Click orqali boshlash
                           </button>
                           <button
                             type='button'
@@ -356,7 +356,7 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                             disabled={paymentBusy}
                             className='rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60'
                           >
-                            Uzcard / Humo init
+                            Uzcard / Humo orqali boshlash
                           </button>
                         </div>
 

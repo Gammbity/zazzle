@@ -137,10 +137,14 @@ class ProductVariantAdmin(admin.ModelAdmin):
     
     def price_display(self, obj):
         """Display pricing with formatting."""
+        sale_price = f"{obj.sale_price:,.0f}" if obj.sale_price is not None else '0'
+        production_cost = (
+            f"{obj.production_cost:,.0f}" if obj.production_cost is not None else '0'
+        )
         return format_html(
-            '<div><strong>Sale:</strong> {:,} UZS</div><div><small>Cost:</small> {:,} UZS</div>',
-            obj.sale_price,
-            obj.production_cost
+            '<div><strong>Sale:</strong> {} UZS</div><div><small>Cost:</small> {} UZS</div>',
+            sale_price,
+            production_cost
         )
     price_display.short_description = 'Pricing'
     
@@ -149,11 +153,13 @@ class ProductVariantAdmin(admin.ModelAdmin):
         margin = obj.profit_margin
         percentage = obj.profit_percentage
         color = '#28a745' if margin > 0 else '#dc3545'
+        margin_display = f"{margin:,.0f}"
+        percentage_display = f"{percentage:.1f}"
         return format_html(
-            '<span style="color: {}"><strong>{:,} UZS</strong><br><small>{:.1f}%</small></span>',
+            '<span style="color: {}"><strong>{} UZS</strong><br><small>{}%</small></span>',
             color,
-            margin,
-            percentage
+            margin_display,
+            percentage_display
         )
     profit_margin_display.short_description = 'Profit Margin'
     

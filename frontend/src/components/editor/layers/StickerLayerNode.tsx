@@ -41,10 +41,24 @@ export default function StickerLayerNode({
   dragBounds,
   transformerRef,
   onSelect,
+  onChange,
   onCommit,
 }: StickerLayerNodeProps) {
   const shapeRef = useRef<Konva.Image>(null);
   const image = useImage(layer.src);
+
+  const readNodeAttrs = useCallback(
+    (node: Konva.Image): Partial<StickerLayer> => ({
+      x: node.x(),
+      y: node.y(),
+      width: node.width(),
+      height: node.height(),
+      scaleX: node.scaleX(),
+      scaleY: node.scaleY(),
+      rotation: node.rotation(),
+    }),
+    []
+  );
 
   useEffect(() => {
     if (isSelected && shapeRef.current && transformerRef.current && image) {
@@ -84,19 +98,17 @@ export default function StickerLayerNode({
       dragBoundFunc={handleDragBound}
       onMouseDown={onSelect}
       onTouchStart={onSelect}
+      onDragMove={e => onChange({ x: e.target.x(), y: e.target.y() })}
       onDragEnd={e => onCommit({ x: e.target.x(), y: e.target.y() })}
+      onTransform={() => {
+        const node = shapeRef.current;
+        if (!node) return;
+        onChange(readNodeAttrs(node));
+      }}
       onTransformEnd={() => {
         const node = shapeRef.current;
         if (!node) return;
-        onCommit({
-          x: node.x(),
-          y: node.y(),
-          width: node.width(),
-          height: node.height(),
-          scaleX: node.scaleX(),
-          scaleY: node.scaleY(),
-          rotation: node.rotation(),
-        });
+        onCommit(readNodeAttrs(node));
       }}
     />
   );

@@ -600,7 +600,8 @@ export default function EditorPanel({
               Maket maydoni
             </p>
             <p className='mt-1 text-sm text-slate-500'>
-              Tanlangan yuzasi: {activeSurface?.label ?? 'Asosiy'}.
+              Tanlangan yuzasi: {activeSurface?.label ?? 'Asosiy'}. Ko'k
+              chiziq ichidagi hudud chop qilinadi.
             </p>
           </div>
 
@@ -644,7 +645,7 @@ export default function EditorPanel({
         open={showStickerPicker}
         onClose={() => setShowStickerPicker(false)}
         title='Stiker tanlang'
-        maxWidth='max-w-3xl'
+        maxWidth='max-w-5xl'
       >
         <StickerPicker
           onSelect={handleAddSticker}

@@ -300,8 +300,12 @@ CORS_ALLOWED_ORIGINS = config_list(
         'http://localhost,'
         'http://localhost:80,'
         'http://localhost:3000,'
+        'http://localhost:3001,'
+        'http://localhost:8080,'
         'http://127.0.0.1,'
-        'http://127.0.0.1:3000'
+        'http://127.0.0.1:3000,'
+        'http://127.0.0.1:3001,'
+        'http://127.0.0.1:8080'
     ),
 )
 
@@ -315,7 +319,17 @@ JAZZMIN_SETTINGS = {
 
 CSRF_TRUSTED_ORIGINS = config_list(
     'CSRF_TRUSTED_ORIGINS',
-    default='http://localhost,http://localhost:80,http://localhost:3000,http://127.0.0.1',
+    default=(
+        'http://localhost,'
+        'http://localhost:80,'
+        'http://localhost:3000,'
+        'http://localhost:3001,'
+        'http://localhost:8080,'
+        'http://127.0.0.1,'
+        'http://127.0.0.1:3000,'
+        'http://127.0.0.1:3001,'
+        'http://127.0.0.1:8080'
+    ),
 )
 
 # Celery Configuration

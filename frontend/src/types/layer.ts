@@ -72,19 +72,80 @@ export interface StickerAsset {
   id: string;
   label: string;
   src: string;
+  description: string;
 }
 
 export const STICKER_ASSETS: StickerAsset[] = [
-  { id: 'star', label: 'Yulduz', src: '/stickers/star.png' },
-  { id: 'heart', label: 'Yurak', src: '/stickers/heart.png' },
-  { id: 'fire', label: 'Olov', src: '/stickers/fire.png' },
-  { id: 'smile', label: 'Tabassum', src: '/stickers/smile.png' },
-  { id: 'thumbsup', label: 'Bosh barmoq', src: '/stickers/thumbsup.png' },
-  { id: 'lightning', label: 'Chaqmoq', src: '/stickers/lightning.png' },
-  { id: 'crown', label: 'Toj', src: '/stickers/crown.png' },
-  { id: 'rocket', label: 'Raketa', src: '/stickers/rocket.png' },
-  { id: 'rainbow', label: 'Kamalak', src: '/stickers/rainbow.png' },
-  { id: 'check', label: 'Tasdiq', src: '/stickers/check.png' },
-  { id: 'sparkle', label: 'Yaltirash', src: '/stickers/sparkle.png' },
-  { id: 'flower', label: 'Gul', src: '/stickers/flower.png' },
+  {
+    id: 'star',
+    label: 'Yulduz',
+    src: '/stickers/star.png',
+    description: "Bayramona va yorqin urg'u uchun.",
+  },
+  {
+    id: 'heart',
+    label: 'Yurak',
+    src: '/stickers/heart.png',
+    description: "Sovg'a va iliq dizaynlar uchun mos.",
+  },
+  {
+    id: 'fire',
+    label: 'Olov',
+    src: '/stickers/fire.png',
+    description: 'Energiya va kuchli kayfiyat beradi.',
+  },
+  {
+    id: 'smile',
+    label: 'Tabassum',
+    src: '/stickers/smile.png',
+    description: "Yengil va quvnoq ko'rinish yaratadi.",
+  },
+  {
+    id: 'thumbsup',
+    label: 'Bosh barmoq',
+    src: '/stickers/thumbsup.png',
+    description: 'Tasdiq va ijobiy signal sifatida ishlaydi.',
+  },
+  {
+    id: 'lightning',
+    label: 'Chaqmoq',
+    src: '/stickers/lightning.png',
+    description: 'Tezlik va dinamika hissini kuchaytiradi.',
+  },
+  {
+    id: 'crown',
+    label: 'Toj',
+    src: '/stickers/crown.png',
+    description: "Premium yoki g'olibona kayfiyat uchun.",
+  },
+  {
+    id: 'rocket',
+    label: 'Raketa',
+    src: '/stickers/rocket.png',
+    description: "Startap, o'sish va tezlanish mavzusiga mos.",
+  },
+  {
+    id: 'rainbow',
+    label: 'Kamalak',
+    src: '/stickers/rainbow.png',
+    description: "Rang-barang va iliq kompozitsiyalar uchun.",
+  },
+  {
+    id: 'check',
+    label: 'Tasdiq',
+    src: '/stickers/check.png',
+    description: 'Ishonchli va tasdiqlangan bloklarga mos.',
+  },
+  {
+    id: 'sparkle',
+    label: 'Yaltirash',
+    src: '/stickers/sparkle.png',
+    description: 'Toza va yorqin bezak sifatida ishlaydi.',
+  },
+  {
+    id: 'flower',
+    label: 'Gul',
+    src: '/stickers/flower.png',
+    description: 'Nozik va estetik dizaynlar uchun tanlov.',
+  },
 ];

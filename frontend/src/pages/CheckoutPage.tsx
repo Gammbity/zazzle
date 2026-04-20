@@ -209,7 +209,7 @@ export default function CheckoutPage() {
     return (
       <div className='rounded-[2rem] border border-emerald-200 bg-[linear-gradient(180deg,_#f0fdf4_0%,_#ffffff_100%)] p-8 shadow-sm shadow-emerald-100/60'>
         <p className='text-sm font-semibold uppercase tracking-[0.3em] text-emerald-700'>
-          Checkout complete
+          Buyurtma tayyor
         </p>
         <h1 className='mt-4 text-4xl font-semibold text-slate-950'>
           Buyurtma qabul qilindi
@@ -286,12 +286,6 @@ export default function CheckoutPage() {
             className='rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700'
           >
             Buyurtma tafsilotlari
-          </Link>
-          <Link
-            to='/orders'
-            className='rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50'
-          >
-            Barcha buyurtmalar
           </Link>
         </div>
       </div>
@@ -439,7 +433,7 @@ export default function CheckoutPage() {
                                 shipping_address: event.target.value,
                               }))
                             }
-                            placeholder='Ko‘cha, uy, ofis'
+                            placeholder="Ko'cha, uy, ofis"
                           />
                         </label>
                         <label className='block'>
@@ -575,7 +569,7 @@ export default function CheckoutPage() {
                     >
                       {submitting
                         ? 'Yaratilmoqda...'
-                        : 'Buyurtmani yaratish va to‘lovni boshlash'}
+                        : "Buyurtmani yaratish va to'lovni boshlash"}
                       <ArrowRight className='h-4 w-4' />
                     </button>
                   </form>
@@ -583,7 +577,7 @@ export default function CheckoutPage() {
                   <aside className='space-y-4'>
                     <div className='rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10'>
                       <p className='text-sm font-semibold uppercase tracking-[0.24em] text-sky-300'>
-                        Order summary
+                        Buyurtma xulosasi
                       </p>
                       <div className='mt-6 space-y-4 rounded-[1.5rem] border border-white/10 bg-white/5 p-5'>
                         {cart.items.map(item => (
@@ -634,12 +628,10 @@ export default function CheckoutPage() {
                       </div>
 
                       {user?.profile?.phone_number && (
-                        <div className='mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600'>
-                          <div className='flex items-center gap-2 font-medium text-slate-800'>
-                            <Phone className='h-4 w-4 text-sky-700' />
-                            Profil telefoni
-                          </div>
-                          <p className='mt-2'>{user.profile.phone_number}</p>
+                        <div className='mt-5 flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600'>
+                          <Phone className='h-4 w-4 text-sky-700' />
+                          Profil telefon raqami checkout formasiga kiritib
+                          qo&apos;yildi.
                         </div>
                       )}
 
@@ -649,12 +641,6 @@ export default function CheckoutPage() {
                           className='rounded-2xl border border-slate-200 px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50'
                         >
                           Savatchaga qaytish
-                        </Link>
-                        <Link
-                          to='/orders'
-                          className='rounded-2xl border border-slate-200 px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50'
-                        >
-                          Buyurtmalar tarixini ochish
                         </Link>
                       </div>
                     </div>

@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  CheckCircle2,
-  LockKeyhole,
-  ShoppingCart,
-  Sparkles,
-} from 'lucide-react';
+import { ArrowRight, ShoppingCart } from 'lucide-react';
 import type { Product } from '@/lib/products/catalog';
 import { Link } from '@/lib/router';
 import { useEditorStore } from '@/store/editorStore';
@@ -62,9 +57,14 @@ export default function ProductPurchasePanel({
         if (!cancelled) {
           setBackendProduct(resolved);
         }
-      } catch {
+      } catch (loadError: unknown) {
         if (!cancelled) {
-          setError("Mahsulotning savdo ma'lumotlarini yuklab bo'lmadi.");
+          setError(
+            getCommerceErrorMessage(
+              loadError,
+              "Mahsulotning savdo ma'lumotlarini yuklab bo'lmadi."
+            )
+          );
         }
       } finally {
         if (!cancelled) {
@@ -169,6 +169,20 @@ export default function ProductPurchasePanel({
     );
   }, [availableVariants, backendProduct, selectedColor, selectedSize]);
 
+  const estimatedTotal = useMemo(() => {
+    if (!selectedVariant) {
+      return null;
+    }
+
+    const unitPrice = Number.parseFloat(selectedVariant.sale_price);
+
+    if (!Number.isFinite(unitPrice)) {
+      return null;
+    }
+
+    return formatMoney(unitPrice * quantity);
+  }, [quantity, selectedVariant]);
+
   const executeAddToCart = async () => {
     if (!backendProduct || !selectedVariant) {
       return;
@@ -220,7 +234,7 @@ export default function ProductPurchasePanel({
     await executeAddToCart();
   };
 
-  const isUnsupported = !loading && !backendProduct;
+  const isUnsupported = !loading && !error && !backendProduct;
 
   return (
     <>
@@ -228,14 +242,14 @@ export default function ProductPurchasePanel({
         <div className='flex flex-wrap items-start justify-between gap-3'>
           <div>
             <p className='text-sm font-semibold uppercase tracking-[0.24em] text-sky-700'>
-              Savat oqimi
+              Buyurtma bosqichi
             </p>
             <h2 className='mt-3 text-2xl font-semibold text-slate-900'>
-              Dizaynni buyurtmaga aylantiring
+              Dizaynni savatga tayyorlang
             </h2>
             <p className='mt-2 max-w-2xl text-sm leading-6 text-slate-600'>
-              Variantni tanlang, sonini belgilang va shu sahifadan
-              to&apos;g&apos;ridan to&apos;g&apos;ri savatchaga yuboring.
+              Variantni tanlang va shu sahifadan savatga yuboring. Checkoutda
+              aloqa hamda yetkazib berish ma&apos;lumotlari kiritiladi.
             </p>
           </div>
 
@@ -246,6 +260,10 @@ export default function ProductPurchasePanel({
 
         {loading ? (
           <div className='mt-6 h-40 animate-pulse rounded-[1.5rem] bg-slate-100' />
+        ) : error ? (
+          <div className='mt-6 rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-sm leading-6 text-rose-700'>
+            {error}
+          </div>
         ) : isUnsupported ? (
           <div className='mt-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800'>
             Bu mahsulot backend katalogidan topilmadi.
@@ -355,7 +373,7 @@ export default function ProductPurchasePanel({
 
               <div className='rounded-[1.5rem] bg-slate-950 p-5 text-white'>
                 <p className='text-sm font-semibold uppercase tracking-[0.2em] text-sky-300'>
-                  Buyurtma xulosasi
+                  Qisqa xulosa
                 </p>
                 <div className='mt-5 rounded-[1.25rem] border border-white/10 bg-white/5 p-4'>
                   <p className='text-sm text-slate-300'>Bir dona narx</p>
@@ -364,25 +382,11 @@ export default function ProductPurchasePanel({
                       ? formatMoney(selectedVariant.sale_price)
                       : product.startingPrice}
                   </p>
-                  <p className='mt-3 text-sm text-slate-300'>
-                    Savatga yuborilgandan keyin checkout sahifasida kontakt va
-                    yetkazib berish ma&apos;lumotlarini to&apos;ldirasiz.
-                  </p>
-                </div>
-
-                <div className='mt-4 space-y-3 text-sm text-slate-200'>
-                  <div className='flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3'>
-                    <Sparkles className='mt-0.5 h-4 w-4 text-sky-300' />
-                    Dizayn draft ko&apos;rinishida backendga yoziladi.
-                  </div>
-                  <div className='flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3'>
-                    <LockKeyhole className='mt-0.5 h-4 w-4 text-sky-300' />
-                    Savat va orderlar hisobingiz bilan bog&apos;lanadi.
-                  </div>
-                  <div className='flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3'>
-                    <CheckCircle2 className='mt-0.5 h-4 w-4 text-sky-300' />
-                    To&apos;lov init Payme, Click yoki Uzcard/Humo orqali
-                    boshlanadi.
+                  <div className='mt-4 flex items-center justify-between border-t border-white/10 pt-4 text-sm text-slate-200'>
+                    <span>{quantity} dona uchun taxminiy jami</span>
+                    <span className='text-base font-semibold text-white'>
+                      {estimatedTotal ?? 'Tanlang'}
+                    </span>
                   </div>
                 </div>
 
@@ -399,15 +403,10 @@ export default function ProductPurchasePanel({
                 <div className='mt-4 flex flex-wrap gap-3'>
                   <Link
                     to='/cart'
-                    className='inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10'
+                    className='inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10'
                   >
-                    Savatchani ochish
-                  </Link>
-                  <Link
-                    to='/orders'
-                    className='inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10'
-                  >
-                    Buyurtmalarim
+                    Savatga o&apos;tish
+                    <ArrowRight className='h-4 w-4' />
                   </Link>
                 </div>
               </div>

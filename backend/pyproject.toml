@@ -52,6 +52,7 @@ dependencies = [
     "requests>=2.31.0",
     "python-slugify>=8.0.0",
     "Faker>=19.6.0",
+    "jsonschema>=4.21.0",
 
     # Production Server
     "gunicorn>=21.2.0",

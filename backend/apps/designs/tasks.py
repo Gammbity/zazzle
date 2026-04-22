@@ -47,13 +47,21 @@ class S3Manager:
     """Handle S3 operations for rendering."""
     
     def __init__(self):
+        # Fail fast rather than silently using bogus fallback credentials;
+        # a misconfigured worker is safer than one that pretends to work.
+        required = ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_STORAGE_BUCKET_NAME')
+        missing = [name for name in required if not getattr(settings, name, None)]
+        if missing:
+            raise RenderingError(
+                f"S3Manager requires {', '.join(missing)} to be configured."
+            )
         self.s3_client = boto3.client(
             's3',
-            aws_access_key_id=getattr(settings, 'AWS_ACCESS_KEY_ID', 'test-access-key'),
-            aws_secret_access_key=getattr(settings, 'AWS_SECRET_ACCESS_KEY', 'test-secret-key'),
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1'),
         )
-        self.bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', 'test-bucket')
+        self.bucket_name = settings.AWS_STORAGE_BUCKET_NAME
     
     def download_image(self, s3_key: str) -> Image.Image:
         """Download image from S3 and return PIL Image."""
@@ -603,3 +611,90 @@ def cleanup_render_files(older_than_days: int = 30) -> Dict:
             'deleted_count': 0,
             'error_count': 0
         }
+
+
+@shared_task(
+    name='apps.designs.tasks.process_design_assets',
+    autoretry_for=(IOError, OSError),
+    retry_backoff=True,
+    retry_kwargs={'max_retries': 3},
+)
+def process_design_assets(design_id: int) -> Dict:
+    """Extract image metadata and generate a web-optimized copy.
+
+    Storage-agnostic: reads and writes go through Django's storage API, so it
+    works identically on local FS and S3-backed storage (django-storages).
+    Any failure is logged; the design row stays usable (just without
+    dimensions or an optimized file) rather than rolling back the upload.
+    """
+    from django.core.files.base import ContentFile
+
+    from .models import Design
+
+    try:
+        design = Design.objects.get(pk=design_id)
+    except Design.DoesNotExist:
+        logger.warning('design.process.missing', extra={'design_id': design_id})
+        return {'status': 'missing'}
+
+    if not design.original_file:
+        return {'status': 'no_file'}
+
+    update_fields: List[str] = []
+    name_lower = design.original_file.name.lower()
+    is_raster = name_lower.endswith(('.png', '.jpg', '.jpeg'))
+
+    try:
+        design.file_size = design.original_file.size
+        update_fields.append('file_size')
+    except Exception:
+        logger.exception('design.process.size_failed', extra={'design_id': design_id})
+
+    if is_raster:
+        try:
+            # FieldFile is a file-like object; PIL accepts it for both local
+            # and remote storage backends, so we never need `.path`.
+            with design.original_file.open('rb') as fh:
+                with Image.open(fh) as img:
+                    design.width, design.height = img.size
+                    update_fields.extend(['width', 'height'])
+                    exif = img._getexif() if hasattr(img, '_getexif') else None
+                    if exif and 282 in exif:
+                        design.dpi = int(exif[282])
+                        update_fields.append('dpi')
+        except Exception:
+            logger.exception('design.process.metadata_failed', extra={'design_id': design_id})
+
+        try:
+            with design.original_file.open('rb') as fh:
+                with Image.open(fh) as img:
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
+                    img.thumbnail((800, 800), Image.Resampling.LANCZOS)
+                    buf = io.BytesIO()
+                    img.save(buf, 'JPEG', quality=85, optimize=True)
+                    buf.seek(0)
+
+            # Derive an optimized key under the same user-scoped prefix
+            # ("/original/..." -> "/optimized/...").
+            optimized_name = design.original_file.name.replace('/original/', '/optimized/')
+            if optimized_name == design.original_file.name:
+                # Fallback when the upload doesn't use the expected prefix.
+                base, _, fname = design.original_file.name.rpartition('/')
+                optimized_name = f'{base}/optimized/{fname}' if base else f'optimized/{fname}'
+
+            design.optimized_file.save(
+                optimized_name,
+                ContentFile(buf.getvalue()),
+                save=False,
+            )
+            update_fields.append('optimized_file')
+        except Exception:
+            logger.exception('design.process.optimize_failed', extra={'design_id': design_id})
+
+    if update_fields:
+        Design.objects.filter(pk=design.pk).update(
+            **{f: getattr(design, f) for f in update_fields}
+        )
+
+    return {'status': 'ok', 'updated': update_fields}

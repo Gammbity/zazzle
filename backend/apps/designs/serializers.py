@@ -5,10 +5,40 @@ from datetime import timedelta
 import os
 import re
 import uuid
+
+import jsonschema
+
 from .models import (
     DesignCategory, Design, DesignLicense, DesignUsage, DesignCollection,
     Draft, DraftAsset, UploadSession, MockupRender, ProductMockupTemplate
 )
+from .schemas import EDITOR_STATE_SCHEMA, TEXT_LAYERS_SCHEMA
+
+
+class _DraftJSONValidationMixin:
+    """Validates Draft.editor_state / text_layers against their JSON Schema.
+
+    Returns a field-scoped ValidationError so clients see which payload is
+    malformed rather than a generic 400.
+    """
+
+    def validate_text_layers(self, value):
+        if value in (None, []):
+            return value
+        try:
+            jsonschema.validate(value, TEXT_LAYERS_SCHEMA)
+        except jsonschema.ValidationError as exc:
+            raise serializers.ValidationError(f'text_layers: {exc.message}') from exc
+        return value
+
+    def validate_editor_state(self, value):
+        if value in (None, {}):
+            return value
+        try:
+            jsonschema.validate(value, EDITOR_STATE_SCHEMA)
+        except jsonschema.ValidationError as exc:
+            raise serializers.ValidationError(f'editor_state: {exc.message}') from exc
+        return value
 
 
 class DesignCategorySerializer(serializers.ModelSerializer):
@@ -273,9 +303,9 @@ class DraftDetailSerializer(serializers.ModelSerializer):
         }
 
 
-class DraftCreateSerializer(serializers.ModelSerializer):
+class DraftCreateSerializer(_DraftJSONValidationMixin, serializers.ModelSerializer):
     """Serializer for creating drafts."""
-    
+
     class Meta:
         model = Draft
         fields = [
@@ -301,9 +331,9 @@ class DraftCreateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class DraftUpdateSerializer(serializers.ModelSerializer):
+class DraftUpdateSerializer(_DraftJSONValidationMixin, serializers.ModelSerializer):
     """Serializer for updating drafts."""
-    
+
     class Meta:
         model = Draft
         fields = [

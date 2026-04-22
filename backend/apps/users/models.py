@@ -84,6 +84,63 @@ class User(AbstractUser):
         return ', '.join(part for part in address_parts if part)
 
 
+class Address(models.Model):
+    """
+    Reusable shipping/billing address owned by a User.
+
+    Introduced alongside the existing denormalized fields on User (address_line,
+    city, state, postal_code, country). Those fields stay in place for
+    backwards compatibility for one release cycle; new code should write here.
+    Order.shipping_* intentionally remain a snapshot of the address at the
+    moment of checkout — a later address edit must not retroactively mutate a
+    completed order.
+    """
+
+    class Kind(models.TextChoices):
+        SHIPPING = 'shipping', _('Shipping')
+        BILLING = 'billing', _('Billing')
+        OTHER = 'other', _('Other')
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
+    label = models.CharField(_('label'), max_length=64, blank=True)
+    kind = models.CharField(_('kind'), max_length=16, choices=Kind.choices, default=Kind.SHIPPING)
+
+    recipient_name = models.CharField(_('recipient name'), max_length=100)
+    phone = models.CharField(_('phone'), max_length=32, blank=True)
+
+    line1 = models.CharField(_('address line 1'), max_length=255)
+    line2 = models.CharField(_('address line 2'), max_length=255, blank=True)
+    city = models.CharField(_('city'), max_length=100)
+    state = models.CharField(_('state/region'), max_length=100, blank=True)
+    postal_code = models.CharField(_('postal code'), max_length=20, blank=True)
+    country = models.CharField(_('country'), max_length=100, default='Uzbekistan')
+
+    is_default = models.BooleanField(_('is default'), default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('Address')
+        verbose_name_plural = _('Addresses')
+        indexes = [
+            models.Index(fields=['user', 'is_default']),
+            models.Index(fields=['user', 'kind']),
+        ]
+        constraints = [
+            # At most one default address per (user, kind). Enforced at the DB
+            # to prevent split-brain between UI and backend mutations.
+            models.UniqueConstraint(
+                fields=['user', 'kind'],
+                condition=models.Q(is_default=True),
+                name='uniq_default_address_per_user_kind',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.recipient_name} — {self.line1}, {self.city}'
+
+
 class UserProfile(models.Model):
     """Extended user profile information."""
     

@@ -1,5 +1,10 @@
+import base64
+import hashlib
+import hmac
+import json
+
 from django.urls import reverse
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
@@ -7,6 +12,19 @@ from .models import Order, PaymentTransaction, ProductionFile, OrderAssignment
 from apps.cart.models import Cart, CartItem
 from apps.designs.models import Draft
 from apps.products.models import ProductType, ProductVariant
+
+
+_TEST_PAYME_SECRET = 'payme-test-secret'
+_TEST_CLICK_SECRET = 'click-test-secret'
+
+
+def _click_sig(secret: str, payload: dict) -> str:
+    body = json.dumps(payload).encode()
+    return hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+
+
+def _payme_auth(secret: str) -> str:
+    return 'Basic ' + base64.b64encode(f'Paycom:{secret}'.encode()).decode()
 
 
 User = get_user_model()
@@ -98,6 +116,7 @@ class PaymentIdempotencyTests(TestCase):
             1,
         )
 
+    @override_settings(PAYMENT_PAYME_SECRET=_TEST_PAYME_SECRET)
     def test_payment_callback_idempotency(self):
         tx = PaymentTransaction.objects.create(
             order=self.order,
@@ -118,9 +137,10 @@ class PaymentIdempotencyTests(TestCase):
             'external_id': 'ext-1',
             'success': True,
         }
+        auth = _payme_auth(_TEST_PAYME_SECRET)
 
-        first = self.client.post(callback_url, data=payload, format='json')
-        second = self.client.post(callback_url, data=payload, format='json')
+        first = self.client.post(callback_url, data=payload, format='json', HTTP_AUTHORIZATION=auth)
+        second = self.client.post(callback_url, data=payload, format='json', HTTP_AUTHORIZATION=auth)
 
         tx.refresh_from_db()
         self.order.refresh_from_db()
@@ -130,6 +150,7 @@ class PaymentIdempotencyTests(TestCase):
         self.assertEqual(tx.status, PaymentTransaction.Status.SUCCESS)
         self.assertEqual(self.order.status, 'PAID')
 
+    @override_settings(PAYMENT_CLICK_SECRET=_TEST_CLICK_SECRET)
     def test_payment_callback_treats_false_string_as_failure(self):
         tx = PaymentTransaction.objects.create(
             order=self.order,
@@ -146,10 +167,15 @@ class PaymentIdempotencyTests(TestCase):
             kwargs={'provider': PaymentTransaction.Providers.CLICK},
         )
 
+        payload = {'external_id': 'ext-false', 'success': 'false'}
+        body = json.dumps(payload)
         response = self.client.post(
             callback_url,
-            data={'external_id': 'ext-false', 'success': 'false'},
-            format='json',
+            data=body,
+            content_type='application/json',
+            HTTP_X_CLICK_SIGNATURE=hmac.new(
+                _TEST_CLICK_SECRET.encode(), body.encode(), hashlib.sha256
+            ).hexdigest(),
         )
 
         tx.refresh_from_db()

@@ -68,6 +68,8 @@ class Order(models.Model):
             models.Index(fields=['status', 'created_at']),
             models.Index(fields=['order_number']),
             models.Index(fields=['-created_at']),
+            # User order history (my-orders page) — newest-first per customer.
+            models.Index(fields=['customer', '-created_at'], name='orders_order_cust_recent_idx'),
         ]
         
     def __str__(self):
@@ -335,8 +337,16 @@ class PaymentTransaction(models.Model):
         verbose_name_plural = _('Payment Transactions')
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['provider', 'external_id']),
             models.Index(fields=['order', 'status']),
+        ]
+        constraints = [
+            # Webhook lookups rely on (provider, external_id) being unique.
+            # Enforcing at the DB prevents a second provider row from
+            # hijacking an existing transaction's callbacks.
+            models.UniqueConstraint(
+                fields=['provider', 'external_id'],
+                name='uniq_payment_provider_external_id',
+            ),
         ]
 
     def __str__(self):

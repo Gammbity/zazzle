@@ -33,6 +33,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 class LoginView(APIView):
     """User login view."""
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
     
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -70,6 +71,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -169,6 +171,7 @@ class UserDetailView(generics.RetrieveAPIView):
 class PasswordResetRequestView(APIView):
     """Request password reset email."""
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
     
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -200,6 +203,7 @@ class PasswordResetRequestView(APIView):
 class PasswordResetConfirmView(APIView):
     """Confirm password reset with token."""
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
     
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import type { Product } from '@/lib/products/catalog';
 import ProductGallery from '@/components/ProductGallery';
 import ProductSurfacePreviewGrid from '@/components/ProductSurfacePreviewGrid';
@@ -241,6 +241,29 @@ export default function ProductDetailPage({ product }: { product: Product }) {
               previewDataUrl={previewDataUrl}
             />
           </div>
+        </div>
+      </div>
+
+      <div
+        className='sticky bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_20px_-12px_rgba(15,23,42,0.15)] backdrop-blur lg:hidden'
+        aria-label='Buyurtma paneli'
+      >
+        <div className='mx-auto flex max-w-2xl items-center justify-between gap-3'>
+          <div className='min-w-0'>
+            <p className='truncate text-xs font-medium uppercase tracking-wider text-slate-500'>
+              {product.name}
+            </p>
+            <p className='mt-0.5 text-base font-semibold text-slate-900'>
+              {product.startingPrice}
+            </p>
+          </div>
+          <a
+            href='#purchase'
+            className='inline-flex shrink-0 items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-slate-900/20 transition-transform active:scale-95'
+          >
+            <ShoppingCart className='h-4 w-4' aria-hidden />
+            Savatga qo'shish
+          </a>
         </div>
       </div>
     </main>

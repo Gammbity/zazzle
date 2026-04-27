@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import Modal from '@/components/Modal';
-import {
-  getCommerceErrorMessage,
-  loginCustomer,
-  registerCustomer,
-  type CommerceUser,
-} from '@/lib/commerce';
+import { useLogin, useRegister } from '@/hooks/queries';
+import { getCommerceErrorMessage, type CommerceUser } from '@/lib/commerce';
 
 interface CommerceAuthModalProps {
   open: boolean;
@@ -36,8 +32,11 @@ export default function CommerceAuthModal({
   const [mode, setMode] = useState<AuthMode>('login');
   const [loginForm, setLoginForm] = useState(INITIAL_LOGIN);
   const [registerForm, setRegisterForm] = useState(INITIAL_REGISTER);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
+  const submitting = loginMutation.isPending || registerMutation.isPending;
 
   const handleClose = () => {
     setError(null);
@@ -46,29 +45,23 @@ export default function CommerceAuthModal({
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
-
     try {
-      const user = await loginCustomer(loginForm);
+      const user = await loginMutation.mutateAsync(loginForm);
       onSuccess?.(user);
       handleClose();
     } catch (authError: unknown) {
       setError(
         getCommerceErrorMessage(authError, 'Kirishda xatolik yuz berdi.')
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
-
     try {
-      const user = await registerCustomer(registerForm);
+      const user = await registerMutation.mutateAsync(registerForm);
       onSuccess?.(user);
       handleClose();
     } catch (authError: unknown) {
@@ -79,8 +72,6 @@ export default function CommerceAuthModal({
           ['email', 'password']
         )
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -96,9 +87,7 @@ export default function CommerceAuthModal({
           <p className='text-xs font-semibold uppercase tracking-[0.3em] text-sky-200'>
             Buyurtma
           </p>
-          <h3 className='mt-4 text-2xl font-semibold'>
-            Hammasi bir joyda
-          </h3>
+          <h3 className='mt-4 text-2xl font-semibold'>Hammasi bir joyda</h3>
           <p className='mt-3 text-sm leading-6 text-slate-200'>
             Hisobga kirganingizdan keyin savat, buyurtmalar va
             to&apos;lovlaringizni qulay boshqarasiz.
@@ -295,7 +284,7 @@ export default function CommerceAuthModal({
                 />
               </label>
 
-              <p className='sm:col-span-2 text-sm leading-6 text-slate-500'>
+              <p className='text-sm leading-6 text-slate-500 sm:col-span-2'>
                 Ko&apos;rinadigan ism avtomatik ravishda ism va familiyangizdan
                 olinadi.
               </p>

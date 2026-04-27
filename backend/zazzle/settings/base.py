@@ -166,7 +166,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'apps.users.authentication.CookieJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -237,6 +237,19 @@ SPECTACULAR_SETTINGS = {
 CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', default='')
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', default='')
+
+# Same-origin deployment: SPA reads `csrftoken` cookie and echoes it back as
+# an `X-CSRFToken` header on mutating requests (standard Django pattern).
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# ---------------------------------------------------------------------------
+# Auth cookies (HttpOnly JWT)
+# ---------------------------------------------------------------------------
+AUTH_COOKIE_SAMESITE = config('AUTH_COOKIE_SAMESITE', default='Lax')
+AUTH_COOKIE_SECURE = config('AUTH_COOKIE_SECURE', default=not DEBUG, cast=bool)
+AUTH_COOKIE_DOMAIN = config('AUTH_COOKIE_DOMAIN', default=None) or None
 
 # ---------------------------------------------------------------------------
 # Celery

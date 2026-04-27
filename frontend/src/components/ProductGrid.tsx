@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, SearchX } from 'lucide-react';
 import { catalog } from '@/lib/products/catalog';
 import ProductCard from '@/components/ProductCard';
+import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import {
   PRODUCT_FILTERS,
   type ProductFilterId,
@@ -142,48 +143,56 @@ export default function ProductGrid() {
           </div>
         </div>
 
-        {filteredProducts.length > 0 ? (
+        {!isVisible ? (
+          <div
+            aria-hidden
+            className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4'
+          >
+            {Array.from({ length: 4 }).map((_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))}
+          </div>
+        ) : filteredProducts.length > 0 ? (
           <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4'>
             {filteredProducts.map((product, index) => (
               <div
                 key={product.slug}
-                className={cn(
-                  'transition-all duration-700',
-                  isVisible
-                    ? 'translate-y-0 opacity-100'
-                    : 'translate-y-12 opacity-0'
-                )}
-                style={{
-                  transitionDelay: isVisible ? `${index * 120}ms` : '0ms',
-                }}
+                className='translate-y-0 opacity-100 transition-all duration-500'
+                style={{ transitionDelay: `${Math.min(index * 80, 320)}ms` }}
               >
                 <ProductCard product={product} />
               </div>
             ))}
           </div>
         ) : (
-          <div className='rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center'>
-            <h3 className='text-xl font-semibold text-slate-900'>
-              Mos mahsulot topilmadi
+          <div className='rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center'>
+            <div className='mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200'>
+              <SearchX className='h-6 w-6 text-slate-400' aria-hidden />
+            </div>
+            <h3 className='mt-4 text-xl font-semibold text-slate-900'>
+              Hech narsa topilmadi
             </h3>
-            <p className='mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600'>
-              Qidiruv so'zini soddalashtirib ko'ring yoki filtrni "Barchasi"
-              holatiga qaytaring.
+            <p className='mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600'>
+              Qidiruv so'zini soddalashtiring yoki filtrni qaytadan tanlang — 6
+              ta mahsulot turimiz mavjud.
             </p>
-            <div className='mt-5 flex justify-center gap-3'>
+            <div className='mt-6 flex flex-wrap justify-center gap-3'>
               <button
                 type='button'
                 onClick={() => setQuery('')}
-                className='rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100'
+                className='rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition-all hover:-translate-y-0.5 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2'
               >
                 Qidiruvni tozalash
               </button>
               <button
                 type='button'
-                onClick={() => setActiveFilter('all')}
-                className='rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700'
+                onClick={() => {
+                  setQuery('');
+                  setActiveFilter('all');
+                }}
+                className='rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-all hover:-translate-y-0.5 hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2'
               >
-                Barcha mahsulotlar
+                Barcha mahsulotlarni ko'rish
               </button>
             </div>
           </div>

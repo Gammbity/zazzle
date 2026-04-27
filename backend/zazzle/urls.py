@@ -22,8 +22,7 @@ from django.http import HttpResponse, JsonResponse
 from apps.orders import views as order_views
 
 api_urlpatterns = [
-    path('auth/', include('dj_rest_auth.urls')),
-    path('auth/registration/', include('dj_rest_auth.registration.urls')),
+    path('auth/', include('apps.users.auth_urls')),
     path('users/', include('apps.users.urls')),
     path('products/', include('apps.products.urls')),
     path('orders/', include('apps.orders.urls')),

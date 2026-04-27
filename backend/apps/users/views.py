@@ -1,7 +1,10 @@
 from rest_framework import generics, status, permissions
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model, login
@@ -11,6 +14,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db import models
+from .cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
 from .models import UserProfile, SocialConnection
 from .permissions import IsAdmin
 from .serializers import (
@@ -25,37 +29,52 @@ User = get_user_model()
 
 # Authentication Views
 
+def _issue_tokens_and_set_cookies(user, response):
+    """Mint a fresh refresh/access pair for `user` and attach them as cookies."""
+    refresh = RefreshToken.for_user(user)
+    set_auth_cookies(
+        response,
+        access=str(refresh.access_token),
+        refresh=str(refresh),
+    )
+
+
 class CustomTokenObtainPairView(TokenObtainPairView):
-    """Custom JWT token obtain view with user data."""
+    """JWT obtain view — returns the user, sets tokens as HttpOnly cookies."""
     serializer_class = CustomTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        access = data.pop('access', None)
+        refresh = data.pop('refresh', None)
+        response = Response(data, status=status.HTTP_200_OK)
+        if access and refresh:
+            set_auth_cookies(response, access=access, refresh=refresh)
+        return response
 
 
 class LoginView(APIView):
-    """User login view."""
+    """Email/password login — sets HttpOnly auth cookies."""
     permission_classes = [permissions.AllowAny]
-    authentication_classes = []
-    
+
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data['user']
-            
-            # Generate JWT tokens
-            refresh = RefreshToken.for_user(user)
-            
-            # Update login analytics
-            if hasattr(user, 'profile'):
-                user.profile.login_count += 1
-                user.profile.last_login_ip = self.get_client_ip(request)
-                user.profile.save()
-            
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user': UserSerializer(user).data
-            })
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.validated_data['user']
+
+        if hasattr(user, 'profile'):
+            user.profile.login_count += 1
+            user.profile.last_login_ip = self.get_client_ip(request)
+            user.profile.save()
+
+        response = Response({'user': UserSerializer(user).data})
+        _issue_tokens_and_set_cookies(user, response)
+        return response
+
     def get_client_ip(self, request):
         """Get client IP address."""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -67,41 +86,68 @@ class LoginView(APIView):
 
 
 class RegisterView(generics.CreateAPIView):
-    """User registration view."""
+    """User registration — auto-logs the user in via HttpOnly cookies."""
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
-    authentication_classes = []
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        # Generate JWT tokens for automatic login
-        refresh = RefreshToken.for_user(user)
-
-        headers = self.get_success_headers({})
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'user': UserSerializer(user).data,
-            'message': 'Registration successful'
-        }, status=status.HTTP_201_CREATED, headers=headers)
+        response = Response(
+            {
+                'user': UserSerializer(user).data,
+                'message': 'Registration successful',
+            },
+            status=status.HTTP_201_CREATED,
+        )
+        _issue_tokens_and_set_cookies(user, response)
+        return response
 
 
 class LogoutView(APIView):
-    """User logout view (blacklist refresh token)."""
-    permission_classes = [permissions.IsAuthenticated]
-    
+    """Blacklist the refresh token (if any) and clear auth cookies."""
+    permission_classes = [permissions.AllowAny]
+
     def post(self, request):
+        refresh_token = request.COOKIES.get(REFRESH_COOKIE) or request.data.get('refresh')
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except TokenError:
+                # Token already invalid/expired — still safe to clear cookies.
+                pass
+
+        response = Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
+        clear_auth_cookies(response)
+        return response
+
+
+class CookieTokenRefreshView(TokenRefreshView):
+    """Rotate the refresh cookie and issue a new access cookie."""
+    serializer_class = TokenRefreshSerializer
+
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get(REFRESH_COOKIE) or request.data.get('refresh')
+        if not refresh_token:
+            raise AuthenticationFailed('Refresh token missing.')
+
+        serializer = self.get_serializer(data={'refresh': refresh_token})
         try:
-            refresh_token = request.data["refresh"]
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response({"message": "Successfully logged out"}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+            serializer.is_valid(raise_exception=True)
+        except TokenError as exc:
+            raise InvalidToken(str(exc))
+
+        data = serializer.validated_data
+        access = data.get('access')
+        rotated_refresh = data.get('refresh')
+
+        response = Response({'detail': 'Token refreshed'}, status=status.HTTP_200_OK)
+        if access:
+            set_auth_cookies(response, access=access, refresh=rotated_refresh)
+        return response
     # Profile Management Views
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -171,7 +217,6 @@ class UserDetailView(generics.RetrieveAPIView):
 class PasswordResetRequestView(APIView):
     """Request password reset email."""
     permission_classes = [permissions.AllowAny]
-    authentication_classes = []
     
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -203,7 +248,6 @@ class PasswordResetRequestView(APIView):
 class PasswordResetConfirmView(APIView):
     """Confirm password reset with token."""
     permission_classes = [permissions.AllowAny]
-    authentication_classes = []
     
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)

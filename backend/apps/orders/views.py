@@ -18,7 +18,10 @@ from .models import (
     ProductionFile,
     ShippingMethod,
 )
+from apps.common import idempotency
+
 from .payment_providers import init_payment_for_provider, verify_provider_signature
+from .state import InvalidTransition, transition as order_transition
 from .serializers import (
     CheckoutSerializer,
     CouponSerializer,
@@ -202,7 +205,14 @@ def checkout(request):
     """
     Simplified checkout endpoint.
     Creates an order from the current user's cart and stores only contact info and optional note.
+
+    Supports `Idempotency-Key` header — a retried POST with the same key within
+    24h returns the original response instead of creating a duplicate order.
     """
+    return idempotency.run(request, 'checkout', lambda: _checkout(request))
+
+
+def _checkout(request):
     from apps.cart.models import Cart
     from apps.cart.services import get_user_cart_queryset
 
@@ -338,14 +348,13 @@ def cancel_order(request, order_id):
     """Cancel order if possible."""
     order = get_object_or_404(get_user_order_queryset(request.user), id=order_id)
 
-    if order.status in ['DONE', 'CANCELLED']:
+    try:
+        order_transition(order, 'CANCELLED')
+    except InvalidTransition:
         return Response(
             {'error': 'Order cannot be cancelled at this stage'},
             status=status.HTTP_400_BAD_REQUEST,
         )
-
-    order.status = 'CANCELLED'
-    order.save(update_fields=['status', 'updated_at'])
 
     if order.coupon_code:
         try:
@@ -418,8 +427,9 @@ def payment_init(request):
             )
 
         if created and order.status == 'NEW':
-            order.status = 'PAYMENT_PENDING'
-            order.save(update_fields=['status', 'updated_at'])
+            # Safe inside the outer atomic block — state.transition wraps its
+            # own atomic for the row lock, nested atomics are allowed.
+            order_transition(order, 'PAYMENT_PENDING')
 
         init_result = init_payment_for_provider(transaction_obj)
 
@@ -492,8 +502,15 @@ def payment_callback(request, provider: str):
 
         if success_flag:
             tx.status = PaymentTransaction.Status.SUCCESS
-            tx.order.status = 'PAID'
-            tx.order.save(update_fields=['status', 'updated_at'])
+            try:
+                order_transition(tx.order, 'PAID')
+            except InvalidTransition:
+                # Late webhook for an already-cancelled/closed order —
+                # acknowledge but don't mutate state.
+                logger.warning(
+                    'payment.webhook.stale_success',
+                    extra={'order_id': tx.order_id, 'order_status': tx.order.status},
+                )
         else:
             tx.status = PaymentTransaction.Status.FAILED
 
@@ -565,6 +582,14 @@ def update_order_status(request, order_id: int):
     input_serializer.is_valid(raise_exception=True)
     new_status = input_serializer.validated_data['status']
 
+    # Idempotent no-op: operator UI may retry a completed mutation. Return
+    # current state rather than a 400 from the stricter state machine.
+    if order.status == new_status:
+        return Response({'order_id': order.id, 'status': order.status})
+
+    # validate_status_transition owns domain prerequisites (e.g. production
+    # files must exist before READY_FOR_PRODUCTION); state.transition owns
+    # the raw status-graph + row lock. Both must succeed.
     transition_error = validate_status_transition(order, new_status)
     if transition_error:
         return Response(
@@ -572,8 +597,13 @@ def update_order_status(request, order_id: int):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    order.status = new_status
-    order.save(update_fields=['status', 'updated_at'])
+    try:
+        order_transition(order, new_status)
+    except InvalidTransition as exc:
+        return Response(
+            {'detail': str(exc)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     return Response({'order_id': order.id, 'status': order.status})
 

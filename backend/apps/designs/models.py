@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
-from PIL import Image
 import os
 import uuid
 
@@ -114,58 +113,9 @@ class Design(models.Model):
     def __str__(self):
         return f"{self.title} by {self.created_by.get_full_name()}"
         
-    def save(self, *args, **kwargs):
-        """Save design and extract metadata."""
-        is_new = self.pk is None
-        super().save(*args, **kwargs)
-        
-        if is_new and self.original_file:
-            self._extract_metadata()
-            self._create_optimized_version()
-    
-    def _extract_metadata(self):
-        """Extract metadata from uploaded image."""
-        try:
-            if self.original_file:
-                self.file_size = self.original_file.size
-                
-                # Extract image dimensions for image files
-                if self.original_file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    with Image.open(self.original_file.path) as img:
-                        self.width, self.height = img.size
-                        
-                        # Try to get DPI from EXIF
-                        if hasattr(img, '_getexif') and img._getexif():
-                            exif = img._getexif()
-                            if exif and 282 in exif:  # 282 is the EXIF tag for X resolution
-                                self.dpi = int(exif[282])
-                
-                self.save(update_fields=['file_size', 'width', 'height', 'dpi'])
-        except Exception as e:
-            print(f"Error extracting metadata: {e}")
-    
-    def _create_optimized_version(self):
-        """Create optimized version for web display."""
-        try:
-            if self.original_file and self.original_file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                with Image.open(self.original_file.path) as img:
-                    # Convert to RGB if necessary
-                    if img.mode in ('RGBA', 'P'):
-                        img = img.convert('RGB')
-                    
-                    # Resize for web display (max 800px)
-                    max_size = (800, 800)
-                    img.thumbnail(max_size, Image.Resampling.LANCZOS)
-                    
-                    # Save optimized version
-                    optimized_path = self.original_file.path.replace('/original/', '/optimized/')
-                    os.makedirs(os.path.dirname(optimized_path), exist_ok=True)
-                    
-                    img.save(optimized_path, 'JPEG', quality=85, optimize=True)
-                    self.optimized_file = optimized_path.replace(settings.MEDIA_ROOT, '').lstrip('/')
-                    self.save(update_fields=['optimized_file'])
-        except Exception as e:
-            print(f"Error creating optimized version: {e}")
+    # NOTE: metadata extraction + optimized version generation are dispatched
+    # to Celery from signals.py on post_save. Keeping Design.save() free of
+    # blocking I/O is intentional — image work must not hold a request open.
 
 
 class DesignLicense(models.Model):

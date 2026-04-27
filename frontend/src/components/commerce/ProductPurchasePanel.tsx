@@ -1,17 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, ShoppingCart } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Info,
+  ShoppingCart,
+  Sparkles,
+  Truck,
+} from 'lucide-react';
 import type { Product } from '@/lib/products/catalog';
 import { Link } from '@/lib/router';
 import { useEditorStore } from '@/store/editorStore';
 import CommerceAuthModal from '@/components/commerce/CommerceAuthModal';
+import ColorSwatches, { type ColorOption } from '@/components/ui/ColorSwatches';
+import QuantityStepper from '@/components/ui/QuantityStepper';
+import Skeleton from '@/components/ui/Skeleton';
+import VariantButtons from '@/components/ui/VariantButtons';
+import { useAddCartItem, useCommerceProduct } from '@/hooks/queries';
 import {
-  addCartItem,
   createDraftForCart,
-  fetchCommerceProductBySlug,
   formatMoney,
   getCommerceErrorMessage,
   isAuthenticated,
-  type CommerceProductType,
   type CommerceVariant,
 } from '@/lib/commerce';
 
@@ -26,57 +37,37 @@ export default function ProductPurchasePanel({
 }: ProductPurchasePanelProps) {
   const surfaces = useEditorStore(state => state.surfaces);
   const activeSurfaceId = useEditorStore(state => state.activeSurfaceId);
-  const [backendProduct, setBackendProduct] =
-    useState<CommerceProductType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const productQuery = useCommerceProduct(product.slug);
+  const backendProduct = productQuery.data ?? null;
+  const loading = productQuery.isLoading;
+
+  const addToCartMutation = useAddCartItem();
+  const draftMutation = useMutation({
+    mutationFn: createDraftForCart,
+  });
+
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [queuedAfterAuth, setQueuedAfterAuth] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const hasDesignContent = useMemo(
     () => surfaces.some(surface => surface.layers.length > 0),
     [surfaces]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-
-    setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
-
-    void (async () => {
-      try {
-        const resolved = await fetchCommerceProductBySlug(product.slug);
-
-        if (!cancelled) {
-          setBackendProduct(resolved);
-        }
-      } catch (loadError: unknown) {
-        if (!cancelled) {
-          setError(
-            getCommerceErrorMessage(
-              loadError,
-              "Mahsulotning savdo ma'lumotlarini yuklab bo'lmadi."
-            )
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [product.slug]);
+  const submitting = draftMutation.isPending || addToCartMutation.isPending;
+  const queryError = productQuery.isError
+    ? getCommerceErrorMessage(
+        productQuery.error,
+        "Mahsulotning savdo ma'lumotlarini yuklab bo'lmadi."
+      )
+    : null;
+  const error = actionError ?? queryError;
 
   useEffect(() => {
     if (!backendProduct) {
@@ -102,30 +93,41 @@ export default function ProductPurchasePanel({
     [backendProduct]
   );
 
-  const sizeOptions = useMemo(
+  const sizeOptions = useMemo<string[]>(
     () => [
       ...new Set(
-        availableVariants.map(variant => variant.size).filter(Boolean)
+        availableVariants
+          .map(variant => variant.size)
+          .filter((size): size is string => Boolean(size))
       ),
     ],
     [availableVariants]
   );
 
-  const colorOptions = useMemo(() => {
-    const variantsForSize = selectedSize
-      ? availableVariants.filter(variant => variant.size === selectedSize)
-      : availableVariants;
+  const colorOptions = useMemo<ColorOption[]>(() => {
+    const colorsForSize = selectedSize
+      ? new Set(
+          availableVariants
+            .filter(variant => variant.size === selectedSize && variant.color)
+            .map(variant => variant.color as string)
+        )
+      : null;
 
     return [
       ...new Map(
-        variantsForSize
-          .filter(variant => Boolean(variant.color))
+        availableVariants
+          .filter((variant): variant is typeof variant & { color: string } =>
+            Boolean(variant.color)
+          )
           .map(variant => [
             variant.color,
             {
               name: variant.color,
               hex: variant.color_hex || '#e2e8f0',
-            },
+              disabled: colorsForSize
+                ? !colorsForSize.has(variant.color)
+                : false,
+            } satisfies ColorOption,
           ])
       ).values(),
     ];
@@ -138,15 +140,16 @@ export default function ProductPurchasePanel({
   }, [selectedSize, sizeOptions]);
 
   useEffect(() => {
-    const colorNames = colorOptions.map(color => color.name);
-
-    if (colorNames.length === 0 && selectedColor) {
+    const available = colorOptions.filter(option => !option.disabled);
+    if (available.length === 0 && selectedColor) {
       setSelectedColor('');
       return;
     }
-
-    if (colorNames.length > 0 && !colorNames.includes(selectedColor)) {
-      setSelectedColor(colorNames[0] || '');
+    if (
+      available.length > 0 &&
+      !available.some(option => option.name === selectedColor)
+    ) {
+      setSelectedColor(available[0]?.name ?? '');
     }
   }, [colorOptions, selectedColor]);
 
@@ -184,16 +187,13 @@ export default function ProductPurchasePanel({
   }, [quantity, selectedVariant]);
 
   const executeAddToCart = async () => {
-    if (!backendProduct || !selectedVariant) {
-      return;
-    }
+    if (!backendProduct || !selectedVariant) return;
 
-    setSubmitting(true);
-    setError(null);
+    setActionError(null);
     setSuccessMessage(null);
 
     try {
-      const draft = await createDraftForCart({
+      const draft = await draftMutation.mutateAsync({
         productTypeId: backendProduct.id,
         variantId: selectedVariant.id,
         productName: product.name,
@@ -203,25 +203,27 @@ export default function ProductPurchasePanel({
         previewDataUrl,
       });
 
-      await addCartItem(draft.uuid, quantity);
+      await addToCartMutation.mutateAsync({
+        draftUuid: draft.uuid,
+        quantity,
+      });
+
       setSuccessMessage(
         `${product.name} savatchaga qo'shildi. Endi checkoutga o'tishingiz mumkin.`
       );
     } catch (submitError: unknown) {
-      setError(
+      setActionError(
         getCommerceErrorMessage(
           submitError,
           "Savatchaga qo'shishda xatolik yuz berdi."
         )
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const handleAddToCart = async () => {
     if (!hasDesignContent) {
-      setError("Avval mahsulotga kamida bitta dizayn elementi qo'shing.");
+      setActionError("Avval mahsulotga kamida bitta dizayn elementi qo'shing.");
       return;
     }
 
@@ -236,184 +238,208 @@ export default function ProductPurchasePanel({
 
   const isUnsupported = !loading && !error && !backendProduct;
 
+  const unitPrice = selectedVariant
+    ? formatMoney(selectedVariant.sale_price)
+    : product.startingPrice;
+
+  const designReady = hasDesignContent;
+  const canSubmit = !submitting && !!selectedVariant && designReady;
+
   return (
     <>
-      <div className='rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] p-6 shadow-sm shadow-slate-200/60'>
-        <div className='flex flex-wrap items-start justify-between gap-3'>
+      <section
+        id='purchase'
+        aria-labelledby='purchase-heading'
+        className='scroll-mt-24 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/50'
+      >
+        <header className='flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] p-6'>
           <div>
-            <p className='text-sm font-semibold uppercase tracking-[0.24em] text-sky-700'>
-              Buyurtma bosqichi
+            <p className='text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-700'>
+              Buyurtma
             </p>
-            <h2 className='mt-3 text-2xl font-semibold text-slate-900'>
-              Dizaynni savatga tayyorlang
+            <h2
+              id='purchase-heading'
+              className='mt-2 text-2xl font-semibold text-slate-900'
+            >
+              {product.name}
             </h2>
-            <p className='mt-2 max-w-2xl text-sm leading-6 text-slate-600'>
-              Variantni tanlang va shu sahifadan savatga yuboring. Checkoutda
-              aloqa hamda yetkazib berish ma&apos;lumotlari kiritiladi.
+            <p className='mt-1.5 text-sm leading-6 text-slate-600'>
+              O'lchamni tanlang va dizayningizni savatga yuboring.
             </p>
           </div>
 
-          <div className='rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600'>
-            {hasDesignContent ? 'Dizayn tayyor' : 'Dizayn kutilmoqda'}
+          <div
+            className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ${
+              designReady
+                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+            }`}
+            aria-live='polite'
+          >
+            {designReady ? (
+              <>
+                <CheckCircle2 className='h-3.5 w-3.5' aria-hidden />
+                Dizayn tayyor
+              </>
+            ) : (
+              <>
+                <Sparkles className='h-3.5 w-3.5' aria-hidden />
+                Dizaynni boshlang
+              </>
+            )}
           </div>
-        </div>
+        </header>
 
-        {loading ? (
-          <div className='mt-6 h-40 animate-pulse rounded-[1.5rem] bg-slate-100' />
-        ) : error ? (
-          <div className='mt-6 rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-sm leading-6 text-rose-700'>
-            {error}
-          </div>
-        ) : isUnsupported ? (
-          <div className='mt-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800'>
-            Bu mahsulot backend katalogidan topilmadi.
-            Admin panelda mos product type va variantlar yaratilgach,
-            savat/checkout/order oqimi avtomatik faollashadi.
-          </div>
-        ) : (
-          <>
-            <div className='mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]'>
-              <div className='rounded-[1.5rem] border border-slate-200 bg-white p-5'>
-                <div className='grid gap-4 sm:grid-cols-2'>
-                  {sizeOptions.length > 0 && (
-                    <div>
-                      <p className='text-sm font-semibold text-slate-900'>
-                        O&apos;lcham
-                      </p>
-                      <div className='mt-3 flex flex-wrap gap-2'>
-                        {sizeOptions.map(size => (
-                          <button
-                            key={size}
-                            type='button'
-                            onClick={() => setSelectedSize(size)}
-                            className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                              selectedSize === size
-                                ? 'border-slate-900 bg-slate-900 text-white'
-                                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                            }`}
-                          >
-                            {size}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {colorOptions.length > 0 && (
-                    <div>
-                      <p className='text-sm font-semibold text-slate-900'>
-                        Rang
-                      </p>
-                      <div className='mt-3 flex flex-wrap gap-2'>
-                        {colorOptions.map(color => (
-                          <button
-                            key={color.name}
-                            type='button'
-                            onClick={() => setSelectedColor(color.name)}
-                            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${
-                              selectedColor === color.name
-                                ? 'border-slate-900 bg-slate-900 text-white'
-                                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                            }`}
-                          >
-                            <span className='h-3 w-3 rounded-full border border-black/10 bg-slate-200' />
-                            {color.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className='mt-5 flex flex-wrap items-end gap-4'>
-                  <label className='block'>
-                    <span className='mb-1 block text-sm font-semibold text-slate-900'>
-                      Soni
-                    </span>
-                    <input
-                      className='w-28 rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-300'
-                      type='number'
-                      min={1}
-                      value={quantity}
-                      onChange={event =>
-                        setQuantity(
-                          Math.max(
-                            1,
-                            Number.parseInt(event.target.value || '1', 10)
-                          )
-                        )
-                      }
-                    />
-                  </label>
-
-                  <div className='rounded-2xl bg-slate-50 px-4 py-3'>
-                    <p className='text-xs font-semibold uppercase tracking-[0.2em] text-slate-500'>
-                      Tanlangan variant
-                    </p>
-                    <p className='mt-1 text-sm font-medium text-slate-900'>
-                      {selectedVariant?.variant_name ||
-                        selectedVariant?.sku ||
-                        'Standart'}
-                    </p>
-                  </div>
-                </div>
-
-                {error && (
-                  <div className='mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700'>
-                    {error}
-                  </div>
-                )}
-
-                {successMessage && (
-                  <div className='mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700'>
-                    {successMessage}
-                  </div>
-                )}
+        <div className='p-6'>
+          {loading ? (
+            <div className='space-y-4'>
+              <Skeleton className='h-5 w-32' rounded='md' />
+              <div className='flex gap-2'>
+                <Skeleton className='h-10 w-14' rounded='xl' />
+                <Skeleton className='h-10 w-14' rounded='xl' />
+                <Skeleton className='h-10 w-14' rounded='xl' />
+              </div>
+              <Skeleton className='h-24 w-full' rounded='2xl' />
+              <Skeleton className='h-12 w-full' rounded='2xl' />
+            </div>
+          ) : error && !backendProduct ? (
+            <div className='flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-800'>
+              <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0' aria-hidden />
+              <div>
+                <p className='font-semibold'>Ma'lumotlarni yuklab bo'lmadi</p>
+                <p className='mt-1 text-rose-700'>{error}</p>
+              </div>
+            </div>
+          ) : isUnsupported ? (
+            <div className='flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900'>
+              <Info className='mt-0.5 h-4 w-4 shrink-0' aria-hidden />
+              <div>
+                <p className='font-semibold'>Hali savdoga chiqmagan</p>
+                <p className='mt-1 text-amber-800'>
+                  Dizayn qilishingiz mumkin, lekin narx va buyurtma tez orada
+                  ochiladi.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className='space-y-6'>
+              <div className='rounded-2xl bg-slate-900 p-5 text-white'>
+                <p className='text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-300'>
+                  Bir dona narx
+                </p>
+                <p className='mt-1.5 text-3xl font-semibold tracking-tight'>
+                  {unitPrice}
+                </p>
+                <p className='mt-1 text-xs text-slate-400'>
+                  QQS va dizayn narxi kiritilgan
+                </p>
               </div>
 
-              <div className='rounded-[1.5rem] bg-slate-950 p-5 text-white'>
-                <p className='text-sm font-semibold uppercase tracking-[0.2em] text-sky-300'>
-                  Qisqa xulosa
-                </p>
-                <div className='mt-5 rounded-[1.25rem] border border-white/10 bg-white/5 p-4'>
-                  <p className='text-sm text-slate-300'>Bir dona narx</p>
-                  <p className='mt-2 text-3xl font-semibold'>
-                    {selectedVariant
-                      ? formatMoney(selectedVariant.sale_price)
-                      : product.startingPrice}
-                  </p>
-                  <div className='mt-4 flex items-center justify-between border-t border-white/10 pt-4 text-sm text-slate-200'>
-                    <span>{quantity} dona uchun taxminiy jami</span>
-                    <span className='text-base font-semibold text-white'>
-                      {estimatedTotal ?? 'Tanlang'}
-                    </span>
-                  </div>
-                </div>
+              {sizeOptions.length > 0 && (
+                <VariantButtons
+                  label="O'lcham tanlang"
+                  name='size'
+                  options={sizeOptions.map(size => ({ value: size }))}
+                  value={selectedSize}
+                  onChange={setSelectedSize}
+                />
+              )}
 
+              {colorOptions.length > 0 && (
+                <ColorSwatches
+                  label='Rangni tanlang'
+                  options={colorOptions}
+                  value={selectedColor}
+                  onChange={setSelectedColor}
+                />
+              )}
+
+              <div className='flex flex-wrap items-end justify-between gap-4'>
+                <QuantityStepper
+                  value={quantity}
+                  onChange={setQuantity}
+                  min={1}
+                  max={500}
+                />
+                <div className='text-right'>
+                  <p className='text-[11px] font-semibold uppercase tracking-wider text-slate-500'>
+                    {quantity} dona jami
+                  </p>
+                  <p className='mt-0.5 text-xl font-semibold text-slate-900'>
+                    {estimatedTotal ?? unitPrice}
+                  </p>
+                </div>
+              </div>
+
+              {!designReady && (
+                <div
+                  role='status'
+                  className='flex items-start gap-2.5 rounded-xl border border-sky-100 bg-sky-50 p-3 text-xs leading-5 text-sky-800'
+                >
+                  <Sparkles className='mt-0.5 h-4 w-4 shrink-0' aria-hidden />
+                  <span>
+                    Savatga qo'shishdan avval yuqoridagi muharrirda kamida bitta
+                    element qo'shing — matn, rasm yoki stiker.
+                  </span>
+                </div>
+              )}
+
+              {error && backendProduct && (
+                <div
+                  role='alert'
+                  className='flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800'
+                >
+                  <AlertTriangle
+                    className='mt-0.5 h-4 w-4 shrink-0'
+                    aria-hidden
+                  />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {successMessage && (
+                <div
+                  role='status'
+                  className='flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-800'
+                >
+                  <CheckCircle2
+                    className='mt-0.5 h-4 w-4 shrink-0'
+                    aria-hidden
+                  />
+                  <span>{successMessage}</span>
+                </div>
+              )}
+
+              <div className='flex flex-col gap-3 pt-1 sm:flex-row'>
                 <button
                   type='button'
                   onClick={() => void handleAddToCart()}
-                  disabled={submitting || !selectedVariant}
-                  className='mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60'
+                  disabled={!canSubmit}
+                  className='inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white shadow-sm shadow-slate-900/20 transition-all hover:-translate-y-0.5 hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:translate-y-0 disabled:bg-slate-300 disabled:shadow-none'
                 >
-                  <ShoppingCart className='h-4 w-4' />
-                  {submitting ? "Qo'shilmoqda..." : "Savatchaga qo'shish"}
+                  <ShoppingCart className='h-4 w-4' aria-hidden />
+                  {submitting ? "Qo'shilmoqda..." : "Savatga qo'shish"}
                 </button>
+                <Link
+                  to='/cart'
+                  className='inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2'
+                >
+                  Savatga o'tish
+                  <ArrowRight className='h-4 w-4' aria-hidden />
+                </Link>
+              </div>
 
-                <div className='mt-4 flex flex-wrap gap-3'>
-                  <Link
-                    to='/cart'
-                    className='inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10'
-                  >
-                    Savatga o&apos;tish
-                    <ArrowRight className='h-4 w-4' />
-                  </Link>
-                </div>
+              <div className='flex items-center gap-2 pt-1 text-xs text-slate-500'>
+                <Truck className='h-3.5 w-3.5' aria-hidden />
+                <span>
+                  Toshkent bo'ylab 2–3 ish kuni, viloyatlarga 3–5 ish kuni
+                  ichida yetkazib beriladi.
+                </span>
               </div>
             </div>
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      </section>
 
       <CommerceAuthModal
         open={authOpen}

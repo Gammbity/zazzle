@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowRight,
   Boxes,
@@ -7,52 +8,29 @@ import {
   Wallet,
 } from 'lucide-react';
 import CommerceAuthModal from '@/components/commerce/CommerceAuthModal';
+import { useOrders, useOrderStats } from '@/hooks/queries';
 import {
   formatMoney,
-  getOrderStats,
-  getOrders,
   getOrderStatusMeta,
   isAuthenticated,
-  type CommerceOrderStats,
-  type CommerceOrderSummary,
 } from '@/lib/commerce';
+import { queryKeys } from '@/lib/queryClient';
 import { Link } from '@/lib/router';
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<CommerceOrderSummary[]>([]);
-  const [stats, setStats] = useState<CommerceOrderStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  const loadOrders = useCallback(async () => {
-    if (!isAuthenticated()) {
-      setLoading(false);
-      setOrders([]);
-      setStats(null);
-      return;
-    }
+  const ordersQuery = useOrders();
+  const statsQuery = useOrderStats();
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [ordersResponse, statsResponse] = await Promise.all([
-        getOrders(),
-        getOrderStats(),
-      ]);
-      setOrders(ordersResponse);
-      setStats(statsResponse);
-    } catch {
-      setError('Buyurtmalarni yuklashda xatolik yuz berdi.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadOrders();
-  }, [loadOrders]);
+  const orders = ordersQuery.data ?? [];
+  const stats = statsQuery.data ?? null;
+  const loading = ordersQuery.isLoading || statsQuery.isLoading;
+  const error =
+    ordersQuery.isError || statsQuery.isError
+      ? 'Buyurtmalarni yuklashda xatolik yuz berdi.'
+      : null;
 
   return (
     <>
@@ -232,7 +210,7 @@ export default function OrdersPage() {
         onClose={() => setAuthOpen(false)}
         onSuccess={() => {
           setAuthOpen(false);
-          void loadOrders();
+          queryClient.invalidateQueries({ queryKey: queryKeys.orders });
         }}
       />
     </>

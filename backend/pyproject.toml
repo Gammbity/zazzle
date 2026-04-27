@@ -52,10 +52,14 @@ dependencies = [
     "requests>=2.31.0",
     "python-slugify>=8.0.0",
     "Faker>=19.6.0",
-    
+    "jsonschema>=4.21.0",
+
     # Production Server
     "gunicorn>=21.2.0",
     "gevent>=23.9.1",
+
+    # Observability (no-op without SENTRY_DSN)
+    "sentry-sdk>=1.40.0",
 ]
 
 [project.optional-dependencies]
@@ -126,7 +130,7 @@ ignore = [
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
-"settings.py" = ["F405", "F403"]
+"settings/*.py" = ["F405", "F403"]
 "*/migrations/*.py" = ["E501"]
 
 [tool.mypy]
@@ -142,7 +146,7 @@ plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
 django_settings_module = "zazzle.settings"
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "zazzle.settings_test"
+DJANGO_SETTINGS_MODULE = "zazzle.settings.test"
 python_files = ["test_*.py", "*_test.py", "testing/***/*.py"]
 
 [tool.coverage.run]

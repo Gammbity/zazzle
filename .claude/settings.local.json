@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git rm *)",
+      "Bash(python -c ' *)",
+      "Bash(npm run *)",
+      "Bash(npx --no-install tsc --noEmit)",
+      "Bash(npm install *)"
+    ]
+  }
+}

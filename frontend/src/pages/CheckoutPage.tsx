@@ -1,19 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, CreditCard, MapPin, Phone, UserRound } from 'lucide-react';
 import CommerceAuthModal from '@/components/commerce/CommerceAuthModal';
 import {
-  checkoutCart,
+  useCart,
+  useCheckout,
+  useCurrentUser,
+  useInitPayment,
+} from '@/hooks/queries';
+import {
   formatMoney,
   getCommerceErrorMessage,
-  getCart,
-  initPayment,
   isAuthenticated,
-  loadCurrentUser,
   type CheckoutResult,
-  type CommerceCart,
-  type CommerceUser,
   type PaymentInitResult,
 } from '@/lib/commerce';
+import { queryKeys } from '@/lib/queryClient';
 import { Link } from '@/lib/router';
 
 type PaymentProvider = 'payme' | 'click' | 'uzcard_humo';
@@ -52,17 +54,19 @@ function createIdempotencyKey() {
 }
 
 export default function CheckoutPage() {
-  const [cart, setCart] = useState<CommerceCart | null>(null);
-  const [user, setUser] = useState<CommerceUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const cartQuery = useCart();
+  const userQuery = useCurrentUser();
+  const checkoutMutation = useCheckout();
+  const paymentMutation = useInitPayment();
+
   const [authOpen, setAuthOpen] = useState(false);
   const [result, setResult] = useState<{
     checkout: CheckoutResult;
     payment: PaymentInitResult | null;
   } | null>(null);
   const [paymentInitError, setPaymentInitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [provider, setProvider] = useState<PaymentProvider>('payme');
   const [form, setForm] = useState({
     contact_name: '',
@@ -79,89 +83,67 @@ export default function CheckoutPage() {
     customer_notes: '',
   });
 
-  const hydrateCheckout = useCallback(async () => {
-    if (!isAuthenticated()) {
-      setLoading(false);
-      setCart(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [nextCart, nextUser] = await Promise.all([
-        getCart(),
-        loadCurrentUser(),
-      ]);
-
-      setCart(nextCart);
-      setUser(nextUser);
-
-      if (nextUser) {
-        const fullName =
-          nextUser.full_name ||
-          `${nextUser.first_name || ''} ${nextUser.last_name || ''}`.trim();
-        const phone = nextUser.profile?.phone_number || '';
-
-        setForm(prev => ({
-          ...prev,
-          contact_name: prev.contact_name || fullName,
-          contact_email: prev.contact_email || nextUser.email || '',
-          contact_phone: prev.contact_phone || phone,
-          shipping_name: prev.shipping_name || fullName,
-          shipping_email: prev.shipping_email || nextUser.email || '',
-          shipping_phone: prev.shipping_phone || phone,
-        }));
-      }
-    } catch (checkoutError: unknown) {
-      setError(
-        getCommerceErrorMessage(
-          checkoutError,
+  const cart = result ? null : (cartQuery.data ?? null);
+  const user = userQuery.data ?? null;
+  const loading = cartQuery.isLoading || userQuery.isLoading;
+  const submitting = checkoutMutation.isPending || paymentMutation.isPending;
+  const error =
+    submitError ??
+    (cartQuery.isError
+      ? getCommerceErrorMessage(
+          cartQuery.error,
           "Checkout ma'lumotlarini yuklab bo'lmadi."
         )
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      : null);
 
+  // Prefill checkout form once the user's profile lands.
   useEffect(() => {
-    void hydrateCheckout();
-  }, [hydrateCheckout]);
+    if (!user) return;
+    const fullName =
+      user.full_name ||
+      `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    const phone = user.profile?.phone_number || '';
+
+    setForm(prev => ({
+      ...prev,
+      contact_name: prev.contact_name || fullName,
+      contact_email: prev.contact_email || user.email || '',
+      contact_phone: prev.contact_phone || phone,
+      shipping_name: prev.shipping_name || fullName,
+      shipping_email: prev.shipping_email || user.email || '',
+      shipping_phone: prev.shipping_phone || phone,
+    }));
+  }, [user]);
 
   const canSubmit = useMemo(
     () =>
       Boolean(
         cart &&
-          !cart.is_empty &&
-          form.contact_name &&
-          form.contact_email &&
-          form.contact_phone
+        !cart.is_empty &&
+        form.contact_name &&
+        form.contact_email &&
+        form.contact_phone
       ),
     [cart, form.contact_email, form.contact_name, form.contact_phone]
   );
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSubmit) {
-      return;
-    }
+    if (!canSubmit) return;
 
-    setSubmitting(true);
-    setError(null);
+    setSubmitError(null);
     setPaymentInitError(null);
 
     try {
-      const checkout = await checkoutCart(form);
+      const checkout = await checkoutMutation.mutateAsync(form);
       let payment: PaymentInitResult | null = null;
 
       try {
-        payment = await initPayment(
-          checkout.order_id,
+        payment = await paymentMutation.mutateAsync({
+          orderId: checkout.order_id,
           provider,
-          createIdempotencyKey()
-        );
+          idempotencyKey: createIdempotencyKey(),
+        });
       } catch (paymentError: unknown) {
         setPaymentInitError(
           getCommerceErrorMessage(
@@ -172,13 +154,11 @@ export default function CheckoutPage() {
       }
 
       setResult({ checkout, payment });
-      setCart(null);
+      queryClient.removeQueries({ queryKey: queryKeys.cart });
     } catch (checkoutError: unknown) {
-      setError(
+      setSubmitError(
         getCommerceErrorMessage(checkoutError, "Checkoutni yakunlab bo'lmadi.")
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -246,8 +226,8 @@ export default function CheckoutPage() {
               To&apos;lov hozircha ishga tushmadi
             </p>
             <p className='mt-2 text-sm leading-6 text-amber-800'>
-              {paymentInitError} Buyurtma saqlangan. Quyidagi tafsilot sahifasida
-              to&apos;lovni qayta boshlashingiz mumkin.
+              {paymentInitError} Buyurtma saqlangan. Quyidagi tafsilot
+              sahifasida to&apos;lovni qayta boshlashingiz mumkin.
             </p>
             <Link
               to={`/orders/${result.checkout.order_number}`}
@@ -657,7 +637,8 @@ export default function CheckoutPage() {
         onClose={() => setAuthOpen(false)}
         onSuccess={() => {
           setAuthOpen(false);
-          void hydrateCheckout();
+          queryClient.invalidateQueries({ queryKey: queryKeys.cart });
+          queryClient.invalidateQueries({ queryKey: queryKeys.currentUser });
         }}
       />
     </>

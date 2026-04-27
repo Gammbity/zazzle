@@ -355,12 +355,12 @@ class DraftAPITestCase(APITestCase):
             'product_variant': self.product_variant.id,
             'name': 'New Draft',
             'text_layers': [
-                {'text': 'Hello', 'x': 10, 'y': 10}
+                {'id': 'text-1', 'text': 'Hello', 'x': 10, 'y': 10}
             ]
         }
-        
+
         response = self.client.post(url, data, format='json')
-        
+
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['name'], 'New Draft')
         self.assertEqual(response.data['customer'], self.user1.id)
@@ -426,7 +426,7 @@ class DraftAPITestCase(APITestCase):
         data = {
             'name': 'Updated Draft Name',
             'text_layers': [
-                {'text': 'Updated Text', 'x': 20, 'y': 30}
+                {'id': 'text-1', 'text': 'Updated Text', 'x': 20, 'y': 30}
             ]
         }
         
@@ -507,7 +507,7 @@ class UploadAPITestCase(APITestCase):
             product_variant=self.product_variant
         )
     
-    @patch('apps.designs.views.boto3.client')
+    @patch('apps.common.services.s3.boto3.client')
     @override_settings(AWS_STORAGE_BUCKET_NAME='test-bucket')
     def test_presigned_upload_request(self, mock_boto_client):
         """Test requesting presigned upload URL."""
@@ -559,7 +559,7 @@ class UploadAPITestCase(APITestCase):
         response = self.client.post(url, data, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('filename', response.data['errors'])
+        self.assertIn('filename', response.data)
     
     def test_presigned_upload_file_too_large(self):
         """Test presigned upload request with file too large."""
@@ -575,9 +575,9 @@ class UploadAPITestCase(APITestCase):
         response = self.client.post(url, data, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('file_size', response.data['errors'])
+        self.assertIn('file_size', response.data)
     
-    @patch('apps.designs.views.boto3.client')
+    @patch('apps.common.services.s3.boto3.client')
     @override_settings(AWS_STORAGE_BUCKET_NAME='test-bucket')
     def test_confirm_upload_success(self, mock_boto_client):
         """Test confirming successful upload."""
@@ -930,10 +930,10 @@ class MockupRenderAPITestCase(APITestCase):
         data = {'template_id': 9999}  # Non-existent template
         
         response = self.client.post(url, data, format='json')
-        
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('errors', response.data)
-    
+        self.assertIn('template_id', response.data)
+
     def test_render_draft_preview_incompatible_template(self):
         """Test rendering with template for different product type."""
         # Create template for different product type
@@ -958,10 +958,10 @@ class MockupRenderAPITestCase(APITestCase):
         data = {'template_id': other_template.id}
         
         response = self.client.post(url, data, format='json')
-        
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('errors', response.data)
-    
+        self.assertIn('non_field_errors', response.data)
+
     def test_get_render_status(self):
         """Test getting render job status."""
         # Create a render job

@@ -48,6 +48,7 @@ services:
       dockerfile: Dockerfile.prod
     restart: always
     environment:
+      - DJANGO_ENV=prod
       - DJANGO_SETTINGS_MODULE=zazzle.settings
     env_file:
       - .env.prod
@@ -74,6 +75,7 @@ services:
     restart: always
     command: celery -A zazzle worker --loglevel=info --concurrency=4
     environment:
+      - DJANGO_ENV=prod
       - DJANGO_SETTINGS_MODULE=zazzle.settings
     env_file:
       - .env.prod
@@ -98,6 +100,7 @@ services:
     restart: always
     command: celery -A zazzle beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     environment:
+      - DJANGO_ENV=prod
       - DJANGO_SETTINGS_MODULE=zazzle.settings
     env_file:
       - .env.prod

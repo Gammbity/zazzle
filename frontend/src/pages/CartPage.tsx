@@ -1,69 +1,51 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ArrowRight,
-  Package2,
-  ShoppingBag,
-  Trash2,
-} from 'lucide-react';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, Package2, ShoppingBag, Trash2 } from 'lucide-react';
 import CommerceAuthModal from '@/components/commerce/CommerceAuthModal';
 import {
-  clearCart,
+  useCart,
+  useClearCart,
+  useRemoveCartItem,
+  useUpdateCartItem,
+} from '@/hooks/queries';
+import {
   formatMoney,
   getCommerceErrorMessage,
-  getCart,
   getRouteSlugForCategory,
   isAuthenticated,
-  removeCartItem,
-  updateCartItem,
-  type CommerceCart,
 } from '@/lib/commerce';
+import { queryKeys } from '@/lib/queryClient';
 import { Link } from '@/lib/router';
 
 export default function CartPage() {
-  const [cart, setCart] = useState<CommerceCart | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [busyItem, setBusyItem] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
 
-  const loadCart = useCallback(async () => {
-    if (!isAuthenticated()) {
-      setCart(null);
-      setLoading(false);
-      return;
-    }
+  const cartQuery = useCart();
+  const updateMutation = useUpdateCartItem();
+  const removeMutation = useRemoveCartItem();
+  const clearMutation = useClearCart();
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const nextCart = await getCart();
-      setCart(nextCart);
-    } catch (cartError: unknown) {
-      setError(
-        getCommerceErrorMessage(
-          cartError,
+  const cart = cartQuery.data ?? null;
+  const loading = cartQuery.isLoading;
+  const error =
+    actionError ??
+    (cartQuery.isError
+      ? getCommerceErrorMessage(
+          cartQuery.error,
           'Savatchani yuklashda xatolik yuz berdi.'
         )
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadCart();
-  }, [loadCart]);
+      : null);
 
   const handleQuantityChange = async (itemUuid: string, quantity: number) => {
     setBusyItem(itemUuid);
-    setError(null);
-
+    setActionError(null);
     try {
-      await updateCartItem(itemUuid, quantity);
-      await loadCart();
+      await updateMutation.mutateAsync({ itemUuid, quantity });
     } catch {
-      setError("Savat elementini yangilab bo'lmadi.");
+      setActionError("Savat elementini yangilab bo'lmadi.");
     } finally {
       setBusyItem(null);
     }
@@ -71,13 +53,11 @@ export default function CartPage() {
 
   const handleRemove = async (itemUuid: string) => {
     setBusyItem(itemUuid);
-    setError(null);
-
+    setActionError(null);
     try {
-      await removeCartItem(itemUuid);
-      await loadCart();
+      await removeMutation.mutateAsync(itemUuid);
     } catch {
-      setError("Elementni savatdan olib tashlab bo'lmadi.");
+      setActionError("Elementni savatdan olib tashlab bo'lmadi.");
     } finally {
       setBusyItem(null);
     }
@@ -85,13 +65,11 @@ export default function CartPage() {
 
   const handleClear = async () => {
     setBusyItem('clear');
-    setError(null);
-
+    setActionError(null);
     try {
-      await clearCart();
-      await loadCart();
+      await clearMutation.mutateAsync();
     } catch {
-      setError("Savatchani tozalab bo'lmadi.");
+      setActionError("Savatchani tozalab bo'lmadi.");
     } finally {
       setBusyItem(null);
     }
@@ -345,7 +323,7 @@ export default function CartPage() {
         onClose={() => setAuthOpen(false)}
         onSuccess={() => {
           setAuthOpen(false);
-          void loadCart();
+          queryClient.invalidateQueries({ queryKey: queryKeys.cart });
         }}
       />
     </>

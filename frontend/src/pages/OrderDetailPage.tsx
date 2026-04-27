@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,17 +9,15 @@ import {
   XCircle,
 } from 'lucide-react';
 import CommerceAuthModal from '@/components/commerce/CommerceAuthModal';
+import { useCancelOrder, useInitPayment, useOrder } from '@/hooks/queries';
 import {
-  cancelOrder,
   formatMoney,
   getCommerceErrorMessage,
-  getOrder,
   getOrderStatusMeta,
-  initPayment,
   isAuthenticated,
-  type CommerceOrderDetail,
   type PaymentInitResult,
 } from '@/lib/commerce';
+import { queryKeys } from '@/lib/queryClient';
 import { Link } from '@/lib/router';
 
 interface OrderDetailPageProps {
@@ -34,39 +33,23 @@ function createIdempotencyKey(orderLookup: string) {
 }
 
 export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
-  const [order, setOrder] = useState<CommerceOrderDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [authOpen, setAuthOpen] = useState(false);
-  const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentResult, setPaymentResult] = useState<PaymentInitResult | null>(
     null
   );
-  const [cancelBusy, setCancelBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const loadOrder = useCallback(async () => {
-    if (!isAuthenticated()) {
-      setLoading(false);
-      setOrder(null);
-      return;
-    }
+  const orderQuery = useOrder(orderLookup);
+  const paymentMutation = useInitPayment();
+  const cancelMutation = useCancelOrder();
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const nextOrder = await getOrder(orderLookup);
-      setOrder(nextOrder);
-    } catch {
-      setError("Buyurtma tafsilotlarini yuklab bo'lmadi.");
-    } finally {
-      setLoading(false);
-    }
-  }, [orderLookup]);
-
-  useEffect(() => {
-    void loadOrder();
-  }, [loadOrder]);
+  const order = orderQuery.data ?? null;
+  const loading = orderQuery.isLoading;
+  const queryError = orderQuery.isError
+    ? "Buyurtma tafsilotlarini yuklab bo'lmadi."
+    : null;
+  const error = actionError || queryError;
 
   const statusMeta = useMemo(
     () => getOrderStatusMeta(order?.status || 'NEW'),
@@ -74,51 +57,39 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
   );
   const canRetryPayment =
     order?.status === 'NEW' || order?.status === 'PAYMENT_PENDING';
+  const paymentBusy = paymentMutation.isPending;
+  const cancelBusy = cancelMutation.isPending;
 
   const handlePaymentInit = async (
     provider: 'payme' | 'click' | 'uzcard_humo'
   ) => {
-    if (!order) {
-      return;
-    }
-
-    setPaymentBusy(true);
-    setError(null);
-
+    if (!order) return;
+    setActionError(null);
     try {
-      const result = await initPayment(
-        order.id,
+      const result = await paymentMutation.mutateAsync({
+        orderId: order.id,
         provider,
-        createIdempotencyKey(order.order_number)
-      );
+        idempotencyKey: createIdempotencyKey(order.order_number),
+      });
       setPaymentResult(result);
     } catch (paymentError: unknown) {
-      setError(
+      setActionError(
         getCommerceErrorMessage(
           paymentError,
           "To'lovni qayta init qilib bo'lmadi."
         )
       );
-    } finally {
-      setPaymentBusy(false);
     }
   };
 
   const handleCancel = async () => {
-    if (!order) {
-      return;
-    }
-
-    setCancelBusy(true);
-    setError(null);
-
+    if (!order) return;
+    setActionError(null);
     try {
-      await cancelOrder(order.id);
-      await loadOrder();
+      await cancelMutation.mutateAsync(order.id);
+      void orderQuery.refetch();
     } catch {
-      setError("Buyurtmani bekor qilib bo'lmadi.");
-    } finally {
-      setCancelBusy(false);
+      setActionError("Buyurtmani bekor qilib bo'lmadi.");
     }
   };
 
@@ -221,7 +192,8 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                                   .join(' · ') || 'Standart'}
                               </p>
                               <p className='mt-1 text-sm text-slate-600'>
-                                Ishlab chiqarish holati: {item.production_status}
+                                Ishlab chiqarish holati:{' '}
+                                {item.production_status}
                               </p>
                             </div>
 
@@ -419,7 +391,7 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
         onClose={() => setAuthOpen(false)}
         onSuccess={() => {
           setAuthOpen(false);
-          void loadOrder();
+          queryClient.invalidateQueries({ queryKey: queryKeys.orders });
         }}
       />
     </>

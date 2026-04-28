@@ -36,8 +36,9 @@ const SelectionTransformer = forwardRef<
       boundBoxFunc={(oldBox, newBox) =>
         constrainBox(oldBox, newBox, printAreaRect)
       }
+      flipEnabled={false}
       ignoreStroke
-      padding={4}
+      padding={-6}
     />
   );
 });

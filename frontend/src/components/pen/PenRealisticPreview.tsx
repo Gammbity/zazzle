@@ -1,34 +1,65 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei/core/ContactShadows';
 import {
   ClampToEdgeWrapping,
+  MathUtils,
   RepeatWrapping,
   SRGBColorSpace,
   Texture,
   TextureLoader,
+  type Group,
 } from 'three';
 import { PEN_PRINT_COVERAGE } from '@/components/customizer/penPrintConstants';
 
 interface PenRealisticPreviewProps {
   designDataUrl: string;
+  bodyColor?: string;
   onCompositeReady?: (dataUrl: string) => void;
 }
 
-const DEFAULT_ROTATION_X = -0.18;
-const DEFAULT_ROTATION_Y = 0.92;
+const DEG_TO_RAD = Math.PI / 180;
+const RAD_TO_DEG = 180 / Math.PI;
+const DEFAULT_ROTATION_X_DEG = -10;
+const DEFAULT_ROTATION_Y_DEG = 53;
+const ROTATION_X_MIN_DEG = -100;
+const ROTATION_X_MAX_DEG = 100;
+const ROTATION_Y_MIN_DEG = -180;
+const ROTATION_Y_MAX_DEG = 180;
 const PEN_BODY_LENGTH = 5.9;
 const PEN_PRINT_SLEEVE_LENGTH = PEN_BODY_LENGTH * PEN_PRINT_COVERAGE;
 const DRAG_SENSITIVITY_X = 0.0065;
 const DRAG_SENSITIVITY_Y = 0.009;
+const ROTATION_DAMPING = 12;
 
-function PenModel({ designTexture }: { designTexture: Texture | null }) {
+function clampRotation(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getSliderStyle(value: number, min: number, max: number) {
+  const progress = ((value - min) / (max - min)) * 100;
+  return {
+    background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${progress}%, #cbd5e1 ${progress}%, #cbd5e1 100%)`,
+  };
+}
+
+function PenModel({
+  designTexture,
+  bodyColor = '#fbfbfa',
+}: {
+  designTexture: Texture | null;
+  bodyColor?: string;
+}) {
   return (
-    <group position={[-0.04, -0.03, 0]} rotation={[0.16, 0, -0.52]} scale={1.06}>
+    <group
+      position={[-0.04, -0.03, 0]}
+      rotation={[0.16, 0, -0.52]}
+      scale={0.92}
+    >
       <mesh position={[-0.62, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.31, 0.36, 5.9, 96, 1]} />
         <meshPhysicalMaterial
-          color='#fbfbfa'
+          color={bodyColor}
           roughness={0.2}
           metalness={0.02}
           clearcoat={0.7}
@@ -57,7 +88,7 @@ function PenModel({ designTexture }: { designTexture: Texture | null }) {
       <mesh position={[-3.72, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.12, 0.31, 0.9, 64, 1]} />
         <meshPhysicalMaterial
-          color='#f4f4f3'
+          color={bodyColor}
           roughness={0.22}
           metalness={0.03}
           clearcoat={0.5}
@@ -86,7 +117,7 @@ function PenModel({ designTexture }: { designTexture: Texture | null }) {
       >
         <cylinderGeometry args={[0.36, 0.36, 2.32, 96, 1]} />
         <meshPhysicalMaterial
-          color='#fcfcfb'
+          color={bodyColor}
           roughness={0.18}
           metalness={0.02}
           clearcoat={0.78}
@@ -114,7 +145,7 @@ function PenModel({ designTexture }: { designTexture: Texture | null }) {
       >
         <cylinderGeometry args={[0.17, 0.17, 0.52, 40, 1]} />
         <meshPhysicalMaterial
-          color='#f3f4f6'
+          color={bodyColor}
           roughness={0.22}
           metalness={0.04}
           clearcoat={0.55}
@@ -125,7 +156,7 @@ function PenModel({ designTexture }: { designTexture: Texture | null }) {
       <mesh position={[3.12, 0.45, 0.07]} castShadow>
         <boxGeometry args={[1.98, 0.12, 0.42]} />
         <meshPhysicalMaterial
-          color='#fbfbfa'
+          color={bodyColor}
           roughness={0.2}
           metalness={0.02}
           clearcoat={0.68}
@@ -136,7 +167,7 @@ function PenModel({ designTexture }: { designTexture: Texture | null }) {
       <mesh position={[2.22, 0.34, 0.08]} castShadow>
         <boxGeometry args={[0.32, 0.2, 0.28]} />
         <meshPhysicalMaterial
-          color='#f0f2f4'
+          color={bodyColor}
           roughness={0.24}
           metalness={0.05}
           clearcoat={0.4}
@@ -157,15 +188,64 @@ function PenModel({ designTexture }: { designTexture: Texture | null }) {
   );
 }
 
+function SmoothPenModel({
+  designTexture,
+  bodyColor,
+  rotationXDeg,
+  rotationYDeg,
+}: {
+  designTexture: Texture | null;
+  bodyColor?: string;
+  rotationXDeg: number;
+  rotationYDeg: number;
+}) {
+  const groupRef = useRef<Group>(null);
+
+  useEffect(() => {
+    groupRef.current?.rotation.set(
+      DEFAULT_ROTATION_X_DEG * DEG_TO_RAD,
+      DEFAULT_ROTATION_Y_DEG * DEG_TO_RAD,
+      0
+    );
+  }, []);
+
+  useFrame((_, delta) => {
+    const group = groupRef.current;
+    if (!group) {
+      return;
+    }
+
+    group.rotation.x = MathUtils.damp(
+      group.rotation.x,
+      rotationXDeg * DEG_TO_RAD,
+      ROTATION_DAMPING,
+      delta
+    );
+    group.rotation.y = MathUtils.damp(
+      group.rotation.y,
+      rotationYDeg * DEG_TO_RAD,
+      ROTATION_DAMPING,
+      delta
+    );
+  });
+
+  return (
+    <group ref={groupRef}>
+      <PenModel designTexture={designTexture} bodyColor={bodyColor} />
+    </group>
+  );
+}
+
 export default function PenRealisticPreview({
   designDataUrl,
+  bodyColor,
   onCompositeReady,
 }: PenRealisticPreviewProps) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragOriginRef = useRef({ x: 0, y: 0 });
   const textureRef = useRef<Texture | null>(null);
-  const [rotationX, setRotationX] = useState(DEFAULT_ROTATION_X);
-  const [rotationY, setRotationY] = useState(DEFAULT_ROTATION_Y);
+  const [rotationXDeg, setRotationXDeg] = useState(DEFAULT_ROTATION_X_DEG);
+  const [rotationYDeg, setRotationYDeg] = useState(DEFAULT_ROTATION_Y_DEG);
   const [isDragging, setIsDragging] = useState(false);
   const [designTexture, setDesignTexture] = useState<Texture | null>(null);
   const [textureVersion, setTextureVersion] = useState(0);
@@ -184,12 +264,12 @@ export default function PenRealisticPreview({
 
         texture.colorSpace = SRGBColorSpace;
         texture.anisotropy = 8;
-        texture.wrapS = RepeatWrapping;
-        texture.wrapT = ClampToEdgeWrapping;
+        texture.wrapS = ClampToEdgeWrapping;
+        texture.wrapT = RepeatWrapping;
         texture.center.set(0.5, 0.5);
-        texture.rotation = -Math.PI / 2;
-        texture.repeat.set(1, -1);
-        texture.offset.set(0, 1);
+        texture.rotation = Math.PI / 2;
+        texture.repeat.set(1, 1);
+        texture.offset.set(0, 0);
         texture.needsUpdate = true;
 
         setDesignTexture(previous => {
@@ -241,10 +321,10 @@ export default function PenRealisticPreview({
       } catch (error) {
         console.error('[PenRealisticPreview] Snapshot export failed', error);
       }
-    }, 220);
+    }, 420);
 
     return () => window.clearTimeout(timeoutId);
-  }, [onCompositeReady, rotationX, rotationY, textureVersion]);
+  }, [onCompositeReady, rotationXDeg, rotationYDeg, textureVersion]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) {
@@ -265,8 +345,20 @@ export default function PenRealisticPreview({
     const deltaY = event.clientY - dragOriginRef.current.y;
     dragOriginRef.current = { x: event.clientX, y: event.clientY };
 
-    setRotationX(previous => previous + deltaY * DRAG_SENSITIVITY_X);
-    setRotationY(previous => previous + deltaX * DRAG_SENSITIVITY_Y);
+    setRotationXDeg(previous =>
+      clampRotation(
+        previous + deltaY * DRAG_SENSITIVITY_X * RAD_TO_DEG,
+        ROTATION_X_MIN_DEG,
+        ROTATION_X_MAX_DEG
+      )
+    );
+    setRotationYDeg(previous =>
+      clampRotation(
+        previous + deltaX * DRAG_SENSITIVITY_Y * RAD_TO_DEG,
+        ROTATION_Y_MIN_DEG,
+        ROTATION_Y_MAX_DEG
+      )
+    );
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -292,7 +384,7 @@ export default function PenRealisticPreview({
         onPointerLeave={handlePointerUp}
       >
         <Canvas
-          camera={{ position: [0, 1, 11.4], fov: 35 }}
+          camera={{ position: [0, 1, 13.4], fov: 37 }}
           gl={{ preserveDrawingBuffer: true, antialias: true }}
           style={{ width: '100%', height: '100%' }}
           shadows
@@ -310,9 +402,12 @@ export default function PenRealisticPreview({
           <pointLight position={[0, 2, 6]} intensity={0.45} />
 
           <Suspense fallback={null}>
-            <group rotation={[rotationX, rotationY, 0]}>
-              <PenModel designTexture={designTexture} />
-            </group>
+            <SmoothPenModel
+              designTexture={designTexture}
+              bodyColor={bodyColor}
+              rotationXDeg={rotationXDeg}
+              rotationYDeg={rotationYDeg}
+            />
           </Suspense>
 
           <ContactShadows
@@ -324,6 +419,58 @@ export default function PenRealisticPreview({
             color='#94a3b8'
           />
         </Canvas>
+      </div>
+
+      <div
+        className='grid gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm shadow-slate-200/60 sm:grid-cols-2'
+        aria-label='Ruchka gradusini boshqarish'
+      >
+        <label className='flex flex-col gap-1.5 text-xs font-medium text-slate-600'>
+          <span className='flex items-center justify-between gap-3'>
+            <span>Vertikal</span>
+            <span className='tabular-nums text-slate-500'>
+              {Math.round(rotationXDeg)}&deg;
+            </span>
+          </span>
+          <input
+            type='range'
+            min={ROTATION_X_MIN_DEG}
+            max={ROTATION_X_MAX_DEG}
+            step={1}
+            value={rotationXDeg}
+            onChange={event => setRotationXDeg(Number(event.target.value))}
+            aria-label='Ruchka vertikal gradusi'
+            className='h-1.5 w-full cursor-pointer appearance-none rounded-full outline-none transition-[filter] hover:brightness-105 focus-visible:ring-2 focus-visible:ring-violet-300 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-violet-600 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-sm [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-violet-600 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm'
+            style={getSliderStyle(
+              rotationXDeg,
+              ROTATION_X_MIN_DEG,
+              ROTATION_X_MAX_DEG
+            )}
+          />
+        </label>
+        <label className='flex flex-col gap-1.5 text-xs font-medium text-slate-600'>
+          <span className='flex items-center justify-between gap-3'>
+            <span>Gorizontal</span>
+            <span className='tabular-nums text-slate-500'>
+              {Math.round(rotationYDeg)}&deg;
+            </span>
+          </span>
+          <input
+            type='range'
+            min={ROTATION_Y_MIN_DEG}
+            max={ROTATION_Y_MAX_DEG}
+            step={1}
+            value={rotationYDeg}
+            onChange={event => setRotationYDeg(Number(event.target.value))}
+            aria-label='Ruchka gorizontal gradusi'
+            className='h-1.5 w-full cursor-pointer appearance-none rounded-full outline-none transition-[filter] hover:brightness-105 focus-visible:ring-2 focus-visible:ring-violet-300 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-violet-600 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-sm [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-violet-600 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm'
+            style={getSliderStyle(
+              rotationYDeg,
+              ROTATION_Y_MIN_DEG,
+              ROTATION_Y_MAX_DEG
+            )}
+          />
+        </label>
       </div>
     </div>
   );

@@ -93,6 +93,110 @@ function ToolBtn({
 }
 
 const CANVAS_BASE = 500;
+const TRANSPARENT_EDGE_ALPHA = 8;
+const TRANSPARENT_EDGE_PADDING = 2;
+
+interface UploadedImageAsset {
+  src: string;
+  width: number;
+  height: number;
+}
+
+function trimTransparentEdges(
+  image: HTMLImageElement,
+  fallbackSrc: string
+): UploadedImageAsset {
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+
+  if (!width || !height) {
+    return { src: fallbackSrc, width: image.width, height: image.height };
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  if (!ctx) {
+    return { src: fallbackSrc, width, height };
+  }
+
+  ctx.drawImage(image, 0, 0, width, height);
+
+  let pixels: ImageData;
+  try {
+    pixels = ctx.getImageData(0, 0, width, height);
+  } catch {
+    return { src: fallbackSrc, width, height };
+  }
+
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const alpha = pixels.data[(y * width + x) * 4 + 3];
+      if (alpha <= TRANSPARENT_EDGE_ALPHA) {
+        continue;
+      }
+
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  if (maxX < minX || maxY < minY) {
+    return { src: fallbackSrc, width, height };
+  }
+
+  const cropX = Math.max(0, minX - TRANSPARENT_EDGE_PADDING);
+  const cropY = Math.max(0, minY - TRANSPARENT_EDGE_PADDING);
+  const cropRight = Math.min(width - 1, maxX + TRANSPARENT_EDGE_PADDING);
+  const cropBottom = Math.min(height - 1, maxY + TRANSPARENT_EDGE_PADDING);
+  const cropWidth = cropRight - cropX + 1;
+  const cropHeight = cropBottom - cropY + 1;
+
+  if (
+    cropX === 0 &&
+    cropY === 0 &&
+    cropWidth === width &&
+    cropHeight === height
+  ) {
+    return { src: fallbackSrc, width, height };
+  }
+
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = cropWidth;
+  cropCanvas.height = cropHeight;
+  const cropCtx = cropCanvas.getContext('2d');
+
+  if (!cropCtx) {
+    return { src: fallbackSrc, width, height };
+  }
+
+  cropCtx.drawImage(
+    canvas,
+    cropX,
+    cropY,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    cropWidth,
+    cropHeight
+  );
+
+  return {
+    src: cropCanvas.toDataURL('image/png'),
+    width: cropWidth,
+    height: cropHeight,
+  };
+}
 
 interface EditorPanelProps {
   productSlug: string;
@@ -173,7 +277,7 @@ export default function EditorPanel({
   const layerPlacementScale = Math.min(printArea.defaultScale ?? 0.8, 1);
   const textPlacementScale = Math.min(layerPlacementScale + 0.05, 0.95);
   const stickerPlacementScale = Math.max(0.18, layerPlacementScale * 0.24);
-  const shouldCropPreview = !['mug', 'pen'].includes(productSlug);
+  const shouldCropPreview = productSlug !== 'mug';
 
   useEffect(() => {
     void hydrateDraft(productSlug);
@@ -295,16 +399,17 @@ export default function EditorPanel({
 
         const image = new window.Image();
         image.onload = () => {
+          const uploadedImage = trimTransparentEdges(image, dataUrl);
           const scale = fitLayerScale(
             printArea,
             canvasWidth,
             canvasHeight,
-            image.width,
-            image.height,
+            uploadedImage.width,
+            uploadedImage.height,
             layerPlacementScale
           );
-          const width = image.width * scale;
-          const height = image.height * scale;
+          const width = uploadedImage.width * scale;
+          const height = uploadedImage.height * scale;
           const position = getDefaultLayerPosition(
             printArea,
             canvasWidth,
@@ -316,11 +421,11 @@ export default function EditorPanel({
           addLayer({
             type: 'image',
             name: file.name.slice(0, 20),
-            src: dataUrl,
+            src: uploadedImage.src,
             x: position.x,
             y: position.y,
-            width: image.width,
-            height: image.height,
+            width: uploadedImage.width,
+            height: uploadedImage.height,
             scaleX: scale,
             scaleY: scale,
             rotation: 0,
@@ -589,7 +694,8 @@ export default function EditorPanel({
 
       {!isEditorReady && (
         <div className='rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800'>
-          Editor yuklanmoqda. Rasm yoki matn qo'shish uchun bir necha soniya kuting.
+          Editor yuklanmoqda. Rasm yoki matn qo'shish uchun bir necha soniya
+          kuting.
         </div>
       )}
 
@@ -600,8 +706,8 @@ export default function EditorPanel({
               Maket maydoni
             </p>
             <p className='mt-1 text-sm text-slate-500'>
-              Tanlangan yuzasi: {activeSurface?.label ?? 'Asosiy'}. Ko'k
-              chiziq ichidagi hudud chop qilinadi.
+              Tanlangan yuzasi: {activeSurface?.label ?? 'Asosiy'}. Ko'k chiziq
+              ichidagi hudud chop qilinadi.
             </p>
           </div>
 

@@ -24,16 +24,34 @@ import {
   getCommerceErrorMessage,
   isAuthenticated,
   type CommerceVariant,
+  type ProductColorSelection,
 } from '@/lib/commerce';
 
 interface ProductPurchasePanelProps {
   product: Product;
   previewDataUrl: string | null;
+  onProductColorChange?: (color: ProductColorSelection | null) => void;
+}
+
+const DEFAULT_PRODUCT_COLORS: ColorOption[] = [
+  { name: 'White', hex: '#FFFFFF' },
+  { name: 'Black', hex: '#111827' },
+  { name: 'Navy', hex: '#1B2951' },
+  { name: 'Red', hex: '#E31E24' },
+  { name: 'Blue', hex: '#2563EB' },
+  { name: 'Green', hex: '#16A34A' },
+  { name: 'Yellow', hex: '#FACC15' },
+  { name: 'Pink', hex: '#EC4899' },
+];
+
+function normalizeColorHex(hex?: string): string {
+  return /^#[\da-f]{6}$/i.test(hex ?? '') ? (hex as string) : '#e2e8f0';
 }
 
 export default function ProductPurchasePanel({
   product,
   previewDataUrl,
+  onProductColorChange,
 }: ProductPurchasePanelProps) {
   const surfaces = useEditorStore(state => state.surfaces);
   const activeSurfaceId = useEditorStore(state => state.activeSurfaceId);
@@ -85,7 +103,11 @@ export default function ProductPurchasePanel({
     }
 
     setSelectedSize(defaultVariant.size || '');
-    setSelectedColor(defaultVariant.color || '');
+    setSelectedColor(
+      defaultVariant.color ||
+        backendProduct.available_colors[0]?.name ||
+        DEFAULT_PRODUCT_COLORS[0].name
+    );
   }, [backendProduct]);
 
   const availableVariants = useMemo(
@@ -113,25 +135,45 @@ export default function ProductPurchasePanel({
         )
       : null;
 
-    return [
-      ...new Map(
-        availableVariants
-          .filter((variant): variant is typeof variant & { color: string } =>
-            Boolean(variant.color)
-          )
-          .map(variant => [
-            variant.color,
-            {
-              name: variant.color,
-              hex: variant.color_hex || '#e2e8f0',
-              disabled: colorsForSize
-                ? !colorsForSize.has(variant.color)
-                : false,
-            } satisfies ColorOption,
-          ])
-      ).values(),
-    ];
-  }, [availableVariants, selectedSize]);
+    const colors = new Map<string, ColorOption>();
+    const addColor = (option: ColorOption) => {
+      const key = option.name.toLowerCase();
+      if (!colors.has(key)) {
+        colors.set(key, option);
+      }
+    };
+
+    availableVariants
+      .filter((variant): variant is typeof variant & { color: string } =>
+        Boolean(variant.color)
+      )
+      .forEach(variant => {
+        addColor({
+          name: variant.color,
+          hex: normalizeColorHex(variant.color_hex),
+          disabled: colorsForSize ? !colorsForSize.has(variant.color) : false,
+        });
+      });
+
+    backendProduct?.available_colors.forEach(color => {
+      addColor({
+        name: color.name,
+        hex: normalizeColorHex(color.hex),
+      });
+    });
+
+    DEFAULT_PRODUCT_COLORS.forEach(addColor);
+
+    return [...colors.values()];
+  }, [availableVariants, backendProduct, selectedSize]);
+
+  const selectedColorOption = useMemo<ProductColorSelection | null>(() => {
+    const option = colorOptions.find(
+      color => color.name === selectedColor && !color.disabled
+    );
+
+    return option ? { name: option.name, hex: option.hex } : null;
+  }, [colorOptions, selectedColor]);
 
   useEffect(() => {
     if (sizeOptions.length > 0 && !sizeOptions.includes(selectedSize)) {
@@ -153,15 +195,28 @@ export default function ProductPurchasePanel({
     }
   }, [colorOptions, selectedColor]);
 
+  useEffect(() => {
+    onProductColorChange?.(selectedColorOption);
+  }, [onProductColorChange, selectedColorOption]);
+
   const selectedVariant: CommerceVariant | null = useMemo(() => {
     if (!backendProduct) {
       return null;
     }
 
+    const selectedColorHasVariant = selectedColor
+      ? availableVariants.some(variant => {
+          const sizeMatches = selectedSize
+            ? variant.size === selectedSize
+            : true;
+          return sizeMatches && variant.color === selectedColor;
+        })
+      : false;
+
     return (
       availableVariants.find(variant => {
         const sizeMatches = selectedSize ? variant.size === selectedSize : true;
-        const colorMatches = selectedColor
+        const colorMatches = selectedColorHasVariant
           ? variant.color === selectedColor
           : true;
         return sizeMatches && colorMatches;
@@ -201,6 +256,7 @@ export default function ProductPurchasePanel({
         activeSurfaceId,
         surfaces,
         previewDataUrl,
+        productColor: selectedColorOption,
       });
 
       await addToCartMutation.mutateAsync({
@@ -264,7 +320,7 @@ export default function ProductPurchasePanel({
               {product.name}
             </h2>
             <p className='mt-1.5 text-sm leading-6 text-slate-600'>
-              O'lchamni tanlang va dizayningizni savatga yuboring.
+              O'lcham va rangni tanlab, dizayningizni savatga yuboring.
             </p>
           </div>
 

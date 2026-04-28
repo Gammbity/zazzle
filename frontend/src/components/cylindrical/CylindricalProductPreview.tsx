@@ -28,6 +28,7 @@ interface CylindricalProductPreviewProps {
   previewStageClassName?: string;
   downloadFileName?: string;
   errorMessage?: string;
+  bodyColorHex?: string | null;
 }
 
 export default function CylindricalProductPreview({
@@ -41,6 +42,7 @@ export default function CylindricalProductPreview({
   previewStageClassName = 'aspect-square',
   downloadFileName,
   errorMessage,
+  bodyColorHex,
 }: CylindricalProductPreviewProps) {
   const [warpIntensity, setWarpIntensity] = useState(0.55);
   const [printOpacity, setPrintOpacity] = useState(0.88);
@@ -88,6 +90,7 @@ export default function CylindricalProductPreview({
         designBox,
         warpIntensity,
         printOpacity,
+        bodyColorHex: bodyColorHex ?? undefined,
       });
 
       if (renderId !== renderIdRef.current) {
@@ -116,6 +119,7 @@ export default function CylindricalProductPreview({
     designDataUrl,
     errorMessage,
     fallbackPreviewBox,
+    bodyColorHex,
     onCompositeReady,
     printOpacity,
     productName,

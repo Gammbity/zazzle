@@ -15,11 +15,13 @@ export const MUG_ANGLE_ASSETS: CylindricalAngleAsset[] = [
 
 interface MugRealisticPreviewProps {
   designDataUrl: string;
+  bodyColor?: string;
   onCompositeReady?: (dataUrl: string) => void;
 }
 
 export default function MugRealisticPreview({
   designDataUrl,
+  bodyColor,
   onCompositeReady,
 }: MugRealisticPreviewProps) {
   return (
@@ -32,6 +34,7 @@ export default function MugRealisticPreview({
       previewAltText="Krujkaning haqiqatga yaqin ko'rinishi"
       downloadFileName='krujka-korinishi.png'
       errorMessage="Ko'rinishni tayyorlab bo'lmadi. /public/products/mug/ ichidagi resurslarni tekshiring."
+      bodyColorHex={bodyColor}
       onCompositeReady={onCompositeReady}
     />
   );

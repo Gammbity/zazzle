@@ -7,6 +7,7 @@ import { Link } from '@/lib/router';
 import { renderSurfacePreview } from '@/lib/editor/renderSurfacePreview';
 import { useEditorStore } from '@/store/editorStore';
 import ProductPurchasePanel from '@/components/commerce/ProductPurchasePanel';
+import type { ProductColorSelection } from '@/lib/commerce';
 
 const EditorPanel = lazy(() => import('@/components/editor/EditorPanel'));
 const MugRealisticPreview = lazy(
@@ -29,6 +30,8 @@ function EditorSkeleton() {
 
 export default function ProductDetailPage({ product }: { product: Product }) {
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [selectedProductColor, setSelectedProductColor] =
+    useState<ProductColorSelection | null>(null);
   const [surfacePreviewUrls, setSurfacePreviewUrls] = useState<
     Record<string, string | null>
   >({});
@@ -159,11 +162,13 @@ export default function ProductDetailPage({ product }: { product: Product }) {
                 {isMug && previewDataUrl ? (
                   <MugRealisticPreview
                     designDataUrl={previewDataUrl}
+                    bodyColor={selectedProductColor?.hex}
                     onCompositeReady={() => undefined}
                   />
                 ) : isPen && previewDataUrl ? (
                   <PenRealisticPreview
                     designDataUrl={previewDataUrl}
+                    bodyColor={selectedProductColor?.hex}
                     onCompositeReady={() => undefined}
                   />
                 ) : isTshirt ? (
@@ -173,6 +178,7 @@ export default function ProductDetailPage({ product }: { product: Product }) {
                     designUrlsByAngle={surfacePreviewUrls}
                     fallbackOverlayBox={product.overlayBox}
                     activeAngleId={activeTshirtSurfaceId}
+                    productColorHex={selectedProductColor?.hex}
                     onChangeAngle={setActiveSurface}
                   />
                 ) : (
@@ -185,6 +191,7 @@ export default function ProductDetailPage({ product }: { product: Product }) {
                         : undefined
                     }
                     overlayBox={product.overlayBox}
+                    productColorHex={selectedProductColor?.hex}
                   />
                 )}
               </Suspense>
@@ -239,6 +246,7 @@ export default function ProductDetailPage({ product }: { product: Product }) {
             <ProductPurchasePanel
               product={product}
               previewDataUrl={previewDataUrl}
+              onProductColorChange={setSelectedProductColor}
             />
           </div>
         </div>

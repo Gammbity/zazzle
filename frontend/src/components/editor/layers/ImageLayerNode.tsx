@@ -40,6 +40,32 @@ function useImage(src: string | undefined): HTMLImageElement | null {
   return image;
 }
 
+function constrainImageNode(node: Konva.Image, bounds: Rect): void {
+  const width = node.width();
+  const height = node.height();
+
+  if (!width || !height) {
+    return;
+  }
+
+  const scaleX = Math.min(Math.abs(node.scaleX()), bounds.width / width);
+  const scaleY = Math.min(Math.abs(node.scaleY()), bounds.height / height);
+  const nextScaleX = Math.max(0.01, scaleX);
+  const nextScaleY = Math.max(0.01, scaleY);
+
+  node.scaleX(nextScaleX);
+  node.scaleY(nextScaleY);
+
+  const position = clampPosition(
+    { x: node.x(), y: node.y() },
+    width * nextScaleX,
+    height * nextScaleY,
+    bounds
+  );
+
+  node.position(position);
+}
+
 export default function ImageLayerNode({
   layer,
   isSelected,
@@ -82,8 +108,8 @@ export default function ImageLayerNode({
     (pos: { x: number; y: number }) =>
       clampPosition(
         pos,
-        layer.width * layer.scaleX,
-        layer.height * layer.scaleY,
+        layer.width * Math.abs(layer.scaleX),
+        layer.height * Math.abs(layer.scaleY),
         dragBounds
       ),
     [layer.width, layer.scaleX, layer.height, layer.scaleY, dragBounds]
@@ -114,11 +140,13 @@ export default function ImageLayerNode({
       onTransform={() => {
         const node = shapeRef.current;
         if (!node) return;
+        constrainImageNode(node, dragBounds);
         onChange(readNodeAttrs(node));
       }}
       onTransformEnd={() => {
         const node = shapeRef.current;
         if (!node) return;
+        constrainImageNode(node, dragBounds);
         onCommit(readNodeAttrs(node));
       }}
     />

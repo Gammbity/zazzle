@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { CheckCircle2, Images } from 'lucide-react';
-import AppImage from '@/components/AppImage';
+import ProductColorizedImage from '@/components/ProductColorizedImage';
 import type { ProductAngle, OverlayBox } from '@/lib/products/catalog';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,7 @@ interface ProductGalleryProps {
   designUrl?: string | null;
   /** Overlay bounding box (percentage-based). Required when designUrl is set. */
   overlayBox?: OverlayBox;
+  productColorHex?: string | null;
   showImageStatusCard?: boolean;
 }
 
@@ -19,6 +20,7 @@ export default function ProductGallery({
   productName,
   designUrl,
   overlayBox,
+  productColorHex,
   showImageStatusCard = true,
 }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -71,9 +73,10 @@ export default function ProductGallery({
     >
       {/* Main image */}
       <div className='relative aspect-square w-full overflow-hidden rounded-[1.75rem] border border-slate-200 bg-[linear-gradient(135deg,_#f8fafc_0%,_#ffffff_50%,_#f0f9ff_100%)] shadow-sm shadow-slate-200/50'>
-        <AppImage
+        <ProductColorizedImage
           src={active.src}
           alt={active.alt}
+          productColorHex={productColorHex}
           fill
           sizes='(max-width: 768px) 100vw, 50vw'
           className='object-contain p-4 transition-opacity duration-300'
@@ -148,9 +151,10 @@ export default function ProductGallery({
                 : 'border-gray-200 hover:border-gray-300'
             )}
           >
-            <AppImage
+            <ProductColorizedImage
               src={angle.src}
               alt={angle.alt}
+              productColorHex={productColorHex}
               fill
               sizes='64px'
               className='object-contain p-1'

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import AppImage from '@/components/AppImage';
+import ProductColorizedImage from '@/components/ProductColorizedImage';
 import type { OverlayBox, ProductAngle } from '@/lib/products/catalog';
 
 interface ProductSurfacePreviewGridProps {
@@ -8,6 +8,7 @@ interface ProductSurfacePreviewGridProps {
   designUrlsByAngle: Record<string, string | null | undefined>;
   fallbackOverlayBox?: OverlayBox;
   activeAngleId: string;
+  productColorHex?: string | null;
   onChangeAngle: (angleId: string) => void;
 }
 
@@ -28,6 +29,7 @@ export default function ProductSurfacePreviewGrid({
   designUrlsByAngle,
   fallbackOverlayBox,
   activeAngleId,
+  productColorHex,
   onChangeAngle,
 }: ProductSurfacePreviewGridProps) {
   const activeAngle =
@@ -80,9 +82,10 @@ export default function ProductSurfacePreviewGrid({
         </div>
 
         <div className='relative aspect-square overflow-hidden rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(135deg,_#f8fafc_0%,_#ffffff_50%,_#f0f9ff_100%)]'>
-          <AppImage
+          <ProductColorizedImage
             src={activeAngle.src}
             alt={activeAngle.alt}
+            productColorHex={productColorHex}
             fill
             sizes='(max-width: 1024px) 100vw, 50vw'
             className='object-contain p-4'

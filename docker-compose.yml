@@ -128,7 +128,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    command: npm run dev -- --host 0.0.0.0
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
     volumes:
       - ./frontend:/app
       - /app/node_modules

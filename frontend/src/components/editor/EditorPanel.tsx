@@ -342,7 +342,7 @@ export default function EditorPanel({
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       const isTyping = isEditableTarget(event.target);
-      const key = event.key.toLowerCase();
+      const key = event.key?.toLowerCase?.() ?? '';
 
       if (event.key === 'Escape') {
         selectLayer(null);

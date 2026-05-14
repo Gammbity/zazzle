@@ -54,14 +54,26 @@ export function useInitPayment() {
       orderId: string | number;
       provider: 'payme' | 'click' | 'uzcard_humo';
       idempotencyKey: string;
-    }) => initPayment(input.orderId, input.provider, input.idempotencyKey),
+    }) => {
+      const id = Number(input.orderId);
+      if (Number.isNaN(id)) {
+        return Promise.reject(new Error('Invalid orderId'));
+      }
+      return initPayment(id, input.provider, input.idempotencyKey);
+    },
   });
 }
 
 export function useCancelOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (orderId: string | number) => cancelOrder(orderId),
+    mutationFn: (orderId: string | number) => {
+      const id = Number(orderId);
+      if (Number.isNaN(id)) {
+        return Promise.reject(new Error('Invalid orderId'));
+      }
+      return cancelOrder(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders });
     },

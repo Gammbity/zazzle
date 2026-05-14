@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
 import { useLogin, useRegister } from '@/hooks/queries';
+import { logoutCustomer } from '@/lib/commerce';
 import { getCommerceErrorMessage, type CommerceUser } from '@/lib/commerce';
 
 interface CommerceAuthModalProps {
@@ -38,6 +39,15 @@ export default function CommerceAuthModal({
   const registerMutation = useRegister();
   const submitting = loginMutation.isPending || registerMutation.isPending;
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    void logoutCustomer();
+    setError(null);
+  }, [open]);
+
   const handleClose = () => {
     setError(null);
     onClose();
@@ -46,6 +56,7 @@ export default function CommerceAuthModal({
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    await logoutCustomer();
     try {
       const user = await loginMutation.mutateAsync(loginForm);
       onSuccess?.(user);
@@ -283,11 +294,6 @@ export default function CommerceAuthModal({
                   required
                 />
               </label>
-
-              <p className='text-sm leading-6 text-slate-500 sm:col-span-2'>
-                Ko&apos;rinadigan ism avtomatik ravishda ism va familiyangizdan
-                olinadi.
-              </p>
 
               <button
                 type='submit'

@@ -607,13 +607,7 @@ export default function CheckoutPage() {
                         </div>
                       </div>
 
-                      {user?.profile?.phone_number && (
-                        <div className='mt-5 flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600'>
-                          <Phone className='h-4 w-4 text-sky-700' />
-                          Profil telefon raqami checkout formasiga kiritib
-                          qo&apos;yildi.
-                        </div>
-                      )}
+                    
 
                       <div className='mt-5 flex flex-col gap-3'>
                         <Link

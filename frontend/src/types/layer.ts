@@ -128,7 +128,7 @@ export const STICKER_ASSETS: StickerAsset[] = [
     id: 'rainbow',
     label: 'Kamalak',
     src: '/stickers/rainbow.png',
-    description: "Rang-barang va iliq kompozitsiyalar uchun.",
+    description: 'Rang-barang va iliq kompozitsiyalar uchun.',
   },
   {
     id: 'check',

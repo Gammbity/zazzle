@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { fabric } from 'fabric';
 import {
   AlignCenter,
@@ -422,7 +428,7 @@ export default function Sidebar({
     }
 
     if (!backendProduct || !selectedVariant) {
-      setOrderError("Mug uchun savdo varianti topilmadi.");
+      setOrderError('Mug uchun savdo varianti topilmadi.');
       return;
     }
 
@@ -464,10 +470,7 @@ export default function Sidebar({
       navigate('/cart');
     } catch (error: unknown) {
       setOrderError(
-        getCommerceErrorMessage(
-          error,
-          "Dizaynni savatga qo'shib bo'lmadi."
-        )
+        getCommerceErrorMessage(error, "Dizaynni savatga qo'shib bo'lmadi.")
       );
     } finally {
       setOrderSubmitting(false);
@@ -627,7 +630,8 @@ export default function Sidebar({
               </div>
 
               <p className='hint-text'>
-                Rasm yuklangandan so'ng bosma hududida suring va kattalashtiring.
+                Rasm yuklangandan so'ng bosma hududida suring va
+                kattalashtiring.
               </p>
             </div>
           )}
@@ -718,7 +722,9 @@ export default function Sidebar({
                       {mugColor === color.value && (
                         <CheckCircle
                           size={14}
-                          color={color.value === '#ffffff' ? '#3b82f6' : 'white'}
+                          color={
+                            color.value === '#ffffff' ? '#3b82f6' : 'white'
+                          }
                         />
                       )}
                     </button>

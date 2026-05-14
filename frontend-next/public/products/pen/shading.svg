@@ -1,0 +1,18 @@
+<svg width="760" height="160" viewBox="0 0 760 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="penShade" x1="380" y1="0" x2="380" y2="160" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.72"/>
+      <stop offset="0.28" stop-color="white" stop-opacity="0.12"/>
+      <stop offset="0.64" stop-color="#0F172A" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#020617" stop-opacity="0.34"/>
+    </linearGradient>
+    <radialGradient id="penGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(214 48) rotate(8) scale(240 56)">
+      <stop stop-color="white" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="760" height="160" rx="80" fill="url(#penShade)"/>
+  <ellipse cx="226" cy="48" rx="248" ry="52" fill="url(#penGlow)"/>
+  <rect x="48" y="124" width="664" height="14" rx="7" fill="#0F172A" fill-opacity="0.12"/>
+</svg>

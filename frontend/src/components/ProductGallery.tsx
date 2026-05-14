@@ -36,6 +36,21 @@ export default function ProductGallery({
     return label;
   }, []);
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!angles || angles.length === 0) return;
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIndex(prev => (prev + 1) % angles.length);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIndex(prev => (prev - 1 + angles.length) % angles.length);
+      }
+    },
+    [angles]
+  );
+
   // Safety checks for angles array
   if (!angles || angles.length === 0) {
     return (
@@ -49,21 +64,6 @@ export default function ProductGallery({
   const safeActiveIndex = Math.max(0, Math.min(activeIndex, angles.length - 1));
   const active = angles[safeActiveIndex];
   const activeOverlayBox = active.overlayBox ?? overlayBox;
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!angles || angles.length === 0) return;
-
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        setActiveIndex(prev => (prev + 1) % angles.length);
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        setActiveIndex(prev => (prev - 1 + angles.length) % angles.length);
-      }
-    },
-    [angles.length]
-  );
 
   return (
     <div

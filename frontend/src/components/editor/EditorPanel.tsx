@@ -66,12 +66,14 @@ function ToolBtn({
   onClick,
   disabled,
   danger,
+  active,
 }: {
   label: string;
   icon: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
   danger?: boolean;
+  active?: boolean;
 }) {
   return (
     <button
@@ -80,10 +82,12 @@ function ToolBtn({
       disabled={disabled}
       title={label}
       className={cn(
-        'inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+        'inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
         danger
-          ? 'border-red-200 bg-white text-red-600 hover:bg-red-50'
-          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+          ? 'border-rose-200 bg-white text-rose-600 hover:bg-rose-50'
+          : active
+            ? 'border-amber-300 bg-amber-50 text-amber-700'
+            : 'border-stone-200 bg-white text-slate-700 hover:bg-amber-50 hover:border-amber-200'
       )}
     >
       {icon}
@@ -543,7 +547,7 @@ export default function EditorPanel({
   return (
     <div className='flex flex-col gap-4'>
       {hasSurfaces && productConfig && (
-        <div className='flex flex-wrap gap-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-2'>
+        <div className='flex flex-wrap gap-1.5 rounded-[1.5rem] border border-amber-100 bg-amber-50/60 p-2'>
           {productConfig.surfaces.map(surface => (
             <button
               key={surface.id}
@@ -552,8 +556,8 @@ export default function EditorPanel({
               className={cn(
                 'rounded-xl px-4 py-2 text-sm font-medium transition-colors',
                 activeSurfaceId === surface.id
-                  ? 'bg-white text-sky-700 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-white text-amber-700 shadow-sm shadow-amber-100'
+                  : 'text-slate-500 hover:text-slate-800'
               )}
             >
               {surface.label}
@@ -562,7 +566,7 @@ export default function EditorPanel({
         </div>
       )}
 
-      <div className='flex flex-wrap items-center gap-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3'>
+      <div className='flex flex-wrap items-center gap-1.5 rounded-[1.5rem] border border-stone-200 bg-stone-50/60 p-2.5'>
         <input
           ref={fileInputRef}
           type='file'
@@ -651,24 +655,22 @@ export default function EditorPanel({
       )}
 
       {layers.length === 0 && (
-        <div className='rounded-[1.75rem] border border-dashed border-slate-300 bg-white p-6 text-center'>
-          <div className='mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-700'>
+        <div className='rounded-[1.75rem] border border-dashed border-amber-200 bg-amber-50/30 p-6 text-center'>
+          <div className='mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700'>
             <Sparkles className='h-6 w-6' />
           </div>
-          <h3 className='mt-4 text-xl font-semibold text-slate-900'>
-            Bo'sh maket tayyor
+          <h3 className='mt-4 text-lg font-semibold text-slate-900'>
+            Dizayningizni boshlang
           </h3>
-          <p className='mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600'>
-            Boshlash uchun rasm yuklang, matn yozing yoki stiker tanlang.
-            Elementlar avtomatik ravishda xavfsiz chop hududi ichiga
-            joylashtiriladi.
+          <p className='mx-auto mt-2 max-w-xs text-sm leading-6 text-slate-500'>
+            Rasm yuklang, matn yozing yoki stiker tanlang.
           </p>
-          <div className='mt-5 flex flex-wrap justify-center gap-3'>
+          <div className='mt-5 flex flex-wrap justify-center gap-2.5'>
             <button
               type='button'
               onClick={() => fileInputRef.current?.click()}
               disabled={!isEditorReady}
-              className='rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-700'
+              className='rounded-full bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-50'
             >
               Rasm yuklash
             </button>
@@ -676,15 +678,15 @@ export default function EditorPanel({
               type='button'
               onClick={handleAddText}
               disabled={!isEditorReady}
-              className='rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50'
+              className='rounded-full border border-amber-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-amber-50 disabled:opacity-50'
             >
-              Matn qo'shish
+              Matn qo&apos;shish
             </button>
             <button
               type='button'
               onClick={() => setShowStickerPicker(true)}
               disabled={!isEditorReady}
-              className='rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50'
+              className='rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-stone-50 disabled:opacity-50'
             >
               Stiker tanlash
             </button>
@@ -699,21 +701,17 @@ export default function EditorPanel({
         </div>
       )}
 
-      <div className='rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60'>
-        <div className='mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-          <div>
-            <p className='text-sm font-semibold text-slate-900'>
-              Maket maydoni
-            </p>
-            <p className='mt-1 text-sm text-slate-500'>
-              Tanlangan yuzasi: {activeSurface?.label ?? 'Asosiy'}. Ko'k chiziq
-              ichidagi hudud chop qilinadi.
-            </p>
-          </div>
-
-          <div className='inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600'>
-            <Layers3 className='h-4 w-4 text-sky-700' />
-            {layers.length} ta qatlam
+      <div className='rounded-[1.75rem] border border-stone-200 bg-white p-4 shadow-sm shadow-stone-100/50'>
+        <div className='mb-3 flex items-center justify-between gap-2'>
+          <p className='text-sm font-semibold text-slate-700'>
+            {activeSurface?.label ?? 'Maket maydoni'}
+            <span className='ml-2 text-xs font-normal text-slate-400'>
+              Ko&apos;k chiziq = chop qilinadigan hudud
+            </span>
+          </p>
+          <div className='inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700'>
+            <Layers3 className='h-3.5 w-3.5' />
+            {layers.length} qatlam
           </div>
         </div>
 

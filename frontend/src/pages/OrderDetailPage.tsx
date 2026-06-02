@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CreditCard,
+  ExternalLink,
   MapPin,
   Truck,
   XCircle,
@@ -28,16 +29,19 @@ function createIdempotencyKey(orderLookup: string) {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return `${orderLookup}-${crypto.randomUUID()}`;
   }
-
   return `${orderLookup}-${Date.now()}`;
 }
+
+const PAYMENT_PROVIDERS = [
+  { value: 'payme' as const, label: 'Payme' },
+  { value: 'click' as const, label: 'Click' },
+  { value: 'uzcard_humo' as const, label: 'Uzcard / Humo' },
+];
 
 export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
   const queryClient = useQueryClient();
   const [authOpen, setAuthOpen] = useState(false);
-  const [paymentResult, setPaymentResult] = useState<PaymentInitResult | null>(
-    null
-  );
+  const [paymentResult, setPaymentResult] = useState<PaymentInitResult | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const orderQuery = useOrder(orderLookup);
@@ -76,7 +80,7 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
       setActionError(
         getCommerceErrorMessage(
           paymentError,
-          "To'lovni qayta init qilib bo'lmadi."
+          "To'lovni qayta boshlashda xatolik."
         )
       );
     }
@@ -95,61 +99,57 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
 
   return (
     <>
-      <main className='min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.10),_transparent_20%),linear-gradient(180deg,_#f8fbff_0%,_#ffffff_44%,_#ffffff_100%)] px-4 py-10 sm:px-6 lg:px-8'>
+      <main className='min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.12),_transparent_20%),linear-gradient(180deg,_#fffbeb_0%,_#ffffff_44%,_#ffffff_100%)] px-4 py-10 sm:px-6 lg:px-8'>
         <div className='mx-auto max-w-7xl'>
-          <div className='flex flex-wrap items-center gap-3'>
-            <Link
-              to='/orders'
-              className='inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50'
-            >
-              <ArrowLeft className='h-4 w-4' />
-              Buyurtmalar ro&apos;yxati
-            </Link>
-          </div>
+          {/* Back link */}
+          <Link
+            to='/orders'
+            className='inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-stone-50'
+          >
+            <ArrowLeft className='h-4 w-4' />
+            Buyurtmalar ro&apos;yxati
+          </Link>
 
           {loading ? (
-            <div className='mt-8 h-72 animate-pulse rounded-[2rem] bg-slate-100' />
+            <div className='mt-8 h-64 animate-pulse rounded-[2rem] bg-amber-50' />
           ) : !isAuthenticated() ? (
-            <div className='mt-8 rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-sm shadow-slate-200/60'>
-              <h1 className='text-3xl font-semibold text-slate-900'>
+            <div className='mt-8 rounded-[2rem] border border-amber-100 bg-white p-8 text-center shadow-sm shadow-amber-100/40'>
+              <h1 className='text-2xl font-semibold text-slate-900'>
                 Buyurtma tafsilotlari uchun kirish talab qilinadi
               </h1>
               <button
                 type='button'
                 onClick={() => setAuthOpen(true)}
-                className='mt-6 rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700'
+                className='mt-6 rounded-2xl bg-amber-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-amber-700'
               >
                 Hisobga kirish
               </button>
             </div>
           ) : !order ? (
-            <div className='mt-8 rounded-[2rem] border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm shadow-slate-200/50'>
-              <h1 className='text-3xl font-semibold text-slate-900'>
+            <div className='mt-8 rounded-[2rem] border border-dashed border-amber-200 bg-amber-50/30 p-10 text-center'>
+              <h1 className='text-2xl font-semibold text-slate-900'>
                 Buyurtma topilmadi
               </h1>
               <p className='mt-3 text-base leading-7 text-slate-600'>
-                Order raqamini tekshiring yoki buyurtmalar ro&apos;yxatiga
-                qayting.
+                Order raqamini tekshiring yoki buyurtmalar ro&apos;yxatiga qayting.
               </p>
             </div>
           ) : (
             <>
-              <div className='mt-8 rounded-[2.2rem] border border-slate-200 bg-white/90 p-6 shadow-sm shadow-slate-200/60 backdrop-blur sm:p-8'>
+              {/* Header card */}
+              <div className='mt-8 rounded-[2.2rem] border border-amber-100 bg-white/90 p-6 shadow-sm shadow-amber-100/40 backdrop-blur sm:p-8'>
                 <div className='flex flex-wrap items-start justify-between gap-4'>
                   <div>
-                    <p className='text-sm font-semibold uppercase tracking-[0.3em] text-sky-700'>
+                    <p className='text-sm font-semibold uppercase tracking-[0.3em] text-amber-700'>
                       Buyurtma tafsiloti
                     </p>
-                    <h1 className='mt-3 text-4xl font-semibold text-slate-950'>
+                    <h1 className='mt-2 text-3xl font-semibold text-slate-950'>
                       {order.order_number}
                     </h1>
-                    <p className='mt-3 max-w-3xl text-base leading-7 text-slate-600'>
-                      {new Date(order.created_at).toLocaleString('uz-UZ')} da
-                      yaratilgan buyurtma. Bu sahifada mahsulotlar, yetkazib
-                      berish va to&apos;lov holati jamlangan.
+                    <p className='mt-2 text-sm text-slate-500'>
+                      {new Date(order.created_at).toLocaleString('uz-UZ')} da yaratilgan
                     </p>
                   </div>
-
                   <span
                     className={`rounded-full border px-4 py-2 text-sm font-semibold ${statusMeta.className}`}
                   >
@@ -165,91 +165,88 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
               )}
 
               <div className='mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]'>
+                {/* Left: items + shipping */}
                 <div className='space-y-6'>
-                  <section className='rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60'>
-                    <h2 className='text-2xl font-semibold text-slate-900'>
-                      Buyurtmadagi elementlar
+                  {/* Items */}
+                  <section className='rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm shadow-stone-100/50'>
+                    <h2 className='text-lg font-semibold text-slate-900'>
+                      Buyurtmadagi mahsulotlar
                     </h2>
-                    <div className='mt-5 space-y-4'>
+                    <div className='mt-4 space-y-3'>
                       {order.items.map(item => (
                         <article
                           key={item.id}
-                          className='rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4'
+                          className='rounded-[1.5rem] border border-stone-100 bg-stone-50/60 p-4'
                         >
                           <div className='flex flex-wrap items-start justify-between gap-3'>
                             <div>
-                              <h3 className='text-lg font-semibold text-slate-900'>
+                              <h3 className='font-semibold text-slate-900'>
                                 {item.product_name}
                               </h3>
-                              <p className='mt-1 text-sm text-slate-500'>
-                                {item.design_title ||
-                                  'Dizayn nomi kiritilmagan'}
+                              <p className='mt-0.5 text-sm text-slate-500'>
+                                {item.design_title || 'Dizayn nomi kiritilmagan'}
                               </p>
-                              <p className='mt-3 text-sm text-slate-600'>
-                                Variant:{' '}
-                                {[item.size, item.color]
-                                  .filter(Boolean)
-                                  .join(' · ') || 'Standart'}
-                              </p>
-                              <p className='mt-1 text-sm text-slate-600'>
-                                Ishlab chiqarish holati:{' '}
-                                {item.production_status}
+                              <div className='mt-2 flex flex-wrap gap-3 text-xs text-slate-500'>
+                                <span>
+                                  Variant:{' '}
+                                  {[item.size, item.color]
+                                    .filter(Boolean)
+                                    .join(' · ') || 'Standart'}
+                                </span>
+                                <span>Soni: {item.quantity}</span>
+                                <span>Bir dona: {formatMoney(item.unit_price)}</span>
+                              </div>
+                              <p className='mt-1.5 text-xs text-slate-400'>
+                                Ishlab chiqarish: {item.production_status}
                               </p>
                             </div>
 
-                            <div className='rounded-2xl bg-white px-4 py-3 text-right'>
-                              <p className='text-xs uppercase tracking-[0.16em] text-slate-400'>
-                                Jami
-                              </p>
-                              <p className='mt-2 text-lg font-semibold text-slate-900'>
+                            <div className='rounded-2xl bg-amber-50 px-4 py-3 text-right'>
+                              <p className='text-xs text-slate-500'>Jami</p>
+                              <p className='mt-1 text-lg font-semibold text-slate-900'>
                                 {formatMoney(item.total_price)}
                               </p>
                             </div>
-                          </div>
-
-                          <div className='mt-4 flex flex-wrap gap-3 text-sm text-slate-500'>
-                            <span>Soni: {item.quantity}</span>
-                            <span>
-                              Bir dona: {formatMoney(item.unit_price)}
-                            </span>
-                            <span>SKU: {item.product_sku || 'n/a'}</span>
                           </div>
                         </article>
                       ))}
                     </div>
                   </section>
 
-                  <section className='rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60'>
-                    <div className='flex items-center gap-3'>
-                      <MapPin className='h-5 w-5 text-sky-700' />
-                      <h2 className='text-2xl font-semibold text-slate-900'>
-                        Yetkazib berish ma&apos;lumotlari
+                  {/* Shipping */}
+                  <section className='rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm shadow-stone-100/50'>
+                    <div className='flex items-center gap-2.5'>
+                      <div className='flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-700'>
+                        <MapPin className='h-4 w-4' />
+                      </div>
+                      <h2 className='text-lg font-semibold text-slate-900'>
+                        Yetkazib berish
                       </h2>
                     </div>
-                    <div className='mt-5 grid gap-4 sm:grid-cols-2'>
-                      <div className='rounded-[1.5rem] bg-slate-50 p-4'>
-                        <p className='text-sm text-slate-500'>Qabul qiluvchi</p>
-                        <p className='mt-2 text-lg font-semibold text-slate-900'>
+                    <div className='mt-4 grid gap-3 sm:grid-cols-2'>
+                      <div className='rounded-[1.5rem] bg-stone-50 p-4'>
+                        <p className='text-xs text-slate-500'>Qabul qiluvchi</p>
+                        <p className='mt-1.5 font-semibold text-slate-900'>
                           {order.shipping_name}
                         </p>
-                        <p className='mt-1 text-sm text-slate-600'>
+                        <p className='mt-0.5 text-sm text-slate-600'>
                           {order.shipping_email}
                         </p>
-                        <p className='mt-1 text-sm text-slate-600'>
+                        <p className='mt-0.5 text-sm text-slate-600'>
                           {order.shipping_phone || 'Telefon kiritilmagan'}
                         </p>
                       </div>
-                      <div className='rounded-[1.5rem] bg-slate-50 p-4'>
-                        <p className='text-sm text-slate-500'>Manzil</p>
-                        <p className='mt-2 text-lg font-semibold text-slate-900'>
-                          {order.shipping_address || 'Aniq manzil kiritilmagan'}
+                      <div className='rounded-[1.5rem] bg-stone-50 p-4'>
+                        <p className='text-xs text-slate-500'>Manzil</p>
+                        <p className='mt-1.5 font-semibold text-slate-900'>
+                          {order.shipping_address || 'Manzil kiritilmagan'}
                         </p>
-                        <p className='mt-1 text-sm text-slate-600'>
+                        <p className='mt-0.5 text-sm text-slate-600'>
                           {[order.shipping_city, order.shipping_state]
                             .filter(Boolean)
                             .join(', ')}
                         </p>
-                        <p className='mt-1 text-sm text-slate-600'>
+                        <p className='mt-0.5 text-sm text-slate-600'>
                           {[order.shipping_postal_code, order.shipping_country]
                             .filter(Boolean)
                             .join(' · ')}
@@ -259,17 +256,19 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                   </section>
                 </div>
 
-                <aside className='space-y-6'>
-                  <section className='rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10'>
-                    <p className='text-sm font-semibold uppercase tracking-[0.24em] text-sky-300'>
+                {/* Right: summary + payment */}
+                <aside className='space-y-5'>
+                  {/* Order summary */}
+                  <section className='rounded-[2rem] bg-gradient-to-br from-amber-700 to-orange-800 p-6 text-white shadow-xl shadow-amber-900/20'>
+                    <p className='text-sm font-semibold uppercase tracking-[0.24em] text-amber-200'>
                       Buyurtma xulosasi
                     </p>
-                    <div className='mt-6 space-y-3 rounded-[1.5rem] border border-white/10 bg-white/5 p-5'>
-                      <div className='flex items-center justify-between text-sm text-slate-200'>
+                    <div className='mt-5 space-y-3 rounded-[1.5rem] border border-white/15 bg-white/10 p-5'>
+                      <div className='flex items-center justify-between text-sm text-amber-100'>
                         <span>Oraliq summa</span>
                         <span>{formatMoney(order.subtotal)}</span>
                       </div>
-                      <div className='flex items-center justify-between text-sm text-slate-200'>
+                      <div className='flex items-center justify-between text-sm text-amber-100'>
                         <span>Yetkazib berish</span>
                         <span>
                           {Number.parseFloat(order.shipping_cost) > 0
@@ -277,17 +276,15 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                             : '0 UZS'}
                         </span>
                       </div>
-                      <div className='flex items-center justify-between text-sm text-slate-200'>
-                        <span>Chegirma</span>
-                        <span>
-                          {Number.parseFloat(order.discount_amount) > 0
-                            ? formatMoney(order.discount_amount)
-                            : '0 UZS'}
-                        </span>
-                      </div>
-                      <div className='border-t border-white/10 pt-4'>
+                      {Number.parseFloat(order.discount_amount) > 0 && (
+                        <div className='flex items-center justify-between text-sm text-amber-100'>
+                          <span>Chegirma</span>
+                          <span>−{formatMoney(order.discount_amount)}</span>
+                        </div>
+                      )}
+                      <div className='border-t border-white/15 pt-3'>
                         <div className='flex items-center justify-between'>
-                          <span className='text-sm text-slate-300'>Jami</span>
+                          <span className='text-sm text-amber-200'>Jami</span>
                           <span className='text-2xl font-semibold'>
                             {formatMoney(order.total_amount)}
                           </span>
@@ -295,87 +292,72 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                       </div>
                     </div>
 
+                    {/* Payment retry */}
                     {canRetryPayment && (
-                      <div className='mt-6 rounded-[1.5rem] border border-white/10 bg-white/5 p-5'>
-                        <div className='flex items-center gap-3'>
-                          <CreditCard className='h-5 w-5 text-sky-300' />
+                      <div className='mt-5 rounded-[1.5rem] border border-white/15 bg-white/10 p-5'>
+                        <div className='flex items-center gap-2.5'>
+                          <CreditCard className='h-4 w-4 text-amber-200' />
                           <p className='text-sm font-semibold text-white'>
-                            To&apos;lovni qayta boshlash
+                            To&apos;lovni boshlash
                           </p>
                         </div>
-                        <div className='mt-4 grid gap-3'>
-                          <button
-                            type='button'
-                            onClick={() => void handlePaymentInit('payme')}
-                            disabled={paymentBusy}
-                            className='rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 disabled:opacity-60'
-                          >
-                            Payme orqali boshlash
-                          </button>
-                          <button
-                            type='button'
-                            onClick={() => void handlePaymentInit('click')}
-                            disabled={paymentBusy}
-                            className='rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60'
-                          >
-                            Click orqali boshlash
-                          </button>
-                          <button
-                            type='button'
-                            onClick={() =>
-                              void handlePaymentInit('uzcard_humo')
-                            }
-                            disabled={paymentBusy}
-                            className='rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60'
-                          >
-                            Uzcard / Humo orqali boshlash
-                          </button>
+                        <div className='mt-4 grid gap-2'>
+                          {PAYMENT_PROVIDERS.map(p => (
+                            <button
+                              key={p.value}
+                              type='button'
+                              onClick={() => void handlePaymentInit(p.value)}
+                              disabled={paymentBusy}
+                              className='rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-50 disabled:opacity-60'
+                            >
+                              {p.label}
+                            </button>
+                          ))}
                         </div>
 
                         {paymentResult?.provider_payload.redirect_url && (
                           <a
-                            href={String(
-                              paymentResult.provider_payload.redirect_url
-                            )}
+                            href={String(paymentResult.provider_payload.redirect_url)}
                             target='_blank'
                             rel='noreferrer'
-                            className='mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-300 hover:text-sky-200'
+                            className='mt-4 inline-flex items-center gap-2 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 w-full justify-center'
                           >
+                            <ExternalLink className='h-3.5 w-3.5' />
                             Provider sahifasini ochish
-                            <ArrowRight className='h-4 w-4' />
                           </a>
                         )}
                       </div>
                     )}
                   </section>
 
-                  <section className='rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60'>
-                    <div className='flex items-center gap-3'>
-                      <Truck className='h-5 w-5 text-sky-700' />
-                      <h2 className='text-xl font-semibold text-slate-900'>
-                        Qo&apos;shimcha harakatlar
+                  {/* Actions */}
+                  <section className='rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm shadow-stone-100/50'>
+                    <div className='flex items-center gap-2.5'>
+                      <div className='flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-700'>
+                        <Truck className='h-4 w-4' />
+                      </div>
+                      <h2 className='text-base font-semibold text-slate-900'>
+                        Harakatlar
                       </h2>
                     </div>
-                    <div className='mt-5 flex flex-col gap-3'>
-                      {order.status !== 'DONE' &&
-                        order.status !== 'CANCELLED' && (
-                          <button
-                            type='button'
-                            onClick={() => void handleCancel()}
-                            disabled={cancelBusy}
-                            className='inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60'
-                          >
-                            <XCircle className='h-4 w-4' />
-                            {cancelBusy
-                              ? 'Bekor qilinmoqda...'
-                              : 'Buyurtmani bekor qilish'}
-                          </button>
-                        )}
+                    <div className='mt-4 flex flex-col gap-2.5'>
+                      {order.status !== 'DONE' && order.status !== 'CANCELLED' && (
+                        <button
+                          type='button'
+                          onClick={() => void handleCancel()}
+                          disabled={cancelBusy}
+                          className='inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60'
+                        >
+                          <XCircle className='h-4 w-4' />
+                          {cancelBusy ? 'Bekor qilinmoqda...' : 'Buyurtmani bekor qilish'}
+                        </button>
+                      )}
                       <Link
                         to='/orders'
-                        className='rounded-2xl border border-slate-200 px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50'
+                        className='rounded-2xl border border-stone-200 px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-stone-50'
                       >
                         Barcha buyurtmalar
+                        <ArrowRight className='ml-1.5 inline h-3.5 w-3.5' />
                       </Link>
                     </div>
                   </section>

@@ -47,9 +47,9 @@ export default function HomeConfidenceSection() {
             return (
               <article
                 key={step.title}
-                className='rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm shadow-slate-200/60 backdrop-blur'
+                className='rounded-3xl border border-amber-100/70 bg-white/90 p-6 shadow-sm shadow-amber-100/40 backdrop-blur'
               >
-                <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white'>
+                <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-600 text-white shadow-sm shadow-amber-200'>
                   <Icon className='h-5 w-5' />
                 </div>
                 <h3 className='mt-5 text-xl font-semibold text-slate-900'>
@@ -70,15 +70,15 @@ export default function HomeConfidenceSection() {
             return (
               <article
                 key={benefit.title}
-                className='rounded-3xl border border-slate-200 bg-slate-950 p-6 text-white shadow-lg shadow-slate-900/10'
+                className='rounded-3xl border border-amber-200/40 bg-gradient-to-br from-amber-700 to-orange-800 p-6 text-white shadow-lg shadow-amber-900/20'
               >
                 <div className='flex items-center gap-3'>
-                  <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10'>
-                    <Icon className='h-5 w-5 text-amber-300' />
+                  <div className='flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15'>
+                    <Icon className='h-5 w-5 text-amber-200' />
                   </div>
                   <h3 className='text-lg font-semibold'>{benefit.title}</h3>
                 </div>
-                <p className='mt-4 text-sm leading-6 text-slate-300'>
+                <p className='mt-4 text-sm leading-6 text-amber-100/80'>
                   {benefit.description}
                 </p>
               </article>

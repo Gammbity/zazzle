@@ -308,9 +308,9 @@ export default function ProductPurchasePanel({
         aria-labelledby='purchase-heading'
         className='scroll-mt-24 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/50'
       >
-        <header className='flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] p-6'>
+        <header className='flex flex-wrap items-start justify-between gap-3 border-b border-amber-100/60 bg-[linear-gradient(180deg,_#fffbeb_0%,_#ffffff_100%)] p-6'>
           <div>
-            <p className='text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-700'>
+            <p className='text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700'>
               Buyurtma
             </p>
             <h2
@@ -328,7 +328,7 @@ export default function ProductPurchasePanel({
             className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ${
               designReady
                 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+                : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
             }`}
             aria-live='polite'
           >
@@ -379,14 +379,14 @@ export default function ProductPurchasePanel({
             </div>
           ) : (
             <div className='space-y-6'>
-              <div className='rounded-2xl bg-slate-900 p-5 text-white'>
-                <p className='text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-300'>
+              <div className='rounded-2xl bg-gradient-to-br from-amber-700 to-orange-800 p-5 text-white'>
+                <p className='text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-200'>
                   Bir dona narx
                 </p>
                 <p className='mt-1.5 text-3xl font-semibold tracking-tight'>
                   {unitPrice}
                 </p>
-                <p className='mt-1 text-xs text-slate-400'>
+                <p className='mt-1 text-xs text-amber-200/70'>
                   QQS va dizayn narxi kiritilgan
                 </p>
               </div>
@@ -430,7 +430,7 @@ export default function ProductPurchasePanel({
               {!designReady && (
                 <div
                   role='status'
-                  className='flex items-start gap-2.5 rounded-xl border border-sky-100 bg-sky-50 p-3 text-xs leading-5 text-sky-800'
+                  className='flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800'
                 >
                   <Sparkles className='mt-0.5 h-4 w-4 shrink-0' aria-hidden />
                   <span>
@@ -471,22 +471,22 @@ export default function ProductPurchasePanel({
                   type='button'
                   onClick={() => void handleAddToCart()}
                   disabled={!canSubmit}
-                  className='inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white shadow-sm shadow-slate-900/20 transition-all hover:-translate-y-0.5 hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:translate-y-0 disabled:bg-slate-300 disabled:shadow-none'
+                  className='inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 py-3.5 text-sm font-semibold text-white shadow-sm shadow-amber-600/25 transition-all hover:-translate-y-0.5 hover:bg-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:translate-y-0 disabled:bg-amber-200 disabled:shadow-none'
                 >
                   <ShoppingCart className='h-4 w-4' aria-hidden />
                   {submitting ? "Qo'shilmoqda..." : "Savatga qo'shish"}
                 </button>
                 <Link
                   to='/cart'
-                  className='inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2'
+                  className='inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:-translate-y-0.5 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2'
                 >
                   Savatga o'tish
                   <ArrowRight className='h-4 w-4' aria-hidden />
                 </Link>
               </div>
 
-              <div className='flex items-center gap-2 pt-1 text-xs text-slate-500'>
-                <Truck className='h-3.5 w-3.5' aria-hidden />
+              <div className='flex items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-xs text-amber-800'>
+                <Truck className='h-3.5 w-3.5 shrink-0' aria-hidden />
                 <span>
                   Toshkent bo'ylab 2–3 ish kuni, viloyatlarga 3–5 ish kuni
                   ichida yetkazib beriladi.

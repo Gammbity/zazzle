@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, type ReactNode } from 'react';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import Footer from '@/components/Footer';
 import HeroSection from '@/components/HeroSection';
 import HomeConfidenceSection from '@/components/HomeConfidenceSection';
+import Navbar from '@/components/Navbar';
 import NavigationProgress from '@/components/NavigationProgress';
 import ProductGrid from '@/components/ProductGrid';
 import SkipToContent from '@/components/SkipToContent';
@@ -33,7 +35,7 @@ const ShopperBagCustomizer = lazy(
 function PageLoading() {
   return (
     <div className='flex min-h-[40vh] items-center justify-center'>
-      <div className='h-10 w-10 animate-spin rounded-full border-4 border-sky-100 border-t-sky-600' />
+      <div className='h-10 w-10 animate-spin rounded-full border-4 border-amber-100 border-t-amber-600' />
     </div>
   );
 }
@@ -65,8 +67,8 @@ function PlaceholderPage({
 
   return (
     <main className='mx-auto flex min-h-screen max-w-4xl flex-col justify-center px-4 py-12'>
-      <div className='rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm shadow-slate-200/60'>
-        <p className='text-sm font-semibold uppercase tracking-[0.3em] text-sky-700'>
+      <div className='rounded-[2rem] border border-amber-100 bg-white p-8 shadow-sm shadow-amber-100/40'>
+        <p className='text-sm font-semibold uppercase tracking-[0.3em] text-amber-700'>
           Tez orada
         </p>
         <h1 className='mt-4 text-3xl font-semibold text-slate-900'>{title}</h1>
@@ -76,7 +78,7 @@ function PlaceholderPage({
         <div className='mt-6'>
           <Link
             to='/'
-            className='inline-flex items-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700'
+            className='inline-flex items-center rounded-full bg-amber-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-amber-700'
           >
             Mahsulotlarga qaytish
           </Link>
@@ -213,24 +215,11 @@ export default function App() {
     <>
       <SkipToContent />
       <NavigationProgress />
+      <Navbar />
       <div id='main-content'>
         <ErrorBoundary>{page}</ErrorBoundary>
       </div>
-      <footer className='border-t border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500'>
-        <p className='font-medium text-slate-700'>Zazzle Uzbekistan</p>
-        <p className='mt-2'>
-          Mahsulot tanlash, dizayn qilish va ko'rinishni tekshirish uchun
-          soddalashtirilgan sayt.
-        </p>
-        <p className='mt-3'>
-          <Link
-            to='/'
-            className='font-medium text-sky-700 transition-colors hover:text-sky-800'
-          >
-            Bosh sahifa
-          </Link>
-        </p>
-      </footer>
+      <Footer />
     </>
   );
 }

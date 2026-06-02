@@ -108,7 +108,7 @@ function FloatingProductCard({
 export default function HeroSection() {
   return (
     <section
-      className='relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_32%),radial-gradient(circle_at_82%_18%,_rgba(14,165,233,0.20),_transparent_28%),radial-gradient(circle_at_88%_78%,_rgba(249,115,22,0.12),_transparent_22%),linear-gradient(135deg,_#fffdf7_0%,_#ffffff_46%,_#f3f9ff_100%)] px-4 pb-16 pt-6 text-slate-900 sm:px-6 lg:px-8 lg:pb-24'
+      className='relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.22),_transparent_32%),radial-gradient(circle_at_82%_18%,_rgba(249,115,22,0.18),_transparent_28%),radial-gradient(circle_at_88%_78%,_rgba(245,158,11,0.14),_transparent_22%),linear-gradient(135deg,_#fffdf7_0%,_#ffffff_46%,_#fffbeb_100%)] px-4 pb-16 pt-6 text-slate-900 sm:px-6 lg:px-8 lg:pb-24'
       aria-label='Kirish'
     >
       <div
@@ -116,9 +116,9 @@ export default function HeroSection() {
         aria-hidden='true'
       />
 
-      <div className='mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/80 bg-white/80 px-4 py-3 shadow-lg shadow-slate-200/40 backdrop-blur sm:px-6'>
+      <div className='mx-auto flex max-w-7xl items-center justify-between rounded-full border border-amber-100/80 bg-white/85 px-4 py-3 shadow-lg shadow-amber-100/40 backdrop-blur sm:px-6'>
         <div>
-          <p className='text-xs font-semibold uppercase tracking-[0.35em] text-sky-700'>
+          <p className='text-xs font-semibold uppercase tracking-[0.35em] text-amber-700'>
             Zazzle Uzbekistan
           </p>
           <p className='mt-1 text-sm text-slate-500'>
@@ -129,7 +129,7 @@ export default function HeroSection() {
         <button
           type='button'
           onClick={() => scrollToId('products')}
-          className='inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-700'
+          className='inline-flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700'
         >
           Boshlash
           <ArrowRight className='h-4 w-4' />
@@ -140,7 +140,7 @@ export default function HeroSection() {
         <div className='relative z-10'>
           <h1 className='mt-2 max-w-4xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl md:text-6xl'>
             Mahsulotlarga{' '}
-            <span className='bg-gradient-to-r from-sky-600 via-sky-500 to-amber-500 bg-clip-text text-transparent'>
+            <span className='bg-gradient-to-r from-amber-600 via-orange-500 to-amber-400 bg-clip-text text-transparent'>
               jonli ko'rinish
             </span>{' '}
             bilan dizayn bering
@@ -154,7 +154,7 @@ export default function HeroSection() {
             <button
               type='button'
               onClick={() => scrollToId('products')}
-              className='inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:-translate-y-0.5 hover:bg-slate-700'
+              className='inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-amber-600/25 transition-all hover:-translate-y-0.5 hover:bg-amber-700'
             >
               Mahsulotlarni ko'rish
               <ArrowRight className='h-4 w-4' />
@@ -163,20 +163,20 @@ export default function HeroSection() {
             <button
               type='button'
               onClick={() => scrollToId('how-it-works')}
-              className='inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-base font-semibold text-slate-700 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50'
+              className='inline-flex items-center justify-center rounded-2xl border border-amber-200 bg-white px-6 py-3.5 text-base font-semibold text-slate-700 transition-all hover:-translate-y-0.5 hover:bg-amber-50'
             >
               Qanday ishlashini ko'rish
             </button>
           </div>
 
           <div className='mt-10 flex flex-wrap gap-3 text-sm font-medium text-slate-600'>
-            <span className='rounded-full border border-sky-100 bg-white px-4 py-2 shadow-sm shadow-sky-100/60'>
+            <span className='rounded-full border border-amber-100 bg-white px-4 py-2 shadow-sm shadow-amber-100/60'>
               Futbolka, krujka va xarid sumkasi
             </span>
-            <span className='rounded-full border border-sky-100 bg-white px-4 py-2 shadow-sm shadow-sky-100/60'>
+            <span className='rounded-full border border-amber-100 bg-white px-4 py-2 shadow-sm shadow-amber-100/60'>
               Jonli mahsulot ko'rinishi
             </span>
-            <span className='rounded-full border border-sky-100 bg-white px-4 py-2 shadow-sm shadow-sky-100/60'>
+            <span className='rounded-full border border-amber-100 bg-white px-4 py-2 shadow-sm shadow-amber-100/60'>
               Kompyuter va mobilga mos
             </span>
           </div>

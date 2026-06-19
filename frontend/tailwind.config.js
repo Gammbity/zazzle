@@ -4,6 +4,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Stitch design tokens
+        brand: '#8d4b00',
+        'brand-dim': '#6e3900',
+        'brand-bg': '#fbf9f8',
+        'brand-surface': '#efedec',
+        'brand-surface-low': '#f5f3f2',
+        'brand-muted': '#554336',
+        'brand-border': '#dbc2b0',
         primary: {
           50: '#fffbeb',
           100: '#fef3c7',
@@ -11,8 +19,8 @@ module.exports = {
           300: '#fcd34d',
           400: '#fbbf24',
           500: '#f59e0b',
-          600: '#d97706',
-          700: '#b45309',
+          600: '#8d4b00',
+          700: '#6e3900',
           800: '#92400e',
           900: '#78350f',
         },
@@ -40,10 +48,23 @@ module.exports = {
           800: '#9a3412',
           900: '#7c2d12',
         },
+        // Override amber-600/700 to Stitch primary
+        amber: {
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#f59e0b',
+          600: '#8d4b00',
+          700: '#6e3900',
+          800: '#92400e',
+          900: '#78350f',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Poppins', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'sans-serif'],
       },
       container: {
         center: true,

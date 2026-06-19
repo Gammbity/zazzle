@@ -287,7 +287,7 @@ export default function CheckoutPage() {
 
   return (
     <>
-      <main className='min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.14),_transparent_28%),linear-gradient(180deg,_#fffbeb_0%,_#ffffff_48%,_#ffffff_100%)] px-4 py-10 sm:px-6 lg:px-8'>
+      <main className='min-h-screen bg-brand-bg px-4 py-10 sm:px-6 lg:px-8'>
         <div className='mx-auto max-w-7xl'>
           {result ? (
             renderSuccessState()

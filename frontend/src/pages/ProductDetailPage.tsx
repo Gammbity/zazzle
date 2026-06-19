@@ -71,12 +71,9 @@ export default function ProductDetailPage({ product }: { product: Product }) {
       void (async () => {
         const entries = await Promise.all(
           product.angles.map(async angle => {
-            const surfaceState = editorSurfaces.find(
-              surface => surface.id === angle.id
-            );
-            if (!surfaceState || surfaceState.layers.length === 0) {
+            const surfaceState = editorSurfaces.find(s => s.id === angle.id);
+            if (!surfaceState || surfaceState.layers.length === 0)
               return [angle.id, null] as const;
-            }
             const url = await renderSurfacePreview({
               layers: surfaceState.layers,
               printArea: angle.printableArea,
@@ -95,34 +92,23 @@ export default function ProductDetailPage({ product }: { product: Product }) {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [
-    editorProductId,
-    editorSurfaces,
-    isDraftLoaded,
-    isTshirt,
-    product.angles,
-    product.canvasAspect,
-    product.slug,
-  ]);
+  }, [editorProductId, editorSurfaces, isDraftLoaded, isTshirt, product.angles, product.canvasAspect, product.slug]);
 
   const hasTshirtPreview = useMemo(
     () => Object.values(surfacePreviewUrls).some(Boolean),
     [surfacePreviewUrls]
   );
   const activeTshirtSurfaceId =
-    product.angles.find(angle => angle.id === activeSurfaceId)?.id ??
+    product.angles.find(a => a.id === activeSurfaceId)?.id ??
     product.angles[0]?.id ??
     'front';
 
   const hasDesign = isTshirt ? hasTshirtPreview : Boolean(previewDataUrl);
 
   return (
-    <main className='min-h-screen bg-[linear-gradient(180deg,_#fffbeb_0%,_#ffffff_40%,_#ffffff_100%)]'>
+    <main className='min-h-screen bg-brand-bg'>
       {/* Breadcrumb */}
-      <nav
-        className='mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8'
-        aria-label="Yo'nalish"
-      >
+      <nav className='mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8' aria-label="Yo'nalish">
         <div className='flex flex-wrap items-center gap-2 text-sm text-slate-500'>
           <Link
             to='/'
@@ -142,12 +128,12 @@ export default function ProductDetailPage({ product }: { product: Product }) {
         </div>
       </nav>
 
-      {/* 3-column layout on xl, 2-column on lg, stacked on mobile */}
-      <div className='mx-auto max-w-[1600px] px-4 pb-24 sm:px-6 lg:px-8'>
-        <div className='grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.2fr)_minmax(0,0.82fr)]'>
+      {/* 2-column: left sticky preview, right scrollable (editor + purchase) */}
+      <div className='mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8'>
+        <div className='grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start'>
 
-          {/* ── Column 1: Preview (sticky on xl) ───────────────────── */}
-          <div className='flex flex-col gap-4 xl:sticky xl:top-[4.5rem] xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto'>
+          {/* Left: Preview — sticky so it stays visible while right scrolls */}
+          <div className='lg:sticky lg:top-[4.5rem]'>
             <div className='rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm shadow-stone-100/50 sm:p-5'>
               <Suspense fallback={<EditorSkeleton />}>
                 {isMug && previewDataUrl ? (
@@ -184,55 +170,18 @@ export default function ProductDetailPage({ product }: { product: Product }) {
               </Suspense>
             </div>
 
-            {/* Product info card */}
-            <div className='rounded-[2rem] border border-amber-100/80 bg-white p-5 shadow-sm shadow-amber-100/30'>
-              <div className='flex items-center justify-between gap-4'>
-                <div>
-                  <p className='text-xs font-semibold uppercase tracking-[0.25em] text-amber-700'>
-                    Ko&apos;rinish
-                  </p>
-                  <h2 className='mt-1.5 text-xl font-semibold text-slate-900'>
-                    {product.name}
-                  </h2>
-                </div>
-                <span
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                    hasDesign
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-amber-50 text-amber-700'
-                  }`}
-                >
-                  {hasDesign ? '✓ Tayyor' : 'Kutilmoqda'}
-                </span>
-              </div>
-              <p className='mt-2 text-sm leading-5 text-slate-500'>
-                {isTshirt
-                  ? 'Old yoki orqa tomoni uchun alohida dizayn qo\'shishingiz mumkin.'
-                  : isPen
-                    ? 'Ruchka dizayni avtomatik 360° ko\'rinishda chiqadi.'
-                    : isMug
-                      ? 'Ko\'rinish yaqinlashtirilgan holatda tayyorlanadi.'
-                      : 'Ko\'rinish avtomatik yangilanadi.'}
-              </p>
-              <div className='mt-3 flex flex-wrap gap-2'>
-                <span className='rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700'>
-                  {product.startingPrice}
-                </span>
-              </div>
-            </div>
-
-            {/* Purchase panel on xl is in col 3, but on lg/mobile show it here */}
-            <div className='xl:hidden'>
-              <ProductPurchasePanel
-                product={product}
-                previewDataUrl={previewDataUrl}
-                onProductColorChange={setSelectedProductColor}
-              />
-            </div>
           </div>
 
-          {/* ── Column 2: Editor ────────────────────────────────────── */}
-          <div className='flex flex-col gap-4'>
+          {/* Right: Purchase first (color/size/buy), then Editor */}
+          <div className='flex flex-col gap-5'>
+            {/* Purchase panel — user sees this FIRST before scrolling to editor */}
+            <ProductPurchasePanel
+              product={product}
+              previewDataUrl={previewDataUrl}
+              onProductColorChange={setSelectedProductColor}
+            />
+
+            {/* Editor below purchase */}
             <div className='rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm shadow-stone-100/50 sm:p-6'>
               <Suspense fallback={<EditorSkeleton />}>
                 <EditorPanel
@@ -242,37 +191,24 @@ export default function ProductDetailPage({ product }: { product: Product }) {
               </Suspense>
             </div>
           </div>
-
-          {/* ── Column 3: Purchase (sticky on xl) ──────────────────── */}
-          <div className='hidden xl:block xl:sticky xl:top-[4.5rem] xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto'>
-            <ProductPurchasePanel
-              product={product}
-              previewDataUrl={previewDataUrl}
-              onProductColorChange={setSelectedProductColor}
-            />
-          </div>
         </div>
       </div>
 
       {/* Mobile sticky bottom bar */}
       <div
-        className='sticky bottom-0 z-40 border-t border-amber-100 bg-white/95 px-4 py-3 shadow-[0_-8px_20px_-12px_rgba(0,0,0,0.12)] backdrop-blur xl:hidden'
+        className='sticky bottom-0 z-40 border-t border-amber-100 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.10)] backdrop-blur lg:hidden'
         aria-label='Buyurtma paneli'
       >
-        <div className='mx-auto flex max-w-2xl items-center justify-between gap-3'>
-          <div className='min-w-0'>
-            <p className='truncate text-xs font-medium uppercase tracking-wider text-slate-500'>
-              {product.name}
-            </p>
-            <p className='mt-0.5 text-base font-semibold text-slate-900'>
-              {product.startingPrice}
-            </p>
+        <div className='mx-auto flex max-w-xl items-center justify-between gap-3'>
+          <div>
+            <p className='text-xs font-medium text-slate-500'>{product.name}</p>
+            <p className='text-sm font-semibold text-slate-900'>{product.startingPrice}</p>
           </div>
           <a
             href='#purchase'
-            className='inline-flex shrink-0 items-center gap-2 rounded-full bg-amber-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-amber-600/25 transition-transform active:scale-95 hover:bg-amber-700'
+            className='inline-flex items-center gap-2 rounded-full bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-amber-200 transition active:scale-95 hover:bg-amber-700'
           >
-            <ShoppingCart className='h-4 w-4' aria-hidden />
+            <ShoppingCart className='h-4 w-4' />
             Savatga qo&apos;shish
           </a>
         </div>

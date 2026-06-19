@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -33,7 +33,9 @@
   }
 
   body {
-    @apply bg-white text-gray-900;
+    background-color: #fbf9f8;
+    color: #1b1c1b;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     font-feature-settings:
       'rlig' 1,
       'calt' 1;

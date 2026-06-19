@@ -306,195 +306,184 @@ export default function ProductPurchasePanel({
       <section
         id='purchase'
         aria-labelledby='purchase-heading'
-        className='scroll-mt-24 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm shadow-slate-200/50'
+        className='scroll-mt-20 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm'
       >
-        <header className='flex flex-wrap items-start justify-between gap-3 border-b border-amber-100/60 bg-[linear-gradient(180deg,_#fffbeb_0%,_#ffffff_100%)] p-6'>
+        {/* Header — narx inline */}
+        <div className='flex items-center justify-between gap-3 px-5 py-4'>
           <div>
-            <p className='text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700'>
-              Buyurtma
-            </p>
             <h2
               id='purchase-heading'
-              className='mt-2 text-2xl font-semibold text-slate-900'
+              className='text-base font-semibold text-slate-900'
             >
               {product.name}
             </h2>
-            <p className='mt-1.5 text-sm leading-6 text-slate-600'>
-              O'lcham va rangni tanlab, dizayningizni savatga yuboring.
+            <p className='mt-0.5 text-xl font-bold text-amber-700'>
+              {unitPrice}
             </p>
           </div>
-
-          <div
-            className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ${
+          <span
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
               designReady
-                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-stone-100 text-slate-500'
             }`}
             aria-live='polite'
           >
-            {designReady ? (
-              <>
-                <CheckCircle2 className='h-3.5 w-3.5' aria-hidden />
-                Dizayn tayyor
-              </>
-            ) : (
-              <>
-                <Sparkles className='h-3.5 w-3.5' aria-hidden />
-                Dizaynni boshlang
-              </>
-            )}
+            {designReady ? '✓ Dizayn tayyor' : 'Dizayn kerak'}
+          </span>
+        </div>
+
+        {loading ? (
+          <div className='space-y-3 border-t border-stone-100 px-5 py-4'>
+            <Skeleton className='h-4 w-24' rounded='md' />
+            <div className='flex gap-2'>
+              <Skeleton className='h-8 w-12' rounded='lg' />
+              <Skeleton className='h-8 w-12' rounded='lg' />
+              <Skeleton className='h-8 w-12' rounded='lg' />
+            </div>
+            <Skeleton className='h-9 w-full' rounded='xl' />
           </div>
-        </header>
+        ) : error && !backendProduct ? (
+          <div className='border-t border-stone-100 px-5 py-4'>
+            <p className='flex items-center gap-2 text-sm text-rose-600'>
+              <AlertTriangle className='h-4 w-4 shrink-0' />
+              {error}
+            </p>
+          </div>
+        ) : isUnsupported ? (
+          <div className='border-t border-stone-100 px-5 py-4'>
+            <p className='flex items-center gap-2 text-sm text-amber-700'>
+              <Info className='h-4 w-4 shrink-0' />
+              Tez orada savdoga chiqadi.
+            </p>
+          </div>
+        ) : (
+          <>
+            {sizeOptions.length > 0 && (
+              <div className='border-t border-stone-100 px-5 py-4'>
+                <p className='mb-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400'>
+                  O&apos;lcham
+                  {selectedSize && (
+                    <span className='ml-2 font-semibold normal-case tracking-normal text-slate-700'>
+                      {selectedSize}
+                    </span>
+                  )}
+                </p>
+                <div className='flex flex-wrap gap-1.5'>
+                  {sizeOptions.map(size => (
+                    <button
+                      key={size}
+                      type='button'
+                      onClick={() => setSelectedSize(size)}
+                      className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-all ${
+                        selectedSize === size
+                          ? 'border-amber-600 bg-amber-600 text-white'
+                          : 'border-stone-200 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        <div className='p-6'>
-          {loading ? (
-            <div className='space-y-4'>
-              <Skeleton className='h-5 w-32' rounded='md' />
-              <div className='flex gap-2'>
-                <Skeleton className='h-10 w-14' rounded='xl' />
-                <Skeleton className='h-10 w-14' rounded='xl' />
-                <Skeleton className='h-10 w-14' rounded='xl' />
-              </div>
-              <Skeleton className='h-24 w-full' rounded='2xl' />
-              <Skeleton className='h-12 w-full' rounded='2xl' />
-            </div>
-          ) : error && !backendProduct ? (
-            <div className='flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-800'>
-              <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0' aria-hidden />
-              <div>
-                <p className='font-semibold'>Ma'lumotlarni yuklab bo'lmadi</p>
-                <p className='mt-1 text-rose-700'>{error}</p>
-              </div>
-            </div>
-          ) : isUnsupported ? (
-            <div className='flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900'>
-              <Info className='mt-0.5 h-4 w-4 shrink-0' aria-hidden />
-              <div>
-                <p className='font-semibold'>Hali savdoga chiqmagan</p>
-                <p className='mt-1 text-amber-800'>
-                  Dizayn qilishingiz mumkin, lekin narx va buyurtma tez orada
-                  ochiladi.
+            {colorOptions.length > 0 && (
+              <div className='border-t border-stone-100 px-5 py-4'>
+                <p className='mb-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400'>
+                  Rang
+                  {selectedColor && (
+                    <span className='ml-2 font-semibold normal-case tracking-normal text-slate-700'>
+                      {selectedColor}
+                    </span>
+                  )}
                 </p>
-              </div>
-            </div>
-          ) : (
-            <div className='space-y-6'>
-              <div className='rounded-2xl bg-gradient-to-br from-amber-700 to-orange-800 p-5 text-white'>
-                <p className='text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-200'>
-                  Bir dona narx
-                </p>
-                <p className='mt-1.5 text-3xl font-semibold tracking-tight'>
-                  {unitPrice}
-                </p>
-                <p className='mt-1 text-xs text-amber-200/70'>
-                  QQS va dizayn narxi kiritilgan
-                </p>
-              </div>
-
-              {sizeOptions.length > 0 && (
-                <VariantButtons
-                  label="O'lcham tanlang"
-                  name='size'
-                  options={sizeOptions.map(size => ({ value: size }))}
-                  value={selectedSize}
-                  onChange={setSelectedSize}
-                />
-              )}
-
-              {colorOptions.length > 0 && (
                 <ColorSwatches
-                  label='Rangni tanlang'
                   options={colorOptions}
                   value={selectedColor}
                   onChange={setSelectedColor}
                 />
-              )}
+              </div>
+            )}
 
-              <div className='flex flex-wrap items-end justify-between gap-4'>
+            {/* Miqdor + jami */}
+            <div className='flex items-center justify-between gap-4 border-t border-stone-100 px-5 py-4'>
+              <div>
+                <p className='mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400'>
+                  Miqdor
+                </p>
                 <QuantityStepper
                   value={quantity}
                   onChange={setQuantity}
                   min={1}
                   max={500}
                 />
+              </div>
+              {estimatedTotal && (
                 <div className='text-right'>
-                  <p className='text-[11px] font-semibold uppercase tracking-wider text-slate-500'>
-                    {quantity} dona jami
-                  </p>
-                  <p className='mt-0.5 text-xl font-semibold text-slate-900'>
-                    {estimatedTotal ?? unitPrice}
+                  <p className='text-xs text-slate-400'>Jami</p>
+                  <p className='mt-0.5 text-lg font-bold text-slate-900'>
+                    {estimatedTotal}
                   </p>
                 </div>
-              </div>
-
-              {!designReady && (
-                <div
-                  role='status'
-                  className='flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800'
-                >
-                  <Sparkles className='mt-0.5 h-4 w-4 shrink-0' aria-hidden />
-                  <span>
-                    Savatga qo'shishdan avval yuqoridagi muharrirda kamida bitta
-                    element qo'shing — matn, rasm yoki stiker.
-                  </span>
-                </div>
               )}
-
-              {error && backendProduct && (
-                <div
-                  role='alert'
-                  className='flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800'
-                >
-                  <AlertTriangle
-                    className='mt-0.5 h-4 w-4 shrink-0'
-                    aria-hidden
-                  />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {successMessage && (
-                <div
-                  role='status'
-                  className='flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-800'
-                >
-                  <CheckCircle2
-                    className='mt-0.5 h-4 w-4 shrink-0'
-                    aria-hidden
-                  />
-                  <span>{successMessage}</span>
-                </div>
-              )}
-
-              <div className='flex flex-col gap-3 pt-1 sm:flex-row'>
-                <button
-                  type='button'
-                  onClick={() => void handleAddToCart()}
-                  disabled={!canSubmit}
-                  className='inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-600 px-5 py-3.5 text-sm font-semibold text-white shadow-sm shadow-amber-600/25 transition-all hover:-translate-y-0.5 hover:bg-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:translate-y-0 disabled:bg-amber-200 disabled:shadow-none'
-                >
-                  <ShoppingCart className='h-4 w-4' aria-hidden />
-                  {submitting ? "Qo'shilmoqda..." : "Savatga qo'shish"}
-                </button>
-                <Link
-                  to='/cart'
-                  className='inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 transition-all hover:-translate-y-0.5 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2'
-                >
-                  Savatga o'tish
-                  <ArrowRight className='h-4 w-4' aria-hidden />
-                </Link>
-              </div>
-
-              <div className='flex items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-xs text-amber-800'>
-                <Truck className='h-3.5 w-3.5 shrink-0' aria-hidden />
-                <span>
-                  Toshkent bo'ylab 2–3 ish kuni, viloyatlarga 3–5 ish kuni
-                  ichida yetkazib beriladi.
-                </span>
-              </div>
             </div>
-          )}
-        </div>
+
+            {/* Xabarlar */}
+            {!designReady && (
+              <div className='border-t border-stone-100 px-5 py-3'>
+                <p className='flex items-center gap-2 text-xs text-amber-700'>
+                  <Sparkles className='h-3.5 w-3.5 shrink-0' />
+                  Pastdagi muharrirda matn, rasm yoki stiker qo&apos;shing.
+                </p>
+              </div>
+            )}
+            {error && backendProduct && (
+              <div className='border-t border-stone-100 px-5 py-3'>
+                <p className='flex items-center gap-2 text-xs text-rose-600'>
+                  <AlertTriangle className='h-3.5 w-3.5 shrink-0' />
+                  {error}
+                </p>
+              </div>
+            )}
+            {successMessage && (
+              <div className='border-t border-stone-100 px-5 py-3'>
+                <p className='flex items-center gap-2 text-xs text-emerald-700'>
+                  <CheckCircle2 className='h-3.5 w-3.5 shrink-0' />
+                  {successMessage}
+                </p>
+              </div>
+            )}
+
+            {/* Tugmalar */}
+            <div className='flex gap-2 border-t border-stone-100 px-5 py-4'>
+              <button
+                type='button'
+                onClick={() => void handleAddToCart()}
+                disabled={!canSubmit}
+                className='flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:bg-stone-200 disabled:text-stone-400'
+              >
+                <ShoppingCart className='h-4 w-4' />
+                {submitting ? "Qo'shilmoqda..." : "Savatga qo'shish"}
+              </button>
+              <Link
+                to='/cart'
+                className='flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-stone-50'
+              >
+                Savat
+                <ArrowRight className='h-3.5 w-3.5' />
+              </Link>
+            </div>
+
+            {/* Yetkazib berish */}
+            <div className='flex items-center gap-2 border-t border-stone-100 px-5 py-3'>
+              <Truck className='h-3.5 w-3.5 shrink-0 text-slate-400' />
+              <p className='text-xs text-slate-400'>
+                Toshkent 2–3 kun · Viloyatlar 3–5 kun
+              </p>
+            </div>
+          </>
+        )}
       </section>
 
       <CommerceAuthModal

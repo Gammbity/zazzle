@@ -58,12 +58,12 @@ export default function VariantButtons({
               title={option.helperText ?? displayLabel}
               onClick={() => !option.disabled && onChange(option.value)}
               className={cn(
-                'min-w-[3rem] rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2',
+                'min-w-[2.5rem] rounded-lg border px-3 py-1.5 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1',
                 selected
-                  ? 'border-slate-900 bg-slate-900 text-white shadow-sm shadow-slate-900/20'
-                  : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50',
+                  ? 'border-amber-600 bg-amber-600 text-white'
+                  : 'border-stone-200 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50',
                 option.disabled &&
-                  'pointer-events-none cursor-not-allowed border-dashed border-slate-200 bg-slate-50 text-slate-400 line-through'
+                  'pointer-events-none cursor-not-allowed border-dashed border-stone-200 bg-stone-50 text-slate-400 line-through'
               )}
             >
               {displayLabel}

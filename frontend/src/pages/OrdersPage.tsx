@@ -35,7 +35,7 @@ export default function OrdersPage() {
 
   return (
     <>
-      <main className='min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(251,191,36,0.14),_transparent_22%),linear-gradient(180deg,_#fffbeb_0%,_#ffffff_40%,_#ffffff_100%)] px-4 py-10 sm:px-6 lg:px-8'>
+      <main className='min-h-screen bg-brand-bg px-4 py-10 sm:px-6 lg:px-8'>
         <div className='mx-auto max-w-7xl'>
           {/* Header */}
           <div className='rounded-[2.2rem] border border-amber-100 bg-white/90 p-6 shadow-sm shadow-amber-100/40 backdrop-blur sm:p-8'>

@@ -72,10 +72,10 @@ export default function ColorSwatches({
               title={option.name}
               onClick={() => !option.disabled && onChange(option.name)}
               className={cn(
-                'relative h-10 w-10 rounded-full border-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2',
+                'relative h-8 w-8 rounded-full border-2 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2',
                 isSelected
-                  ? 'scale-110 border-slate-900 shadow-md shadow-slate-900/20'
-                  : 'border-white ring-1 ring-slate-200 hover:scale-105 hover:ring-slate-300',
+                  ? 'scale-110 border-amber-600 shadow-sm shadow-amber-200'
+                  : 'border-white ring-1 ring-stone-200 hover:scale-105 hover:ring-stone-300',
                 option.disabled &&
                   'pointer-events-none cursor-not-allowed opacity-40'
               )}

@@ -566,85 +566,39 @@ export default function EditorPanel({
         </div>
       )}
 
-      <div className='flex flex-wrap items-center gap-1.5 rounded-[1.5rem] border border-stone-200 bg-stone-50/60 p-2.5'>
+      <div className='flex flex-wrap items-center gap-1 rounded-xl border border-stone-200 bg-stone-50 p-1.5'>
         <input
           ref={fileInputRef}
           type='file'
           accept='image/png,image/jpeg,image/webp'
           onChange={handleImageUpload}
           aria-label='Rasm yuklash'
-          title='Rasm yuklash'
           className='hidden'
         />
 
-        <ToolBtn
-          label='Rasm'
-          onClick={() => fileInputRef.current?.click()}
-          disabled={!isEditorReady}
-          icon={<ImagePlus className='h-4 w-4' />}
-        />
-        <ToolBtn
-          label='Matn'
-          onClick={handleAddText}
-          disabled={!isEditorReady}
-          icon={<Type className='h-4 w-4' />}
-        />
-        <ToolBtn
-          label='Stiker'
-          onClick={() => setShowStickerPicker(true)}
-          disabled={!isEditorReady}
-          icon={<Sticker className='h-4 w-4' />}
-        />
+        {/* Add tools */}
+        <ToolBtn label='Rasm' onClick={() => fileInputRef.current?.click()} disabled={!isEditorReady} icon={<ImagePlus className='h-4 w-4' />} />
+        <ToolBtn label='Matn' onClick={handleAddText} disabled={!isEditorReady} icon={<Type className='h-4 w-4' />} />
+        <ToolBtn label='Stiker' onClick={() => setShowStickerPicker(true)} disabled={!isEditorReady} icon={<Sticker className='h-4 w-4' />} />
 
-        <div className='mx-1 hidden h-6 w-px bg-slate-200 sm:block' />
+        <div className='mx-1 h-5 w-px bg-stone-200' />
 
-        <ToolBtn
-          label='Ortga'
-          onClick={undo}
-          disabled={!canUndo}
-          icon={<Undo2 className='h-4 w-4' />}
-        />
-        <ToolBtn
-          label='Qaytarish'
-          onClick={redo}
-          disabled={!canRedo}
-          icon={<Redo2 className='h-4 w-4' />}
-        />
+        {/* History */}
+        <ToolBtn label='Ortga' onClick={undo} disabled={!canUndo} icon={<Undo2 className='h-4 w-4' />} />
+        <ToolBtn label='Qaytarish' onClick={redo} disabled={!canRedo} icon={<Redo2 className='h-4 w-4' />} />
 
         {selectedLayerId && (
           <>
-            <div className='mx-1 hidden h-6 w-px bg-slate-200 sm:block' />
-            <ToolBtn
-              label='Oldinga'
-              onClick={() => bringLayerForward(selectedLayerId)}
-              icon={<ArrowUpToLine className='h-4 w-4' />}
-            />
-            <ToolBtn
-              label='Orqaga'
-              onClick={() => sendLayerBackward(selectedLayerId)}
-              icon={<ArrowDownToLine className='h-4 w-4' />}
-            />
-            <ToolBtn
-              label='Nusxa'
-              onClick={() => duplicateLayer(selectedLayerId)}
-              icon={<Copy className='h-4 w-4' />}
-            />
-            <ToolBtn
-              label="O'chirish"
-              onClick={() => deleteLayer(selectedLayerId)}
-              danger
-              icon={<Trash2 className='h-4 w-4' />}
-            />
+            <div className='mx-1 h-5 w-px bg-stone-200' />
+            <ToolBtn label='Oldinga' onClick={() => bringLayerForward(selectedLayerId)} icon={<ArrowUpToLine className='h-4 w-4' />} />
+            <ToolBtn label='Orqaga' onClick={() => sendLayerBackward(selectedLayerId)} icon={<ArrowDownToLine className='h-4 w-4' />} />
+            <ToolBtn label='Nusxa' onClick={() => duplicateLayer(selectedLayerId)} icon={<Copy className='h-4 w-4' />} />
+            <ToolBtn label="O'chirish" onClick={() => deleteLayer(selectedLayerId)} danger icon={<Trash2 className='h-4 w-4' />} />
           </>
         )}
 
         <div className='flex-1' />
-        <ToolBtn
-          label='Tozalash'
-          onClick={handleResetDraft}
-          danger
-          icon={<RotateCcw className='h-4 w-4' />}
-        />
+        <ToolBtn label='Tozalash' onClick={handleResetDraft} danger icon={<RotateCcw className='h-4 w-4' />} />
       </div>
 
       {isTextSelected && selectedLayer && (

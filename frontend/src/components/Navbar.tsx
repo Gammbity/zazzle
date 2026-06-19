@@ -58,12 +58,12 @@ export default function Navbar() {
           to='/'
           className='flex items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2'
         >
-          <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-sm shadow-amber-200'>
+          <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-brand shadow-sm shadow-brand/20'>
             <span className='text-sm font-black text-white'>Z</span>
           </div>
           <div className='hidden sm:block'>
-            <p className='text-sm font-bold text-slate-900'>Zazzle</p>
-            <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>
+            <p className='text-sm font-extrabold text-brand'>Zazzle</p>
+            <p className='text-[10px] font-medium uppercase tracking-wider text-brand-muted'>
               Uzbekistan
             </p>
           </div>

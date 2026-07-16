@@ -7,13 +7,20 @@ from django.shortcuts import get_object_or_404
 
 from .models import Order, OrderAssignment
 
-PRODUCTION_ACTIVE_STATUSES = ['READY_FOR_PRODUCTION', 'IN_PRODUCTION']
-REVENUE_STATUSES = ['PAID', 'READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'DONE']
+PRODUCTION_ACTIVE_STATUSES = [
+    'READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'QUALITY_CHECK',
+    'READY_FOR_PICKUP', 'READY_FOR_DELIVERY',
+]
+REVENUE_STATUSES = [
+    'PAID', 'READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'QUALITY_CHECK',
+    'READY_FOR_PICKUP', 'READY_FOR_DELIVERY', 'COMPLETED',
+]
 ORDER_SELECT_RELATED = (
     'customer',
     'shipping_method',
+    'production_center',
     'assignment',
-    'assignment__operator',
+    'assignment__manager',
 )
 
 
@@ -49,18 +56,28 @@ def get_user_order_queryset(
 
 
 def get_admin_order_queryset(
+    user=None,
     *,
     include_items: bool = False,
     include_payments: bool = False,
 ) -> QuerySet[Order]:
-    return build_order_queryset(
+    """
+    Orders visible to `user` in the admin/production area: everything for a
+    super admin, only their own production center's orders for a production
+    admin/manager. `user=None` preserves the old unscoped behavior for call
+    sites that already apply their own filtering (e.g. tests).
+    """
+    queryset = build_order_queryset(
         include_items=include_items,
         include_payments=include_payments,
     )
+    if user is None or user.has_platform_permission():
+        return queryset
+    return queryset.filter(production_center_id=user.production_center_id)
 
 
-def get_operator_order_queryset(user) -> QuerySet[Order]:
-    return build_order_queryset(include_items=True).filter(assignment__operator=user)
+def get_manager_order_queryset(user) -> QuerySet[Order]:
+    return build_order_queryset(include_items=True).filter(assignment__manager=user)
 
 
 def get_order_from_lookup(queryset: QuerySet[Order], lookup_value: str) -> Order:
@@ -69,11 +86,11 @@ def get_order_from_lookup(queryset: QuerySet[Order], lookup_value: str) -> Order
     return get_object_or_404(queryset, **{lookup_field: lookup_text})
 
 
-def is_operator(user) -> bool:
+def is_production_manager_user(user) -> bool:
     return (
         user.is_authenticated
-        and not user.is_staff
-        and OrderAssignment.objects.filter(operator=user).exists()
+        and user.is_production_manager
+        and OrderAssignment.objects.filter(manager=user).exists()
     )
 
 
@@ -84,13 +101,13 @@ def get_order_assignment(order: Order):
         return None
 
 
-def is_assigned_operator(order: Order, user) -> bool:
+def is_assigned_manager(order: Order, user) -> bool:
     assignment = get_order_assignment(order)
-    return bool(assignment and assignment.operator_id == user.id)
+    return bool(assignment and assignment.manager_id == user.id)
 
 
 def can_manage_order(order: Order, user) -> bool:
-    return user.has_admin_permission('orders') or is_assigned_operator(order, user)
+    return user.is_center_staff_of(order.production_center_id) or is_assigned_manager(order, user)
 
 
 def validate_status_transition(order: Order, new_status: str) -> str | None:
@@ -107,12 +124,22 @@ def validate_status_transition(order: Order, new_status: str) -> str | None:
 
     if (
         new_status == 'IN_PRODUCTION'
-        and order.status not in ['READY_FOR_PRODUCTION', 'IN_PRODUCTION']
+        and order.status not in ['READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'QUALITY_CHECK']
     ):
         return 'Order must be READY_FOR_PRODUCTION before starting production.'
 
-    if new_status == 'DONE' and order.status not in ['IN_PRODUCTION', 'DONE']:
-        return 'Order must be IN_PRODUCTION before being marked DONE.'
+    if new_status == 'QUALITY_CHECK' and order.status not in ['IN_PRODUCTION', 'QUALITY_CHECK']:
+        return 'Order must be IN_PRODUCTION before quality check.'
+
+    if new_status in ('READY_FOR_PICKUP', 'READY_FOR_DELIVERY'):
+        if order.status not in ['QUALITY_CHECK', new_status]:
+            return 'Order must pass QUALITY_CHECK first.'
+        expected = 'READY_FOR_PICKUP' if order.delivery_method == 'PICKUP' else 'READY_FOR_DELIVERY'
+        if new_status != expected:
+            return f"Order's delivery method requires {expected}, not {new_status}."
+
+    if new_status == 'COMPLETED' and order.status not in ('READY_FOR_PICKUP', 'READY_FOR_DELIVERY', 'COMPLETED'):
+        return 'Order must be READY_FOR_PICKUP/READY_FOR_DELIVERY before being marked COMPLETED.'
 
     return None
 
@@ -140,7 +167,7 @@ def build_order_stats(
         payment_pending_orders=Count('id', filter=Q(status='PAYMENT_PENDING')),
         paid_orders=Count('id', filter=Q(status='PAID')),
         in_production_orders=Count('id', filter=Q(status__in=PRODUCTION_ACTIVE_STATUSES)),
-        done_orders=Count('id', filter=Q(status='DONE')),
+        done_orders=Count('id', filter=Q(status='COMPLETED')),
         cancelled_orders=Count('id', filter=Q(status='CANCELLED')),
         amount_total=Coalesce(
             Sum('total_amount', filter=Q(status__in=REVENUE_STATUSES)),

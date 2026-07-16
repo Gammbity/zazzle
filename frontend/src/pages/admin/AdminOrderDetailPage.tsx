@@ -3,7 +3,7 @@ import { ArrowLeft, MapPin, Save, Store, Truck, UserCog } from 'lucide-react';
 import {
   useAdminOrder,
   useAssignOrder,
-  useOperators,
+  useCenterEmployees,
   useUpdateAdminOrder,
   useUpdateOrderProductionStatus,
 } from '@/hooks/queries';
@@ -18,20 +18,37 @@ interface AdminOrderDetailPageProps {
   orderId: string;
 }
 
-const NEXT_PRODUCTION_STATUS: Record<
-  string,
-  { status: string; label: string } | undefined
-> = {
-  PAID: {
-    status: 'READY_FOR_PRODUCTION',
-    label: 'Ishlab chiqarishga tayyor deb belgilash',
-  },
-  READY_FOR_PRODUCTION: {
-    status: 'IN_PRODUCTION',
-    label: 'Ishlab chiqarishni boshlash',
-  },
-  IN_PRODUCTION: { status: 'DONE', label: 'Tayyor deb belgilash' },
-};
+function getNextProductionStep(
+  status: string,
+  deliveryMethod: string
+): { status: string; label: string } | null {
+  switch (status) {
+    case 'PAID':
+      return {
+        status: 'READY_FOR_PRODUCTION',
+        label: 'Ishlab chiqarishga tayyor deb belgilash',
+      };
+    case 'READY_FOR_PRODUCTION':
+      return { status: 'IN_PRODUCTION', label: 'Ishlab chiqarishni boshlash' };
+    case 'IN_PRODUCTION':
+      return { status: 'QUALITY_CHECK', label: 'Sifat nazoratiga yuborish' };
+    case 'QUALITY_CHECK':
+      return deliveryMethod === 'PICKUP'
+        ? {
+            status: 'READY_FOR_PICKUP',
+            label: 'Olib ketishga tayyor deb belgilash',
+          }
+        : {
+            status: 'READY_FOR_DELIVERY',
+            label: 'Yetkazishga tayyor deb belgilash',
+          };
+    case 'READY_FOR_PICKUP':
+    case 'READY_FOR_DELIVERY':
+      return { status: 'COMPLETED', label: 'Yakunlangan deb belgilash' };
+    default:
+      return null;
+  }
+}
 
 const inputClass =
   'w-full rounded-2xl border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100';
@@ -44,7 +61,7 @@ export default function AdminOrderDetailPage({
 
   const updateOrderMutation = useUpdateAdminOrder();
   const productionMutation = useUpdateOrderProductionStatus();
-  const operatorsQuery = useOperators();
+  const employeesQuery = useCenterEmployees(order?.production_center?.id);
   const assignMutation = useAssignOrder();
 
   const [notesForm, setNotesForm] = useState({
@@ -54,7 +71,7 @@ export default function AdminOrderDetailPage({
   });
   const [notesSaved, setNotesSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedOperator, setSelectedOperator] = useState<number | ''>('');
+  const [selectedManager, setSelectedManager] = useState<number | ''>('');
 
   useEffect(() => {
     if (!order) return;
@@ -80,7 +97,7 @@ export default function AdminOrderDetailPage({
   }
 
   const statusMeta = getOrderStatusMeta(order.status);
-  const nextStep = NEXT_PRODUCTION_STATUS[order.status];
+  const nextStep = getNextProductionStep(order.status, order.delivery_method);
   const isPickup = order.delivery_method === 'PICKUP';
   const lat = order.latitude != null ? Number(order.latitude) : null;
   const lng = order.longitude != null ? Number(order.longitude) : null;
@@ -113,15 +130,15 @@ export default function AdminOrderDetailPage({
   };
 
   const handleAssign = async () => {
-    if (!selectedOperator) return;
+    if (!selectedManager) return;
     setError(null);
     try {
       await assignMutation.mutateAsync({
         orderId: order.id,
-        operatorId: selectedOperator,
+        managerId: selectedManager,
       });
     } catch (err) {
-      setError(getCommerceErrorMessage(err, "Operator tayinlab bo'lmadi."));
+      setError(getCommerceErrorMessage(err, "Menejer tayinlab bo'lmadi."));
     }
   };
 
@@ -203,6 +220,15 @@ export default function AdminOrderDetailPage({
                 {isPickup ? 'Kelib olib ketish' : 'Yetkazib berish'}
               </h2>
             </div>
+
+            {order.production_center && (
+              <p className='mt-3 text-sm text-slate-600'>
+                Ishlab chiqarish markazi:{' '}
+                <span className='font-semibold text-slate-900'>
+                  {order.production_center.name}
+                </span>
+              </p>
+            )}
 
             {isPickup ? (
               <p className='mt-4 text-sm text-slate-600'>
@@ -386,38 +412,38 @@ export default function AdminOrderDetailPage({
             </div>
           </section>
 
-          {/* Operator assignment */}
-          {operatorsQuery.data && operatorsQuery.data.length > 0 && (
+          {/* Manager assignment */}
+          {employeesQuery.data && employeesQuery.data.length > 0 && (
             <section className='rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm shadow-stone-100/50'>
               <div className='flex items-center gap-2.5'>
                 <div className='flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-700'>
                   <UserCog className='h-4 w-4' />
                 </div>
                 <h2 className='text-base font-semibold text-slate-900'>
-                  Operatorga tayinlash
+                  Menejerga tayinlash
                 </h2>
               </div>
               <div className='mt-4 flex gap-2'>
                 <select
                   className={inputClass}
-                  value={selectedOperator}
+                  value={selectedManager}
                   onChange={event =>
-                    setSelectedOperator(
+                    setSelectedManager(
                       event.target.value ? Number(event.target.value) : ''
                     )
                   }
                 >
-                  <option value=''>Operatorni tanlang</option>
-                  {operatorsQuery.data.map(op => (
-                    <option key={op.id} value={op.id}>
-                      {op.full_name || op.email}
+                  <option value=''>Menejerni tanlang</option>
+                  {employeesQuery.data.map(employee => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.full_name || employee.email}
                     </option>
                   ))}
                 </select>
                 <button
                   type='button'
                   onClick={() => void handleAssign()}
-                  disabled={!selectedOperator || assignMutation.isPending}
+                  disabled={!selectedManager || assignMutation.isPending}
                   className='shrink-0 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-60'
                 >
                   Tayinlash

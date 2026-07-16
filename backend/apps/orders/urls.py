@@ -14,28 +14,15 @@ urlpatterns = [
     # Shipping methods
     path('shipping-methods/', views.ShippingMethodListView.as_view(), name='shipping-methods'),
 
-    # Pickup locations
-    path('pickup-locations/', views.PickupLocationListView.as_view(), name='pickup-locations'),
-
     # Coupons
     path('validate-coupon/', views.validate_coupon, name='validate-coupon'),
 
     # Admin endpoints
     path('admin/orders/', views.AdminOrderListView.as_view(), name='admin-order-list'),
     path('admin/orders/<int:pk>/', views.AdminOrderDetailView.as_view(), name='admin-order-detail'),
-    path(
-        'admin/pickup-locations/',
-        views.AdminPickupLocationListCreateView.as_view(),
-        name='admin-pickup-location-list',
-    ),
-    path(
-        'admin/pickup-locations/<int:pk>/',
-        views.AdminPickupLocationDetailView.as_view(),
-        name='admin-pickup-location-detail',
-    ),
 
     # Production workflow
-    path('operator/orders', views.operator_orders, name='operator-orders'),
+    path('manager/orders', views.manager_orders, name='manager-orders'),
     path('<int:order_id>/assign', views.assign_order, name='order-assign'),
     path('<int:order_id>/status', views.update_order_status, name='order-status'),
     path('<int:order_id>/files', views.order_files, name='order-files'),

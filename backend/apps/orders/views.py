@@ -15,15 +15,11 @@ from .models import (
     OrderAssignment,
     OrderItem,
     PaymentTransaction,
-    PickupLocation,
     ProductionFile,
     ShippingMethod,
 )
 from apps.common import idempotency
-from apps.users.permissions import (
-    IsAdminOrCanManageOrders,
-    IsAdminOrCanManagePickupLocations,
-)
+from apps.users.permissions import IsProductionStaff
 
 from .payment_providers import init_payment_for_provider, verify_provider_signature
 from .state import InvalidTransition, transition as order_transition
@@ -38,7 +34,6 @@ from .serializers import (
     OrderStatusUpdateInputSerializer,
     OrderStatusUpdateSerializer,
     PaymentInitSerializer,
-    PickupLocationSerializer,
     ShippingMethodSerializer,
 )
 from .services import (
@@ -46,10 +41,10 @@ from .services import (
     build_signed_file_url,
     can_manage_order,
     get_admin_order_queryset,
-    get_operator_order_queryset,
+    get_manager_order_queryset,
     get_order_from_lookup,
     get_user_order_queryset,
-    is_operator,
+    is_production_manager_user,
     validate_status_transition,
 )
 
@@ -155,30 +150,32 @@ class OrderDetailView(generics.RetrieveAPIView):
 
 
 class AdminOrderListView(generics.ListAPIView):
-    """Admin view for all orders."""
+    """Admin/production view for orders — center-scoped for production staff."""
 
     serializer_class = OrderListSerializer
-    permission_classes = [IsAdminOrCanManageOrders]
+    permission_classes = [IsProductionStaff]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['status', 'delivery_method', 'shipping_country', 'created_at']
+    filterset_fields = ['status', 'delivery_method', 'production_center', 'shipping_country', 'created_at']
     search_fields = ['order_number', 'customer__email', 'shipping_name']
     ordering_fields = ['created_at', 'total_amount', 'status']
     ordering = ['-created_at']
 
     def get_queryset(self):
-        """Get all orders for admin."""
-        return get_admin_order_queryset(include_items=True)
+        """Get orders visible to the requesting production staff/admin."""
+        return get_admin_order_queryset(self.request.user, include_items=True)
 
 
 class AdminOrderDetailView(generics.RetrieveUpdateAPIView):
-    """Admin view for order detail and updates."""
+    """Admin/production view for order detail and updates."""
 
     serializer_class = OrderDetailSerializer
-    permission_classes = [IsAdminOrCanManageOrders]
+    permission_classes = [IsProductionStaff]
 
     def get_queryset(self):
-        """Get all orders for admin."""
-        return get_admin_order_queryset(include_items=True, include_payments=True)
+        """Get orders visible to the requesting production staff/admin."""
+        return get_admin_order_queryset(
+            self.request.user, include_items=True, include_payments=True
+        )
 
     def get_serializer_class(self):
         """Use different serializer for updates."""
@@ -203,30 +200,6 @@ class ShippingMethodListView(generics.ListAPIView):
             models.Q(available_countries__contains=[country])
             | models.Q(available_countries=[])
         )
-
-
-class PickupLocationListView(generics.ListAPIView):
-    """Public list of active pickup locations, shown at checkout."""
-
-    queryset = PickupLocation.objects.filter(is_active=True)
-    serializer_class = PickupLocationSerializer
-    permission_classes = [permissions.AllowAny]
-
-
-class AdminPickupLocationListCreateView(generics.ListCreateAPIView):
-    """Admin view to list (incl. inactive) and create pickup locations."""
-
-    queryset = PickupLocation.objects.all()
-    serializer_class = PickupLocationSerializer
-    permission_classes = [IsAdminOrCanManagePickupLocations]
-
-
-class AdminPickupLocationDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """Admin view to retrieve, update, or delete a pickup location."""
-
-    queryset = PickupLocation.objects.all()
-    serializer_class = PickupLocationSerializer
-    permission_classes = [IsAdminOrCanManagePickupLocations]
 
 
 @api_view(['POST'])
@@ -283,7 +256,7 @@ def _checkout(request):
                 delivery_method=serializer.validated_data['delivery_method'],
                 latitude=serializer.validated_data.get('latitude'),
                 longitude=serializer.validated_data.get('longitude'),
-                pickup_location=serializer.validated_data.get('pickup_location'),
+                production_center=serializer.validated_data['production_center'],
                 shipping_name=serializer.validated_data['shipping_name'],
                 shipping_email=serializer.validated_data['shipping_email'],
                 shipping_phone=serializer.validated_data['shipping_phone'],
@@ -412,9 +385,9 @@ def order_stats(request):
     """Get order statistics for user or admin."""
     user = request.user
 
-    if user.has_admin_permission('orders'):
+    if user.has_platform_permission() or user.is_production_admin or user.is_production_manager:
         stats = build_order_stats(
-            get_admin_order_queryset(),
+            get_admin_order_queryset(user),
             amount_label='total_revenue',
             include_cancelled=True,
         )
@@ -555,41 +528,52 @@ def payment_callback(request, provider: str):
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
-def operator_orders(request):
+def manager_orders(request):
     """
-    List orders assigned to the current operator.
+    List orders assigned to the current production manager.
 
-    GET /api/operator/orders
+    GET /api/orders/manager/orders
     """
     user = request.user
-    if not is_operator(user):
+    if not is_production_manager_user(user):
         return Response(
-            {'detail': 'Only operators can access this endpoint.'},
+            {'detail': 'Only production managers can access this endpoint.'},
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    serializer = OrderListSerializer(get_operator_order_queryset(user), many=True)
+    serializer = OrderListSerializer(get_manager_order_queryset(user), many=True)
     return Response(serializer.data)
 
 
 @api_view(['POST'])
-@permission_classes([IsAdminOrCanManageOrders])
+@permission_classes([IsProductionStaff])
 def assign_order(request, order_id: int):
     """
-    Assign an order to an operator (admin-only).
+    Assign an order to a production manager at its production center.
 
     POST /api/orders/{id}/assign
-    body: { "operator_id": int }
+    body: { "manager_id": int }
     """
     order = get_object_or_404(get_admin_order_queryset(), id=order_id)
-    serializer = OrderAssignInputSerializer(data=request.data)
+
+    if not request.user.is_center_staff_of(order.production_center_id):
+        return Response(
+            {'detail': 'Not your production center.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    serializer = OrderAssignInputSerializer(data=request.data, context={'order': order})
     serializer.is_valid(raise_exception=True)
 
-    operator = serializer.validated_data['operator']
+    manager = serializer.validated_data['manager']
 
     assignment, _ = OrderAssignment.objects.update_or_create(
         order=order,
-        defaults={'operator': operator, 'assigned_by': request.user},
+        defaults={
+            'manager': manager,
+            'production_center': order.production_center,
+            'assigned_by': request.user,
+        },
     )
 
     return Response(OrderAssignmentSerializer(assignment).data, status=status.HTTP_200_OK)
@@ -599,10 +583,11 @@ def assign_order(request, order_id: int):
 @permission_classes([permissions.IsAuthenticated])
 def update_order_status(request, order_id: int):
     """
-    Update order production status (operator/admin).
+    Update order production status (production staff).
 
     POST /api/orders/{id}/status
-    body: { "status": "IN_PRODUCTION" | "DONE" | "READY_FOR_PRODUCTION" }
+    body: { "status": "READY_FOR_PRODUCTION" | "IN_PRODUCTION" | "QUALITY_CHECK"
+                     | "READY_FOR_PICKUP" | "READY_FOR_DELIVERY" | "COMPLETED" }
     """
     order = get_object_or_404(get_admin_order_queryset(), id=order_id)
 

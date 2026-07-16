@@ -12,23 +12,23 @@ import {
   type UpdateAdminProductPayload,
 } from '@/lib/adminApi';
 import { queryKeys } from '@/lib/queryClient';
-import { useCanManageProducts } from '@/hooks/queries/useAuth';
+import { useIsSuperAdmin } from '@/hooks/queries/useAuth';
 
 export function useAdminProducts(filters: AdminProductFilters = {}) {
-  const canManageProducts = useCanManageProducts();
+  const isSuperAdmin = useIsSuperAdmin();
   return useQuery({
     queryKey: queryKeys.adminProducts(filters),
     queryFn: () => getAdminProducts(filters),
-    enabled: canManageProducts,
+    enabled: isSuperAdmin,
   });
 }
 
 export function useAdminProduct(id: number | string | undefined) {
-  const canManageProducts = useCanManageProducts();
+  const isSuperAdmin = useIsSuperAdmin();
   return useQuery({
     queryKey: queryKeys.adminProduct(id ?? 'none'),
     queryFn: () => getAdminProduct(id as number | string),
-    enabled: Boolean(id) && canManageProducts,
+    enabled: Boolean(id) && isSuperAdmin,
   });
 }
 

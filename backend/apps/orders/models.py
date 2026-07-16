@@ -17,7 +17,10 @@ class Order(models.Model):
         ('PAID', _('Paid')),
         ('READY_FOR_PRODUCTION', _('Ready for Production')),
         ('IN_PRODUCTION', _('In Production')),
-        ('DONE', _('Done')),
+        ('QUALITY_CHECK', _('Quality Check')),
+        ('READY_FOR_PICKUP', _('Ready for Pickup')),
+        ('READY_FOR_DELIVERY', _('Ready for Delivery')),
+        ('COMPLETED', _('Completed')),
         ('CANCELLED', _('Cancelled')),
     ]
 
@@ -46,11 +49,14 @@ class Order(models.Model):
     )
     latitude = models.DecimalField(_('latitude'), max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(_('longitude'), max_digits=9, decimal_places=6, null=True, blank=True)
-    pickup_location = models.ForeignKey(
-        'PickupLocation',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+    # Every order belongs to exactly one production center regardless of
+    # delivery method — the generic fulfillment concept this whole system
+    # routes through, whether that center is an external partner or (later)
+    # one of our own factories. PROTECT: a center with live orders can be
+    # deactivated (is_active=False) but not deleted out from under them.
+    production_center = models.ForeignKey(
+        'production.ProductionCenter',
+        on_delete=models.PROTECT,
         related_name='orders',
     )
 
@@ -119,30 +125,6 @@ class Order(models.Model):
     def item_count(self):
         """Get total number of items."""
         return sum(item.quantity for item in self.items.all())
-
-
-class PickupLocation(models.Model):
-    """Admin-editable pickup point shown at checkout for PICKUP orders."""
-
-    name = models.CharField(_('name'), max_length=150)
-    address = models.CharField(_('address'), max_length=255)
-    city = models.CharField(_('city'), max_length=100, default='Tashkent')
-    latitude = models.DecimalField(_('latitude'), max_digits=9, decimal_places=6, null=True, blank=True)
-    longitude = models.DecimalField(_('longitude'), max_digits=9, decimal_places=6, null=True, blank=True)
-    working_hours = models.CharField(_('working hours'), max_length=150, blank=True)
-    is_active = models.BooleanField(_('is active'), default=True)
-    sort_order = models.PositiveIntegerField(_('sort order'), default=0)
-
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
-
-    class Meta:
-        verbose_name = _('Pickup Location')
-        verbose_name_plural = _('Pickup Locations')
-        ordering = ['sort_order', 'name']
-
-    def __str__(self):
-        return f"{self.name} ({self.city})"
 
 
 class ProductionFile(models.Model):
@@ -397,14 +379,19 @@ class PaymentTransaction(models.Model):
 
 
 class OrderAssignment(models.Model):
-    """Assignment of an order to an internal print operator."""
+    """Assignment of an order to a production manager at its production center."""
 
     order = models.OneToOneField(
         Order,
         on_delete=models.CASCADE,
         related_name='assignment',
     )
-    operator = models.ForeignKey(
+    production_center = models.ForeignKey(
+        'production.ProductionCenter',
+        on_delete=models.CASCADE,
+        related_name='order_assignments',
+    )
+    manager = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='assigned_orders',
@@ -416,6 +403,9 @@ class OrderAssignment(models.Model):
         blank=True,
         related_name='order_assignments_made',
     )
+    # Named `created_at` at the DB/model level (matches the rest of the
+    # codebase's timestamp convention); exposed as `assigned_at` in the API
+    # per the spec's field name via OrderAssignmentSerializer.
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
 
@@ -423,11 +413,12 @@ class OrderAssignment(models.Model):
         verbose_name = _('Order Assignment')
         verbose_name_plural = _('Order Assignments')
         indexes = [
-            models.Index(fields=['operator']),
+            models.Index(fields=['manager']),
+            models.Index(fields=['production_center']),
         ]
 
     def __str__(self):
-        return f"{self.order.order_number} -> {self.operator.email}"
+        return f"{self.order.order_number} -> {self.manager.email}"
 
 
 class InternalNote(models.Model):

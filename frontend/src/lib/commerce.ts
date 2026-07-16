@@ -6,10 +6,12 @@ export type DeliveryMethod = 'DELIVERY' | 'PICKUP';
 
 export type UserRole =
   | 'customer'
-  | 'print_operator'
-  | 'manager'
-  | 'admin'
+  | 'production_manager'
+  | 'production_admin'
+  | 'super_admin'
   | 'support';
+
+export type ProductionCenterType = 'PARTNER' | 'OWN';
 
 export interface CommerceUser {
   id: number;
@@ -21,27 +23,32 @@ export interface CommerceUser {
   is_active?: boolean;
   role?: UserRole;
   role_display?: string;
-  is_admin_user?: boolean;
-  is_manager?: boolean;
-  can_manage_orders?: boolean;
-  can_manage_products?: boolean;
-  can_manage_pickup_locations?: boolean;
+  is_super_admin?: boolean;
+  is_production_admin?: boolean;
+  is_production_manager?: boolean;
+  production_center?: number | null;
+  production_center_name?: string | null;
   profile?: {
     phone_number?: string;
     display_name?: string;
   };
 }
 
-export interface PickupLocation {
+export interface ProductionCenter {
   id: number;
   name: string;
+  slug: string;
+  type: ProductionCenterType;
   address: string;
-  city: string;
   latitude: string | number | null;
   longitude: string | number | null;
-  working_hours: string;
+  phone: string;
+  email: string;
   is_active: boolean;
+  supports_pickup: boolean;
+  supports_delivery: boolean;
   sort_order: number;
+  distance_km?: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -122,6 +129,8 @@ export interface CommerceOrderSummary {
   customer_name?: string;
   status: string;
   delivery_method?: DeliveryMethod;
+  production_center?: number | null;
+  production_center_name?: string | null;
   total_amount: string;
   item_count: number;
   created_at: string;
@@ -163,7 +172,7 @@ export interface CommerceOrderDetail {
   delivery_method: DeliveryMethod;
   latitude?: string | number | null;
   longitude?: string | number | null;
-  pickup_location?: PickupLocation | null;
+  production_center?: ProductionCenter | null;
   shipping_name: string;
   shipping_email: string;
   shipping_phone: string;
@@ -209,7 +218,8 @@ export interface CheckoutInput {
   delivery_method?: DeliveryMethod;
   latitude?: number | null;
   longitude?: number | null;
-  pickup_location?: number | null;
+  production_center?: number | null;
+  auto_select?: boolean;
   shipping_name?: string;
   shipping_email?: string;
   shipping_phone?: string;
@@ -399,8 +409,20 @@ export function getOrderStatusMeta(status: string): {
       label: 'Ishlab chiqarilmoqda',
       className: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     },
-    DONE: {
-      label: 'Tayyor',
+    QUALITY_CHECK: {
+      label: 'Sifat nazorati',
+      className: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
+    },
+    READY_FOR_PICKUP: {
+      label: 'Olib ketishga tayyor',
+      className: 'bg-teal-100 text-teal-800 border-teal-200',
+    },
+    READY_FOR_DELIVERY: {
+      label: 'Yetkazishga tayyor',
+      className: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    },
+    COMPLETED: {
+      label: 'Yakunlangan',
       className: 'bg-violet-100 text-violet-800 border-violet-200',
     },
     CANCELLED: {
@@ -719,9 +741,19 @@ export async function clearCart(): Promise<void> {
   await apiClient.delete('/cart/clear/');
 }
 
-export async function getPickupLocations(): Promise<PickupLocation[]> {
-  const response = await apiClient.get<ListResponse<PickupLocation>>(
-    '/orders/pickup-locations/'
+export interface ProductionCenterFilters {
+  delivery_method?: DeliveryMethod;
+  lat?: number;
+  lng?: number;
+}
+
+export async function getProductionCenters(
+  filters: ProductionCenterFilters = {}
+): Promise<ProductionCenter[]> {
+  const useNearest = filters.lat != null && filters.lng != null;
+  const response = await apiClient.get<ListResponse<ProductionCenter>>(
+    useNearest ? '/production-centers/nearest/' : '/production-centers/',
+    { params: filters }
   );
   const data = response.data;
   return Array.isArray(data) ? data : (data.results ?? []);

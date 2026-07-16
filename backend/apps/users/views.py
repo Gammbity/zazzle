@@ -16,7 +16,7 @@ from django.conf import settings
 from django.db import models
 from .cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
 from .models import UserProfile, SocialConnection
-from .permissions import IsAdmin
+from .permissions import IsSuperAdmin
 from .serializers import (
     UserSerializer, UserUpdateSerializer, UserRegistrationSerializer,
     CustomTokenObtainPairSerializer, LoginSerializer, ChangePasswordSerializer,
@@ -198,7 +198,7 @@ class UserListView(generics.ListAPIView):
     
     queryset = User.objects.all().select_related('profile')
     serializer_class = UserSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsSuperAdmin]
     filterset_fields = ['role', 'is_seller', 'is_active']
     search_fields = ['username', 'email', 'first_name', 'last_name']
     ordering_fields = ['created_at', 'username', 'email']
@@ -206,11 +206,11 @@ class UserListView(generics.ListAPIView):
 
 
 class AdminUserRoleUpdateView(generics.UpdateAPIView):
-    """Admin-only: change a user's role and manager permission grants."""
+    """Super-admin-only: change a user's role and production center assignment."""
 
     queryset = User.objects.all()
     serializer_class = AdminUserRoleUpdateSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsSuperAdmin]
 
     def update(self, request, *args, **kwargs):
         kwargs['partial'] = True
@@ -220,11 +220,11 @@ class AdminUserRoleUpdateView(generics.UpdateAPIView):
 
 
 class AdminUserCreateView(generics.CreateAPIView):
-    """Admin-only: create a user directly with a chosen role (e.g. manager)."""
+    """Super-admin-only: create a user directly with a chosen role."""
 
     queryset = User.objects.all()
     serializer_class = AdminUserCreateSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsSuperAdmin]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -364,9 +364,10 @@ def user_stats(request):
         'role': user.role,
         'role_display': user.get_role_display(),
         'is_customer': user.is_customer,
-        'is_print_operator': user.is_print_operator,
+        'is_production_manager': user.is_production_manager,
+        'is_production_admin': user.is_production_admin,
         'is_support': user.is_support,
-        'is_admin_user': user.is_admin_user,
+        'is_super_admin': user.is_super_admin,
         'member_since': user.created_at,
         'is_seller': user.is_seller,
         'profile_complete': hasattr(user, 'profile') and bool(user.profile.phone_number),
@@ -437,17 +438,18 @@ def deactivate_account(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAdmin])
+@permission_classes([IsSuperAdmin])
 def user_role_stats(request):
-    """Get user role statistics (admin only)."""
+    """Get user role statistics (super-admin only)."""
     from django.db.models import Count
-    
+
     stats = User.objects.aggregate(
         total_users=Count('id'),
         customers=Count('id', filter=models.Q(role=User.Role.CUSTOMER)),
-        print_operators=Count('id', filter=models.Q(role=User.Role.PRINT_OPERATOR)),
+        production_managers=Count('id', filter=models.Q(role=User.Role.PRODUCTION_MANAGER)),
+        production_admins=Count('id', filter=models.Q(role=User.Role.PRODUCTION_ADMIN)),
         support_staff=Count('id', filter=models.Q(role=User.Role.SUPPORT)),
-        admins=Count('id', filter=models.Q(role=User.Role.ADMIN)),
+        super_admins=Count('id', filter=models.Q(role=User.Role.SUPER_ADMIN)),
         sellers=Count('id', filter=models.Q(is_seller=True)),
         active_users=Count('id', filter=models.Q(is_active=True)),
     )

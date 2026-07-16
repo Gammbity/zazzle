@@ -39,10 +39,7 @@ class UserAdmin(BaseUserAdmin):
     
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Role & Permissions', {
-            'fields': (
-                'role', 'can_manage_orders', 'can_manage_products',
-                'can_manage_pickup_locations',
-            )
+            'fields': ('role', 'production_center')
         }),
         ('Profile Information', {
             'fields': ('date_of_birth', 'avatar', 'bio')
@@ -65,10 +62,10 @@ class UserAdmin(BaseUserAdmin):
         """Display role with colored badge."""
         colors = {
             User.Role.CUSTOMER: '#28a745',
-            User.Role.PRINT_OPERATOR: '#007bff',
+            User.Role.PRODUCTION_MANAGER: '#007bff',
             User.Role.SUPPORT: '#ffc107',
-            User.Role.MANAGER: '#6f42c1',
-            User.Role.ADMIN: '#dc3545',
+            User.Role.PRODUCTION_ADMIN: '#6f42c1',
+            User.Role.SUPER_ADMIN: '#dc3545',
         }
         color = colors.get(obj.role, '#6c757d')
         return format_html(
@@ -80,39 +77,39 @@ class UserAdmin(BaseUserAdmin):
     
     # Admin Actions
     actions = [
-        'make_customer', 'make_print_operator', 'make_support', 'make_manager',
-        'make_admin', 'deactivate_users',
+        'make_customer', 'make_production_manager', 'make_support',
+        'make_production_admin', 'make_super_admin', 'deactivate_users',
     ]
-
-    def make_manager(self, request, queryset):
-        """Bulk action to set role to MANAGER."""
-        updated = queryset.update(role=User.Role.MANAGER)
-        self.message_user(request, f'{updated} users updated to Manager role.')
-    make_manager.short_description = "Set selected users as Managers"
 
     def make_customer(self, request, queryset):
         """Bulk action to set role to CUSTOMER."""
-        updated = queryset.update(role=User.Role.CUSTOMER)
+        updated = queryset.update(role=User.Role.CUSTOMER, production_center=None)
         self.message_user(request, f'{updated} users updated to Customer role.')
     make_customer.short_description = "Set selected users as Customers"
-    
-    def make_print_operator(self, request, queryset):
-        """Bulk action to set role to PRINT_OPERATOR."""
-        updated = queryset.update(role=User.Role.PRINT_OPERATOR)
-        self.message_user(request, f'{updated} users updated to Print Operator role.')
-    make_print_operator.short_description = "Set selected users as Print Operators"
-    
+
+    def make_production_manager(self, request, queryset):
+        """Bulk action to set role to PRODUCTION_MANAGER."""
+        updated = queryset.update(role=User.Role.PRODUCTION_MANAGER)
+        self.message_user(request, f'{updated} users updated to Production Manager role.')
+    make_production_manager.short_description = "Set selected users as Production Managers"
+
+    def make_production_admin(self, request, queryset):
+        """Bulk action to set role to PRODUCTION_ADMIN."""
+        updated = queryset.update(role=User.Role.PRODUCTION_ADMIN)
+        self.message_user(request, f'{updated} users updated to Production Admin role.')
+    make_production_admin.short_description = "Set selected users as Production Admins"
+
     def make_support(self, request, queryset):
         """Bulk action to set role to SUPPORT."""
-        updated = queryset.update(role=User.Role.SUPPORT)
+        updated = queryset.update(role=User.Role.SUPPORT, production_center=None)
         self.message_user(request, f'{updated} users updated to Support role.')
     make_support.short_description = "Set selected users as Support"
-    
-    def make_admin(self, request, queryset):
-        """Bulk action to set role to ADMIN."""
-        updated = queryset.update(role=User.Role.ADMIN, is_staff=True)
-        self.message_user(request, f'{updated} users updated to Admin role.')
-    make_admin.short_description = "Set selected users as Admins"
+
+    def make_super_admin(self, request, queryset):
+        """Bulk action to set role to SUPER_ADMIN."""
+        updated = queryset.update(role=User.Role.SUPER_ADMIN, is_staff=True, production_center=None)
+        self.message_user(request, f'{updated} users updated to Super Admin role.')
+    make_super_admin.short_description = "Set selected users as Super Admins"
     
     def deactivate_users(self, request, queryset):
         """Bulk action to deactivate users."""

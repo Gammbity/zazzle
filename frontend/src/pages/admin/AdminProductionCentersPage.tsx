@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
-import { MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
+import { Factory, Pencil, Plus, Trash2, X } from 'lucide-react';
 import {
-  useAdminPickupLocations,
-  useCreateAdminPickupLocation,
-  useDeleteAdminPickupLocation,
-  useUpdateAdminPickupLocation,
+  useAdminProductionCenters,
+  useCreateAdminProductionCenter,
+  useDeleteAdminProductionCenter,
+  useUpdateAdminProductionCenter,
 } from '@/hooks/queries';
-import type { PickupLocation } from '@/lib/commerce';
+import type { ProductionCenter, ProductionCenterType } from '@/lib/commerce';
 import AddressMapPicker from '@/components/checkout/AddressMapPicker';
 
 const inputClass =
@@ -14,59 +14,68 @@ const inputClass =
 
 interface FormState {
   name: string;
+  type: ProductionCenterType;
   address: string;
-  city: string;
   latitude: number | null;
   longitude: number | null;
-  working_hours: string;
+  phone: string;
+  email: string;
   is_active: boolean;
+  supports_pickup: boolean;
+  supports_delivery: boolean;
   sort_order: number;
 }
 
 const EMPTY_FORM: FormState = {
   name: '',
+  type: 'PARTNER',
   address: '',
-  city: 'Tashkent',
   latitude: null,
   longitude: null,
-  working_hours: '',
+  phone: '',
+  email: '',
   is_active: true,
+  supports_pickup: true,
+  supports_delivery: true,
   sort_order: 0,
 };
 
-function toFormState(location: PickupLocation): FormState {
+function toFormState(center: ProductionCenter): FormState {
   return {
-    name: location.name,
-    address: location.address,
-    city: location.city,
-    latitude: location.latitude != null ? Number(location.latitude) : null,
-    longitude: location.longitude != null ? Number(location.longitude) : null,
-    working_hours: location.working_hours,
-    is_active: location.is_active,
-    sort_order: location.sort_order,
+    name: center.name,
+    type: center.type,
+    address: center.address,
+    latitude: center.latitude != null ? Number(center.latitude) : null,
+    longitude: center.longitude != null ? Number(center.longitude) : null,
+    phone: center.phone,
+    email: center.email,
+    is_active: center.is_active,
+    supports_pickup: center.supports_pickup,
+    supports_delivery: center.supports_delivery,
+    sort_order: center.sort_order,
   };
 }
 
-export default function AdminPickupLocationsPage() {
-  const locationsQuery = useAdminPickupLocations();
-  const createMutation = useCreateAdminPickupLocation();
-  const updateMutation = useUpdateAdminPickupLocation();
-  const deleteMutation = useDeleteAdminPickupLocation();
+export default function AdminProductionCentersPage() {
+  const centersQuery = useAdminProductionCenters();
+  const createMutation = useCreateAdminProductionCenter();
+  const updateMutation = useUpdateAdminProductionCenter();
+  const deleteMutation = useDeleteAdminProductionCenter();
 
   const [editingId, setEditingId] = useState<number | 'new' | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
-  const data = locationsQuery.data;
-  const locations = data ? (Array.isArray(data) ? data : data.results) : [];
+  const data = centersQuery.data;
+  const centers = data ? (Array.isArray(data) ? data : data.results) : [];
 
   const startCreate = () => {
     setForm(EMPTY_FORM);
     setEditingId('new');
   };
 
-  const startEdit = (location: PickupLocation) => {
-    setForm(toFormState(location));
-    setEditingId(location.id);
+  const startEdit = (center: ProductionCenter) => {
+    setForm(toFormState(center));
+    setEditingId(center.id);
   };
 
   const cancelEdit = () => {
@@ -74,29 +83,16 @@ export default function AdminPickupLocationsPage() {
     setForm(EMPTY_FORM);
   };
 
-  useEffect(() => {
-    if (editingId === null) return;
-    const onSuccess = createMutation.isSuccess || updateMutation.isSuccess;
-    if (onSuccess) cancelEdit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createMutation.isSuccess, updateMutation.isSuccess]);
-
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    const payload = {
-      name: form.name,
-      address: form.address,
-      city: form.city,
-      latitude: form.latitude,
-      longitude: form.longitude,
-      working_hours: form.working_hours,
-      is_active: form.is_active,
-      sort_order: form.sort_order,
-    };
+    const payload = { ...form };
     if (editingId === 'new') {
-      createMutation.mutate(payload);
+      createMutation.mutate(payload, { onSuccess: cancelEdit });
     } else if (editingId != null) {
-      updateMutation.mutate({ id: editingId, payload });
+      updateMutation.mutate(
+        { id: editingId, payload },
+        { onSuccess: cancelEdit }
+      );
     }
   };
 
@@ -110,11 +106,11 @@ export default function AdminPickupLocationsPage() {
             Admin
           </p>
           <h1 className='mt-2 text-3xl font-semibold text-slate-950'>
-            Olib ketish punktlari
+            Ishlab chiqarish markazlari
           </h1>
           <p className='mt-2 max-w-2xl text-base leading-7 text-slate-500'>
-            Checkout sahifasida mijozlarga ko&apos;rsatiladigan olib ketish
-            punktlarini boshqaring.
+            Buyurtmalar tayinlanadigan hamkor bosmaxonalar va o&apos;z
+            filiallaringizni boshqaring.
           </p>
         </div>
         <button
@@ -123,7 +119,7 @@ export default function AdminPickupLocationsPage() {
           className='inline-flex items-center gap-1.5 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700'
         >
           <Plus className='h-4 w-4' />
-          Yangi punkt
+          Yangi markaz
         </button>
       </div>
 
@@ -134,7 +130,7 @@ export default function AdminPickupLocationsPage() {
         >
           <div className='flex items-center justify-between'>
             <h2 className='text-lg font-semibold text-slate-900'>
-              {editingId === 'new' ? 'Yangi punkt' : 'Punktni tahrirlash'}
+              {editingId === 'new' ? 'Yangi markaz' : 'Markazni tahrirlash'}
             </h2>
             <button
               type='button'
@@ -146,7 +142,7 @@ export default function AdminPickupLocationsPage() {
           </div>
 
           <div className='mt-4 grid gap-4 sm:grid-cols-2'>
-            <label className='block sm:col-span-2'>
+            <label className='block'>
               <span className='mb-1.5 block text-sm font-medium text-slate-700'>
                 Nomi
               </span>
@@ -162,32 +158,48 @@ export default function AdminPickupLocationsPage() {
 
             <label className='block'>
               <span className='mb-1.5 block text-sm font-medium text-slate-700'>
-                Shahar
+                Turi
+              </span>
+              <select
+                className={inputClass}
+                value={form.type}
+                onChange={event =>
+                  setForm(prev => ({
+                    ...prev,
+                    type: event.target.value as ProductionCenterType,
+                  }))
+                }
+              >
+                <option value='PARTNER'>Hamkor (Partner)</option>
+                <option value='OWN'>O&apos;z filialimiz (Own)</option>
+              </select>
+            </label>
+
+            <label className='block'>
+              <span className='mb-1.5 block text-sm font-medium text-slate-700'>
+                Telefon
               </span>
               <input
                 className={inputClass}
-                value={form.city}
+                value={form.phone}
                 onChange={event =>
-                  setForm(prev => ({ ...prev, city: event.target.value }))
+                  setForm(prev => ({ ...prev, phone: event.target.value }))
                 }
-                required
+                placeholder='+998901234567'
               />
             </label>
 
             <label className='block'>
               <span className='mb-1.5 block text-sm font-medium text-slate-700'>
-                Ish vaqti
+                Email
               </span>
               <input
+                type='email'
                 className={inputClass}
-                value={form.working_hours}
+                value={form.email}
                 onChange={event =>
-                  setForm(prev => ({
-                    ...prev,
-                    working_hours: event.target.value,
-                  }))
+                  setForm(prev => ({ ...prev, email: event.target.value }))
                 }
-                placeholder='Dush-Shan 09:00-19:00'
               />
             </label>
 
@@ -226,22 +238,54 @@ export default function AdminPickupLocationsPage() {
               />
             </label>
 
-            <label className='flex items-center gap-2.5 pt-6'>
-              <input
-                type='checkbox'
-                checked={form.is_active}
-                onChange={event =>
-                  setForm(prev => ({
-                    ...prev,
-                    is_active: event.target.checked,
-                  }))
-                }
-                className='h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400'
-              />
-              <span className='text-sm font-medium text-slate-700'>
-                Faol (checkoutda ko&apos;rinadi)
-              </span>
-            </label>
+            <div className='flex flex-wrap items-center gap-4 pt-6'>
+              <label className='flex items-center gap-2'>
+                <input
+                  type='checkbox'
+                  checked={form.is_active}
+                  onChange={event =>
+                    setForm(prev => ({
+                      ...prev,
+                      is_active: event.target.checked,
+                    }))
+                  }
+                  className='h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400'
+                />
+                <span className='text-sm font-medium text-slate-700'>Faol</span>
+              </label>
+              <label className='flex items-center gap-2'>
+                <input
+                  type='checkbox'
+                  checked={form.supports_pickup}
+                  onChange={event =>
+                    setForm(prev => ({
+                      ...prev,
+                      supports_pickup: event.target.checked,
+                    }))
+                  }
+                  className='h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400'
+                />
+                <span className='text-sm font-medium text-slate-700'>
+                  Olib ketish
+                </span>
+              </label>
+              <label className='flex items-center gap-2'>
+                <input
+                  type='checkbox'
+                  checked={form.supports_delivery}
+                  onChange={event =>
+                    setForm(prev => ({
+                      ...prev,
+                      supports_delivery: event.target.checked,
+                    }))
+                  }
+                  className='h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400'
+                />
+                <span className='text-sm font-medium text-slate-700'>
+                  Yetkazib berish
+                </span>
+              </label>
+            </div>
           </div>
 
           <div className='mt-5 flex items-center gap-3'>
@@ -263,54 +307,62 @@ export default function AdminPickupLocationsPage() {
         </form>
       )}
 
-      {locationsQuery.isLoading ? (
+      {centersQuery.isLoading ? (
         <div className='mt-8 h-64 animate-pulse rounded-[2rem] bg-amber-50' />
-      ) : locations.length === 0 ? (
+      ) : centers.length === 0 ? (
         <div className='mt-8 rounded-[2rem] border border-dashed border-amber-200 bg-amber-50/30 p-10 text-center'>
-          <p className='text-base text-slate-600'>Punkt topilmadi.</p>
+          <p className='text-base text-slate-600'>Markaz topilmadi.</p>
         </div>
       ) : (
         <div className='mt-6 grid gap-3'>
-          {locations.map(location => (
+          {centers.map(center => (
             <article
-              key={location.id}
+              key={center.id}
               className='rounded-[1.8rem] border border-stone-200 bg-white p-5 shadow-sm shadow-stone-100/50 transition hover:border-amber-200 hover:shadow-amber-100/40'
             >
               <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
                 <div className='flex items-start gap-3'>
                   <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700'>
-                    <MapPin className='h-4 w-4' />
+                    <Factory className='h-4 w-4' />
                   </div>
                   <div>
                     <div className='flex flex-wrap items-center gap-2.5'>
                       <h2 className='text-lg font-semibold text-slate-950'>
-                        {location.name}
+                        {center.name}
                       </h2>
+                      <span className='rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600'>
+                        {center.type === 'OWN' ? "O'z filial" : 'Hamkor'}
+                      </span>
                       <span
                         className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                          location.is_active
+                          center.is_active
                             ? 'border-emerald-200 bg-emerald-100 text-emerald-800'
                             : 'border-slate-200 bg-slate-100 text-slate-600'
                         }`}
                       >
-                        {location.is_active ? 'Faol' : 'Faol emas'}
+                        {center.is_active ? 'Faol' : 'Faol emas'}
                       </span>
+                      {center.supports_pickup && (
+                        <span className='rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700'>
+                          Olib ketish
+                        </span>
+                      )}
+                      {center.supports_delivery && (
+                        <span className='rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700'>
+                          Yetkazib berish
+                        </span>
+                      )}
                     </div>
                     <p className='mt-1 text-sm text-slate-500'>
-                      {location.address}, {location.city}
+                      {center.address}
                     </p>
-                    {location.working_hours && (
-                      <p className='mt-0.5 text-xs text-slate-400'>
-                        {location.working_hours}
-                      </p>
-                    )}
                   </div>
                 </div>
 
                 <div className='flex items-center gap-2'>
                   <button
                     type='button'
-                    onClick={() => startEdit(location)}
+                    onClick={() => startEdit(center)}
                     className='inline-flex items-center gap-1.5 rounded-2xl border border-stone-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-amber-200 hover:text-amber-700'
                   >
                     <Pencil className='h-3.5 w-3.5' />
@@ -319,8 +371,8 @@ export default function AdminPickupLocationsPage() {
                   <button
                     type='button'
                     onClick={() => {
-                      if (window.confirm(`"${location.name}" o'chirilsinmi?`)) {
-                        deleteMutation.mutate(location.id);
+                      if (window.confirm(`"${center.name}" o'chirilsinmi?`)) {
+                        deleteMutation.mutate(center.id);
                       }
                     }}
                     className='inline-flex items-center gap-1.5 rounded-2xl border border-rose-200 px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50'

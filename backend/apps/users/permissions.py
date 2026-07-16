@@ -17,16 +17,16 @@ class IsCustomer(permissions.BasePermission):
         )
 
 
-class IsPrintOperator(permissions.BasePermission):
+class IsProductionManager(permissions.BasePermission):
     """
-    Permission to only allow print operators to access the view.
+    Permission to only allow production managers to access the view.
     """
-    
+
     def has_permission(self, request, view):
         return (
-            request.user 
-            and request.user.is_authenticated 
-            and request.user.is_print_operator
+            request.user
+            and request.user.is_authenticated
+            and request.user.is_production_manager
         )
 
 
@@ -43,49 +43,40 @@ class IsSupport(permissions.BasePermission):
         )
 
 
-class IsAdmin(permissions.BasePermission):
-    """
-    Permission to only allow admins to access the view.
-    """
-    
-    def has_permission(self, request, view):
-        return (
-            request.user 
-            and request.user.is_authenticated 
-            and request.user.is_admin_user
-        )
-
-
-class IsAdminOrCanManageOrders(permissions.BasePermission):
-    """Admins, or managers granted `can_manage_orders`."""
+class IsSuperAdmin(permissions.BasePermission):
+    """Platform-wide admin access — super admins and superusers only."""
 
     def has_permission(self, request, view):
         return bool(
             request.user
             and request.user.is_authenticated
-            and request.user.has_admin_permission('orders')
+            and request.user.has_platform_permission()
         )
 
 
-class IsAdminOrCanManageProducts(permissions.BasePermission):
-    """Admins, or managers granted `can_manage_products`."""
+class IsProductionAdminOrSuper(permissions.BasePermission):
+    """Super admins, or a production admin (scope narrowed per-object in the view)."""
 
     def has_permission(self, request, view):
         return bool(
             request.user
             and request.user.is_authenticated
-            and request.user.has_admin_permission('products')
+            and (request.user.has_platform_permission() or request.user.is_production_admin)
         )
 
 
-class IsAdminOrCanManagePickupLocations(permissions.BasePermission):
-    """Admins, or managers granted `can_manage_pickup_locations`."""
+class IsProductionStaff(permissions.BasePermission):
+    """Super admins, production admins, or production managers (scope narrowed per-object in the view)."""
 
     def has_permission(self, request, view):
         return bool(
             request.user
             and request.user.is_authenticated
-            and request.user.has_admin_permission('pickup_locations')
+            and (
+                request.user.has_platform_permission()
+                or request.user.is_production_admin
+                or request.user.is_production_manager
+            )
         )
 
 
@@ -98,20 +89,20 @@ class IsCustomerOrAdmin(permissions.BasePermission):
         return (
             request.user 
             and request.user.is_authenticated 
-            and (request.user.is_customer or request.user.is_admin_user)
+            and (request.user.is_customer or request.user.is_super_admin)
         )
 
 
-class IsPrintOperatorOrAdmin(permissions.BasePermission):
+class IsProductionManagerOrAdmin(permissions.BasePermission):
     """
-    Permission to allow print operators and admins to access the view.
+    Permission to allow production managers and admins to access the view.
     """
     
     def has_permission(self, request, view):
         return (
             request.user 
             and request.user.is_authenticated 
-            and (request.user.is_print_operator or request.user.is_admin_user)
+            and (request.user.is_production_manager or request.user.is_super_admin)
         )
 
 
@@ -124,7 +115,7 @@ class IsSupportOrAdmin(permissions.BasePermission):
         return (
             request.user 
             and request.user.is_authenticated 
-            and (request.user.is_support or request.user.is_admin_user)
+            and (request.user.is_support or request.user.is_super_admin)
         )
 
 
@@ -135,7 +126,7 @@ class IsOwnerOrAdmin(permissions.BasePermission):
     
     def has_object_permission(self, request, view, obj):
         # Admin users can access any object
-        if request.user.is_admin_user:
+        if request.user.is_super_admin:
             return True
         
         # Check if object has owner-like attributes
@@ -182,7 +173,7 @@ class IsSellerOrAdmin(permissions.BasePermission):
         return (
             request.user 
             and request.user.is_authenticated 
-            and (request.user.is_seller or request.user.is_admin_user)
+            and (request.user.is_seller or request.user.is_super_admin)
         )
 
 
@@ -228,14 +219,14 @@ class CanViewOrders(permissions.BasePermission):
         
         return (
             request.user.is_customer 
-            or request.user.is_print_operator 
+            or request.user.is_production_manager 
             or request.user.is_support 
-            or request.user.is_admin_user
+            or request.user.is_super_admin
         )
     
     def has_object_permission(self, request, view, obj):
         # Admins and support can view any order
-        if request.user.is_admin_user or request.user.is_support:
+        if request.user.is_super_admin or request.user.is_support:
             return True
         
         # Customers can only view their own orders
@@ -243,7 +234,7 @@ class CanViewOrders(permissions.BasePermission):
             return obj.customer == request.user
         
         # Print operators can view assigned orders
-        if request.user.is_print_operator:
+        if request.user.is_production_manager:
             # Check if order has production assignments
             return hasattr(obj, 'assigned_operator') and obj.assigned_operator == request.user
         
@@ -260,16 +251,16 @@ class CanUpdateProductionStatus(permissions.BasePermission):
         return (
             request.user 
             and request.user.is_authenticated 
-            and (request.user.is_print_operator or request.user.is_admin_user)
+            and (request.user.is_production_manager or request.user.is_super_admin)
         )
     
     def has_object_permission(self, request, view, obj):
         # Admins can update any production status
-        if request.user.is_admin_user:
+        if request.user.is_super_admin:
             return True
         
         # Print operators can only update their assigned orders
-        if request.user.is_print_operator:
+        if request.user.is_production_manager:
             return hasattr(obj, 'assigned_operator') and obj.assigned_operator == request.user
         
         return False
@@ -285,16 +276,16 @@ class CanDownloadProductionFiles(permissions.BasePermission):
         return (
             request.user 
             and request.user.is_authenticated 
-            and (request.user.is_print_operator or request.user.is_admin_user)
+            and (request.user.is_production_manager or request.user.is_super_admin)
         )
     
     def has_object_permission(self, request, view, obj):
         # Admins can access any production files
-        if request.user.is_admin_user:
+        if request.user.is_super_admin:
             return True
         
         # Print operators can access files for their assigned orders
-        if request.user.is_print_operator:
+        if request.user.is_production_manager:
             return hasattr(obj, 'assigned_operator') and obj.assigned_operator == request.user
         
         return False
@@ -314,12 +305,12 @@ class CanViewTickets(permissions.BasePermission):
         return (
             request.user.is_customer 
             or request.user.is_support 
-            or request.user.is_admin_user
+            or request.user.is_super_admin
         )
     
     def has_object_permission(self, request, view, obj):
         # Support and admins can view any ticket
-        if request.user.is_support or request.user.is_admin_user:
+        if request.user.is_support or request.user.is_super_admin:
             return True
         
         # Customers can only view their own tickets
@@ -339,7 +330,7 @@ class CanUpdateSupportStatus(permissions.BasePermission):
         return (
             request.user 
             and request.user.is_authenticated 
-            and (request.user.is_support or request.user.is_admin_user)
+            and (request.user.is_support or request.user.is_super_admin)
         )
 
 
@@ -382,7 +373,7 @@ class AdminOnlyPermissionsMixin:
     
     def get_permissions(self):
         """Return admin-only permissions."""
-        self.permission_classes = [IsAdmin]
+        self.permission_classes = [IsSuperAdmin]
         return super().get_permissions()
 
 

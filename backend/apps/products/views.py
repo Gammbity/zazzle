@@ -9,7 +9,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_cookie
 
-from apps.users.permissions import IsAdminOrCanManageProducts
+from apps.users.permissions import IsSuperAdmin
 
 from .models import ProductType, ProductVariant, ProductAssetTemplate
 from .serializers import (
@@ -323,7 +323,7 @@ class ProductTypeCreateView(generics.CreateAPIView):
     
     queryset = ProductType.objects.all()
     serializer_class = ProductTypeDetailSerializer
-    permission_classes = [IsAdminOrCanManageProducts]
+    permission_classes = [IsSuperAdmin]
 
 
 class ProductVariantCreateView(generics.CreateAPIView):
@@ -333,7 +333,7 @@ class ProductVariantCreateView(generics.CreateAPIView):
     """
 
     serializer_class = ProductVariantDetailSerializer
-    permission_classes = [IsAdminOrCanManageProducts]
+    permission_classes = [IsSuperAdmin]
 
     def get_queryset(self):
         product_id = self.kwargs['product_id']
@@ -353,7 +353,7 @@ class AdminProductTypeListView(generics.ListAPIView):
 
     queryset = ProductType.objects.all().prefetch_related('variants')
     serializer_class = ProductTypeListSerializer
-    permission_classes = [IsAdminOrCanManageProducts]
+    permission_classes = [IsSuperAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['category', 'is_active']
     search_fields = ['name', 'description']
@@ -368,7 +368,7 @@ class AdminProductTypeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = ProductType.objects.all()
     serializer_class = ProductTypeDetailSerializer
-    permission_classes = [IsAdminOrCanManageProducts]
+    permission_classes = [IsSuperAdmin]
     lookup_field = 'id'
 
 
@@ -379,7 +379,7 @@ class AdminProductVariantDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
 
     serializer_class = ProductVariantDetailSerializer
-    permission_classes = [IsAdminOrCanManageProducts]
+    permission_classes = [IsSuperAdmin]
     lookup_field = 'id'
 
     def get_queryset(self):

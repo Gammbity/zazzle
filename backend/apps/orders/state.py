@@ -28,8 +28,13 @@ ALLOWED_TRANSITIONS: Dict[str, Set[str]] = {
     'PAYMENT_PENDING': {'PAID', 'CANCELLED'},
     'PAID': {'READY_FOR_PRODUCTION', 'CANCELLED'},
     'READY_FOR_PRODUCTION': {'IN_PRODUCTION', 'CANCELLED'},
-    'IN_PRODUCTION': {'DONE'},
-    'DONE': set(),
+    'IN_PRODUCTION': {'QUALITY_CHECK'},
+    # A failed quality check sends the order back into production rather
+    # than forward — the only backward edge in the graph.
+    'QUALITY_CHECK': {'READY_FOR_PICKUP', 'READY_FOR_DELIVERY', 'IN_PRODUCTION'},
+    'READY_FOR_PICKUP': {'COMPLETED'},
+    'READY_FOR_DELIVERY': {'COMPLETED'},
+    'COMPLETED': set(),
     'CANCELLED': set(),
 }
 

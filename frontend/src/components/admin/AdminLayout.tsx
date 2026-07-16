@@ -10,11 +10,9 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from '@/lib/router';
 import {
-  useCanManageOrders,
-  useCanManagePickupLocations,
-  useCanManageProducts,
   useCurrentUser,
-  useIsTrueAdmin,
+  useIsProductionStaff,
+  useIsSuperAdmin,
   useLogout,
 } from '@/hooks/queries';
 import { cn } from '@/lib/utils';
@@ -30,14 +28,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { data: user } = useCurrentUser();
   const logoutMutation = useLogout();
-  const canManageOrders = useCanManageOrders();
-  const canManageProducts = useCanManageProducts();
-  const canManagePickupLocations = useCanManagePickupLocations();
-  const isTrueAdmin = useIsTrueAdmin();
+  const isProductionStaff = useIsProductionStaff();
+  const isSuperAdmin = useIsSuperAdmin();
 
   const navLinks: NavLink[] = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-    ...(canManageOrders
+    ...(isProductionStaff
       ? [
           {
             to: '/admin/orders',
@@ -47,7 +43,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           },
         ]
       : []),
-    ...(canManageProducts
+    ...(isSuperAdmin
       ? [
           {
             to: '/admin/products',
@@ -57,17 +53,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           },
         ]
       : []),
-    ...(canManagePickupLocations
+    ...(isSuperAdmin
       ? [
           {
-            to: '/admin/pickup-locations',
-            label: 'Olib ketish punktlari',
+            to: '/admin/production-centers',
+            label: 'Ishlab chiqarish markazlari',
             icon: MapPin,
             exact: false,
           },
         ]
       : []),
-    ...(isTrueAdmin
+    ...(isSuperAdmin
       ? [
           {
             to: '/admin/users',

@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import UserProfile, SocialConnection
 from .permissions import (
-    IsCustomer, IsPrintOperator, IsSupport, IsAdmin,
+    IsCustomer, IsProductionManager, IsSupport, IsSuperAdmin,
     IsOwnerOrAdmin, CanCreateOrder, CanViewOrders
 )
 
@@ -36,41 +36,41 @@ class UserModelTestCase(TestCase):
         self.assertEqual(user.email, 'test@example.com')
         self.assertEqual(user.role, User.Role.CUSTOMER)
         self.assertTrue(user.is_customer)
-        self.assertFalse(user.is_print_operator)
+        self.assertFalse(user.is_production_manager)
         self.assertFalse(user.is_support)
-        self.assertFalse(user.is_admin_user)
+        self.assertFalse(user.is_super_admin)
         self.assertTrue(user.check_password('testpass123'))
-    
-    def test_create_print_operator_user(self):
-        """Test creating a print operator user."""
-        user = User.objects.create_user(role=User.Role.PRINT_OPERATOR, **self.user_data)
-        
-        self.assertEqual(user.role, User.Role.PRINT_OPERATOR)
+
+    def test_create_production_manager_user(self):
+        """Test creating a production manager user."""
+        user = User.objects.create_user(role=User.Role.PRODUCTION_MANAGER, **self.user_data)
+
+        self.assertEqual(user.role, User.Role.PRODUCTION_MANAGER)
         self.assertFalse(user.is_customer)
-        self.assertTrue(user.is_print_operator)
+        self.assertTrue(user.is_production_manager)
         self.assertFalse(user.is_support)
-        self.assertFalse(user.is_admin_user)
-    
+        self.assertFalse(user.is_super_admin)
+
     def test_create_support_user(self):
         """Test creating a support user."""
         user = User.objects.create_user(role=User.Role.SUPPORT, **self.user_data)
-        
+
         self.assertEqual(user.role, User.Role.SUPPORT)
         self.assertFalse(user.is_customer)
-        self.assertFalse(user.is_print_operator)
+        self.assertFalse(user.is_production_manager)
         self.assertTrue(user.is_support)
-        self.assertFalse(user.is_admin_user)
-    
+        self.assertFalse(user.is_super_admin)
+
     def test_create_admin_user(self):
-        """Test creating an admin user."""
-        user = User.objects.create_user(role=User.Role.ADMIN, **self.user_data)
-        
-        self.assertEqual(user.role, User.Role.ADMIN)
+        """Test creating a super admin user."""
+        user = User.objects.create_user(role=User.Role.SUPER_ADMIN, **self.user_data)
+
+        self.assertEqual(user.role, User.Role.SUPER_ADMIN)
         self.assertFalse(user.is_customer)
-        self.assertFalse(user.is_print_operator)
+        self.assertFalse(user.is_production_manager)
         self.assertFalse(user.is_support)
-        self.assertTrue(user.is_admin_user)
-    
+        self.assertTrue(user.is_super_admin)
+
     def test_superuser_is_admin(self):
         """Test that superuser is considered admin."""
         user = User.objects.create_superuser(
@@ -78,8 +78,8 @@ class UserModelTestCase(TestCase):
             email='admin@example.com',
             password='adminpass123'
         )
-        
-        self.assertTrue(user.is_admin_user)
+
+        self.assertTrue(user.is_super_admin)
         self.assertTrue(user.is_superuser)
     
     def test_username_field_is_email(self):
@@ -408,21 +408,21 @@ class PermissionTestCase(TestCase):
             username='operator',
             email='operator@example.com',
             password='testpass123',
-            role=User.Role.PRINT_OPERATOR
+            role=User.Role.PRODUCTION_MANAGER
         )
-        
+
         self.support = User.objects.create_user(
             username='support',
             email='support@example.com',
             password='testpass123',
             role=User.Role.SUPPORT
         )
-        
+
         self.admin = User.objects.create_user(
             username='admin',
             email='admin@example.com',
             password='testpass123',
-            role=User.Role.ADMIN
+            role=User.Role.SUPER_ADMIN
         )
     
     def test_is_customer_permission(self):
@@ -440,8 +440,8 @@ class PermissionTestCase(TestCase):
         self.assertFalse(permission.has_permission(MockRequest(self.admin), None))
     
     def test_is_print_operator_permission(self):
-        """Test IsPrintOperator permission."""
-        permission = IsPrintOperator()
+        """Test IsProductionManager permission."""
+        permission = IsProductionManager()
         
         class MockRequest:
             def __init__(self, user):
@@ -466,8 +466,8 @@ class PermissionTestCase(TestCase):
         self.assertFalse(permission.has_permission(MockRequest(self.admin), None))
     
     def test_is_admin_permission(self):
-        """Test IsAdmin permission."""
-        permission = IsAdmin()
+        """Test IsSuperAdmin permission."""
+        permission = IsSuperAdmin()
         
         class MockRequest:
             def __init__(self, user):
@@ -527,9 +527,9 @@ class RoleBasedAccessTestCase(APITestCase):
             username='admin',
             email='admin@example.com',
             password='testpass123',
-            role=User.Role.ADMIN
+            role=User.Role.SUPER_ADMIN
         )
-        
+
         self.client = APIClient()
     
     def test_customer_access_to_profile(self):

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Order, OrderItem, Payment, PickupLocation, ShippingMethod, Coupon
+from .models import Order, OrderItem, Payment, ShippingMethod, Coupon
 
 
 class OrderItemInline(admin.TabularInline):
@@ -39,7 +39,8 @@ class OrderAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Order Information', {
             'fields': (
-                'order_number', 'customer', 'status', 'customer_notes', 'admin_notes'
+                'order_number', 'customer', 'production_center', 'delivery_method',
+                'status', 'customer_notes', 'admin_notes'
             )
         }),
         ('Pricing', {
@@ -100,16 +101,6 @@ class OrderAdmin(admin.ModelAdmin):
         updated = queryset.update(status='cancelled')
         self.message_user(request, f'{updated} orders marked as cancelled.')
     mark_as_cancelled.short_description = "Mark selected orders as cancelled"
-
-
-@admin.register(PickupLocation)
-class PickupLocationAdmin(admin.ModelAdmin):
-    """Admin configuration for PickupLocation model."""
-
-    list_display = ['name', 'city', 'address', 'is_active', 'sort_order']
-    list_filter = ['is_active', 'city']
-    search_fields = ['name', 'address', 'city']
-    ordering = ['sort_order', 'name']
 
 
 @admin.register(OrderItem)

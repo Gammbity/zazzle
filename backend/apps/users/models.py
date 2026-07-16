@@ -8,9 +8,9 @@ class User(AbstractUser):
     
     class Role(models.TextChoices):
         CUSTOMER = 'customer', _('Customer')
-        PRINT_OPERATOR = 'print_operator', _('Print Operator')
-        MANAGER = 'manager', _('Manager')
-        ADMIN = 'admin', _('Admin')
+        PRODUCTION_MANAGER = 'production_manager', _('Production Manager')
+        PRODUCTION_ADMIN = 'production_admin', _('Production Admin')
+        SUPER_ADMIN = 'super_admin', _('Super Admin')
         SUPPORT = 'support', _('Support')
 
     email = models.EmailField(_('email address'), unique=True)
@@ -21,11 +21,18 @@ class User(AbstractUser):
         default=Role.CUSTOMER
     )
 
-    # Granular admin-panel grants for role=MANAGER — an admin turns these on
-    # per manager instead of managers inheriting full admin access.
-    can_manage_orders = models.BooleanField(_('can manage orders'), default=False)
-    can_manage_products = models.BooleanField(_('can manage products'), default=False)
-    can_manage_pickup_locations = models.BooleanField(_('can manage pickup locations'), default=False)
+    # Required for PRODUCTION_ADMIN (manages this one center's employees) and
+    # PRODUCTION_MANAGER (works this one center's orders); enforced at the
+    # serializer level rather than the DB, same as other role-conditional
+    # fields on this model.
+    production_center = models.ForeignKey(
+        'production.ProductionCenter',
+        verbose_name=_('production center'),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='employees',
+    )
     date_of_birth = models.DateField(_('date of birth'), blank=True, null=True)
     
     # Address information
@@ -64,39 +71,42 @@ class User(AbstractUser):
         return self.role == self.Role.CUSTOMER
     
     @property
-    def is_print_operator(self):
-        """Check if user is a print operator."""
-        return self.role == self.Role.PRINT_OPERATOR
-    
+    def is_production_manager(self):
+        """Check if user is a production manager (works one center's orders)."""
+        return self.role == self.Role.PRODUCTION_MANAGER
+
+    @property
+    def is_production_admin(self):
+        """Check if user administers one production center."""
+        return self.role == self.Role.PRODUCTION_ADMIN
+
     @property
     def is_support(self):
         """Check if user is support staff."""
         return self.role == self.Role.SUPPORT
 
     @property
-    def is_manager(self):
-        """Check if user is a manager."""
-        return self.role == self.Role.MANAGER
+    def is_super_admin(self):
+        """Check if user has platform-wide admin access."""
+        return self.role == self.Role.SUPER_ADMIN or self.is_superuser
 
-    @property
-    def is_admin_user(self):
-        """Check if user is admin."""
-        return self.role == self.Role.ADMIN or self.is_superuser
+    def has_platform_permission(self) -> bool:
+        """Platform-wide access — super admins and superusers only."""
+        return self.is_superuser or self.role == self.Role.SUPER_ADMIN
 
-    def has_admin_permission(self, resource=None):
-        """
-        Single source of truth for "can this user use the admin panel /
-        resource X". Admins/superusers get everything; managers only get
-        the specific `can_manage_<resource>` grants an admin turned on for
-        them. `resource=None` just checks "allowed into the admin shell".
-        """
-        if self.is_superuser or self.role == self.Role.ADMIN:
-            return True
-        if self.role == self.Role.MANAGER:
-            if resource is None:
-                return True
-            return getattr(self, f'can_manage_{resource}', False)
-        return False
+    def manages_center(self, center_id) -> bool:
+        """Can administer (edit employees of) the given production center."""
+        return self.has_platform_permission() or (
+            self.role == self.Role.PRODUCTION_ADMIN
+            and self.production_center_id == center_id
+        )
+
+    def is_center_staff_of(self, center_id) -> bool:
+        """Can work orders belonging to the given production center."""
+        return self.manages_center(center_id) or (
+            self.role == self.Role.PRODUCTION_MANAGER
+            and self.production_center_id == center_id
+        )
 
     @property
     def full_address(self):

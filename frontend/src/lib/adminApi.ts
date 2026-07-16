@@ -5,7 +5,8 @@ import type {
   CommerceProductType,
   CommerceUser,
   DeliveryMethod,
-  PickupLocation,
+  ProductionCenter,
+  ProductionCenterType,
   UserRole,
 } from '@/lib/commerce';
 
@@ -64,7 +65,7 @@ export async function updateAdminOrder(
 }
 
 // Enforces the production state-machine transitions (validate_status_transition
-// on the backend) — use this for the READY_FOR_PRODUCTION/IN_PRODUCTION/DONE
+// on the backend) — use this for the READY_FOR_PRODUCTION -> ... -> COMPLETED
 // pipeline instead of updateAdminOrder's free-form status field.
 export async function updateOrderProductionStatus(
   orderId: number | string,
@@ -75,10 +76,10 @@ export async function updateOrderProductionStatus(
 
 export async function assignOrder(
   orderId: number | string,
-  operatorId: number
+  managerId: number
 ): Promise<void> {
   await apiClient.post(`/orders/${orderId}/assign`, {
-    operator_id: operatorId,
+    manager_id: managerId,
   });
 }
 
@@ -88,14 +89,14 @@ export interface AdminOperator {
   full_name: string;
 }
 
-// Requires the requesting user to have role=admin (or be a superuser) — a
-// separate, narrower gate than the is_staff check used elsewhere in the admin
-// panel. Callers should tolerate this failing for a staff-but-not-role-admin
-// user rather than treating it as fatal.
-export async function getOperators(): Promise<AdminOperator[]> {
+// Production managers of the order's own center — the assign-order picker
+// should be scoped per-order, not global; see useCenterEmployees.
+export async function getCenterEmployees(
+  centerId: number | string
+): Promise<AdminOperator[]> {
   const response = await apiClient.get<
     PaginatedResponse<AdminOperator> | AdminOperator[]
-  >('/users/admin/list/', { params: { role: 'print_operator' } });
+  >(`/admin/production-centers/${centerId}/employees/`);
   const data = response.data;
   return Array.isArray(data) ? data : data.results;
 }
@@ -193,56 +194,92 @@ export async function deleteAdminVariant(
   await apiClient.delete(`/products/admin/${productId}/variants/${variantId}/`);
 }
 
-// ---- Pickup locations ----
+// ---- Production centers (super-admin only) ----
 
-export type PickupLocationPayload = Partial<{
+export type ProductionCenterPayload = Partial<{
   name: string;
+  type: ProductionCenterType;
   address: string;
-  city: string;
   latitude: number | string | null;
   longitude: number | string | null;
-  working_hours: string;
+  phone: string;
+  email: string;
   is_active: boolean;
+  supports_pickup: boolean;
+  supports_delivery: boolean;
   sort_order: number;
 }>;
 
-export async function getAdminPickupLocations(): Promise<
-  PaginatedResponse<PickupLocation> | PickupLocation[]
+export async function getAdminProductionCenters(): Promise<
+  PaginatedResponse<ProductionCenter> | ProductionCenter[]
 > {
   const response = await apiClient.get<
-    PaginatedResponse<PickupLocation> | PickupLocation[]
-  >('/orders/admin/pickup-locations/');
+    PaginatedResponse<ProductionCenter> | ProductionCenter[]
+  >('/admin/production-centers/');
   return response.data;
 }
 
-export async function createAdminPickupLocation(
-  payload: PickupLocationPayload
-): Promise<PickupLocation> {
-  const response = await apiClient.post<PickupLocation>(
-    '/orders/admin/pickup-locations/',
+export async function createAdminProductionCenter(
+  payload: ProductionCenterPayload
+): Promise<ProductionCenter> {
+  const response = await apiClient.post<ProductionCenter>(
+    '/admin/production-centers/',
     payload
   );
   return response.data;
 }
 
-export async function updateAdminPickupLocation(
+export async function updateAdminProductionCenter(
   id: number | string,
-  payload: PickupLocationPayload
-): Promise<PickupLocation> {
-  const response = await apiClient.patch<PickupLocation>(
-    `/orders/admin/pickup-locations/${id}/`,
+  payload: ProductionCenterPayload
+): Promise<ProductionCenter> {
+  const response = await apiClient.patch<ProductionCenter>(
+    `/admin/production-centers/${id}/`,
     payload
   );
   return response.data;
 }
 
-export async function deleteAdminPickupLocation(
+export async function deleteAdminProductionCenter(
   id: number | string
 ): Promise<void> {
-  await apiClient.delete(`/orders/admin/pickup-locations/${id}/`);
+  await apiClient.delete(`/admin/production-centers/${id}/`);
 }
 
-// ---- Users (admin-only role/permission management) ----
+// ---- Production center employees (super-admin, or that center's production_admin) ----
+
+export interface CreateCenterEmployeePayload {
+  username: string;
+  email: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export async function createCenterEmployee(
+  centerId: number | string,
+  payload: CreateCenterEmployeePayload
+): Promise<CommerceUser> {
+  const response = await apiClient.post<CommerceUser>(
+    `/admin/production-centers/${centerId}/employees/`,
+    payload
+  );
+  return response.data;
+}
+
+export async function updateCenterEmployee(
+  centerId: number | string,
+  employeeId: number | string,
+  payload: { is_active: boolean }
+): Promise<CommerceUser> {
+  const response = await apiClient.patch<CommerceUser>(
+    `/admin/production-centers/${centerId}/employees/${employeeId}/`,
+    payload
+  );
+  return response.data;
+}
+
+// ---- Users (super-admin-only role management) ----
 
 export interface AdminUserFilters {
   role?: UserRole;
@@ -261,9 +298,7 @@ export async function getAdminUsers(
 
 export type UpdateUserRolePayload = Partial<{
   role: UserRole;
-  can_manage_orders: boolean;
-  can_manage_products: boolean;
-  can_manage_pickup_locations: boolean;
+  production_center: number | null;
 }>;
 
 export async function updateUserRole(
@@ -284,9 +319,7 @@ export interface CreateAdminUserPayload {
   first_name?: string;
   last_name?: string;
   role: UserRole;
-  can_manage_orders?: boolean;
-  can_manage_products?: boolean;
-  can_manage_pickup_locations?: boolean;
+  production_center?: number | null;
 }
 
 export async function createAdminUser(

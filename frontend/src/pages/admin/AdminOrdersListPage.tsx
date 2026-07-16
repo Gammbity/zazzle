@@ -11,7 +11,10 @@ const STATUS_OPTIONS = [
   { value: 'PAID', label: "To'langan" },
   { value: 'READY_FOR_PRODUCTION', label: 'Ishlab chiqarishga tayyor' },
   { value: 'IN_PRODUCTION', label: 'Ishlab chiqarilmoqda' },
-  { value: 'DONE', label: 'Tayyor' },
+  { value: 'QUALITY_CHECK', label: 'Sifat nazorati' },
+  { value: 'READY_FOR_PICKUP', label: 'Olib ketishga tayyor' },
+  { value: 'READY_FOR_DELIVERY', label: 'Yetkazishga tayyor' },
+  { value: 'COMPLETED', label: 'Yakunlangan' },
   { value: 'CANCELLED', label: 'Bekor qilingan' },
 ];
 

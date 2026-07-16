@@ -1,10 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+
+from apps.production.models import ProductionCenter
+from apps.production.serializers import ProductionCenterSerializer
+
 from .models import (
     Order,
     OrderItem,
     Payment,
-    PickupLocation,
     ShippingMethod,
     Coupon,
     PaymentTransaction,
@@ -53,28 +56,18 @@ class ShippingMethodSerializer(serializers.ModelSerializer):
         ]
 
 
-class PickupLocationSerializer(serializers.ModelSerializer):
-    """Serializer for PickupLocation model."""
-
-    class Meta:
-        model = PickupLocation
-        fields = [
-            'id', 'name', 'address', 'city', 'latitude', 'longitude',
-            'working_hours', 'is_active', 'sort_order', 'created_at', 'updated_at',
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-
-
 class OrderListSerializer(serializers.ModelSerializer):
     """Serializer for Order list view."""
 
     customer_name = serializers.CharField(source='customer.get_full_name', read_only=True)
+    production_center_name = serializers.ReadOnlyField(source='production_center.name')
     item_count = serializers.ReadOnlyField()
 
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'customer_name', 'status', 'delivery_method',
+            'production_center', 'production_center_name',
             'total_amount', 'item_count', 'created_at', 'updated_at'
         ]
 
@@ -86,14 +79,14 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     payments = PaymentSerializer(many=True, read_only=True)
     customer = serializers.SerializerMethodField()
     shipping_method_info = ShippingMethodSerializer(source='shipping_method', read_only=True)
-    pickup_location = PickupLocationSerializer(read_only=True)
+    production_center = ProductionCenterSerializer(read_only=True)
 
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'customer', 'status', 'subtotal',
             'tax_amount', 'shipping_cost', 'discount_amount', 'total_amount',
-            'delivery_method', 'latitude', 'longitude', 'pickup_location',
+            'delivery_method', 'latitude', 'longitude', 'production_center',
             'shipping_name', 'shipping_email', 'shipping_phone',
             'shipping_address', 'shipping_city', 'shipping_state',
             'shipping_postal_code', 'shipping_country', 'customer_notes',
@@ -206,11 +199,12 @@ class CheckoutSerializer(serializers.Serializer):
     )
     latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
     longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
-    pickup_location = serializers.PrimaryKeyRelatedField(
-        queryset=PickupLocation.objects.filter(is_active=True),
+    production_center = serializers.PrimaryKeyRelatedField(
+        queryset=ProductionCenter.objects.filter(is_active=True),
         required=False,
         allow_null=True,
     )
+    auto_select = serializers.BooleanField(default=False, required=False)
     shipping_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     shipping_email = serializers.EmailField(required=False, allow_blank=True)
     shipping_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
@@ -242,24 +236,56 @@ class CheckoutSerializer(serializers.Serializer):
         attrs['shipping_country'] = attrs.get('shipping_country') or 'Uzbekistan'
         attrs['customer_notes'] = attrs.get('customer_notes') or attrs.get('note', '')
 
-        if attrs.get('delivery_method') == Order.DeliveryMethod.PICKUP:
-            pickup_location = attrs.get('pickup_location')
-            if not pickup_location:
-                raise serializers.ValidationError(
-                    {'pickup_location': "Olib ketish punkti tanlanishi shart."}
-                )
+        delivery_method = attrs.get('delivery_method')
+        production_center = attrs.get('production_center')
+
+        if not production_center and attrs.get('auto_select'):
+            production_center = self._select_nearest_center(delivery_method, attrs)
+
+        if not production_center:
+            raise serializers.ValidationError(
+                {'production_center': "Ishlab chiqarish markazi tanlanishi shart."}
+            )
+
+        if not production_center.supports(delivery_method):
+            raise serializers.ValidationError(
+                {'production_center': "Bu markaz tanlangan yetkazib berish usulini qo'llab-quvvatlamaydi."}
+            )
+
+        attrs['production_center'] = production_center
+
+        if delivery_method == Order.DeliveryMethod.PICKUP:
             attrs['shipping_address'] = ''
             attrs['shipping_city'] = ''
             attrs['shipping_state'] = ''
             attrs['shipping_postal_code'] = ''
-            attrs['latitude'] = pickup_location.latitude
-            attrs['longitude'] = pickup_location.longitude
-        else:
-            attrs['pickup_location'] = None
-            if not attrs['shipping_address']:
-                raise serializers.ValidationError({'shipping_address': "Manzil kiritilishi shart."})
+            attrs['latitude'] = production_center.latitude
+            attrs['longitude'] = production_center.longitude
+        elif not attrs['shipping_address']:
+            raise serializers.ValidationError({'shipping_address': "Manzil kiritilishi shart."})
 
         return attrs
+
+    @staticmethod
+    def _select_nearest_center(delivery_method, attrs):
+        """
+        Auto-select the nearest active center supporting `delivery_method`,
+        using the submitted lat/lng when present. Without coordinates (e.g.
+        pickup with no browser geolocation yet) falls back to the first
+        capable center by sort_order — true "nearest without any location
+        hint" isn't meaningful, this just guarantees a valid, capable center.
+        """
+        field = 'supports_pickup' if delivery_method == Order.DeliveryMethod.PICKUP else 'supports_delivery'
+        candidates = list(ProductionCenter.objects.filter(is_active=True, **{field: True}))
+        if not candidates:
+            return None
+
+        lat, lng = attrs.get('latitude'), attrs.get('longitude')
+        if lat is not None and lng is not None:
+            candidates.sort(
+                key=lambda c: (c.distance_km(lat, lng) if c.distance_km(lat, lng) is not None else float('inf'))
+            )
+        return candidates[0]
 
 
 class OrderStatusUpdateSerializer(serializers.ModelSerializer):
@@ -345,38 +371,49 @@ class ProductionFileSerializer(serializers.ModelSerializer):
 class OrderAssignmentSerializer(serializers.ModelSerializer):
     """Serializer for order assignment information."""
 
-    operator_email = serializers.EmailField(source='operator.email', read_only=True)
+    manager_email = serializers.EmailField(source='manager.email', read_only=True)
+    production_center_name = serializers.ReadOnlyField(source='production_center.name')
+    assigned_at = serializers.DateTimeField(source='created_at', read_only=True)
 
     class Meta:
         model = OrderAssignment
         fields = [
             'id',
             'order',
-            'operator',
-            'operator_email',
-            'created_at',
+            'production_center',
+            'production_center_name',
+            'manager',
+            'manager_email',
+            'assigned_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'order', 'operator_email', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'order', 'production_center', 'production_center_name',
+            'manager_email', 'assigned_at', 'updated_at',
+        ]
 
 
 class OrderAssignInputSerializer(serializers.Serializer):
-    """Input serializer for assigning an order to an operator (admin-only)."""
+    """Input serializer for assigning an order to a production manager (production-staff-only)."""
 
-    operator_id = serializers.IntegerField()
+    manager_id = serializers.IntegerField()
 
     def validate(self, attrs):
-        from django.contrib.auth import get_user_model
-
-        User = get_user_model()
-        operator_id = attrs['operator_id']
+        order = self.context['order']
+        manager_id = attrs['manager_id']
 
         try:
-            operator = User.objects.get(id=operator_id, is_staff=False)
+            manager = User.objects.get(
+                id=manager_id,
+                role=User.Role.PRODUCTION_MANAGER,
+                production_center_id=order.production_center_id,
+            )
         except User.DoesNotExist:
-            raise serializers.ValidationError({'operator_id': 'Operator user not found.'})
+            raise serializers.ValidationError(
+                {'manager_id': "Manager not found for this order's production center."}
+            )
 
-        attrs['operator'] = operator
+        attrs['manager'] = manager
         return attrs
 
 
@@ -387,6 +424,9 @@ class OrderStatusUpdateInputSerializer(serializers.Serializer):
         choices=[
             'READY_FOR_PRODUCTION',
             'IN_PRODUCTION',
-            'DONE',
+            'QUALITY_CHECK',
+            'READY_FOR_PICKUP',
+            'READY_FOR_DELIVERY',
+            'COMPLETED',
         ]
     )

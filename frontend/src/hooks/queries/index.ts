@@ -4,6 +4,6 @@ export * from './useCommerceProduct';
 export * from './useOrders';
 export * from './useAdminOrders';
 export * from './useAdminProducts';
-export * from './useAdminPickupLocations';
+export * from './useAdminProductionCenters';
 export * from './useAdminUsers';
-export * from './usePickupLocations';
+export * from './useProductionCenters';

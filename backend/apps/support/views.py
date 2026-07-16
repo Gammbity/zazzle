@@ -21,7 +21,7 @@ def create_ticket(request):
 
     POST /api/tickets
     """
-    if not getattr(request.user, 'is_customer', False) and not getattr(request.user, 'is_admin_user', False):
+    if not getattr(request.user, 'is_customer', False) and not getattr(request.user, 'is_super_admin', False):
         return Response(
             {'detail': 'Only customers can create tickets.'},
             status=status.HTTP_403_FORBIDDEN,
@@ -61,7 +61,7 @@ def list_tickets(request):
     """
     user = request.user
 
-    if getattr(user, 'is_support', False) or getattr(user, 'is_admin_user', False):
+    if getattr(user, 'is_support', False) or getattr(user, 'is_super_admin', False):
         qs = Ticket.objects.all()
     else:
         qs = Ticket.objects.filter(customer=user)
@@ -97,7 +97,7 @@ def add_ticket_message(request, ticket_id: int):
     is_internal = serializer.validated_data.get('is_internal', False)
 
     # Only support/admin can create internal notes
-    if is_internal and not (getattr(user, 'is_support', False) or getattr(user, 'is_admin_user', False)):
+    if is_internal and not (getattr(user, 'is_support', False) or getattr(user, 'is_super_admin', False)):
         return Response(
             {'detail': 'Only support staff can add internal notes.'},
             status=status.HTTP_403_FORBIDDEN,

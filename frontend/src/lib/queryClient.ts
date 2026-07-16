@@ -15,15 +15,17 @@ export const queryKeys = {
     ['admin', 'orders', 'list', filters] as const,
   adminOrder: (id: string | number) =>
     ['admin', 'orders', 'detail', String(id)] as const,
-  adminOperators: ['admin', 'operators'] as const,
   adminProducts: (filters: object = {}) =>
     ['admin', 'products', 'list', filters] as const,
   adminProduct: (id: string | number) =>
     ['admin', 'products', 'detail', String(id)] as const,
-  pickupLocations: ['pickupLocations'] as const,
-  adminPickupLocations: ['admin', 'pickupLocations'] as const,
-  adminPickupLocation: (id: string | number) =>
-    ['admin', 'pickupLocations', 'detail', String(id)] as const,
+  productionCenters: (filters: object = {}) =>
+    ['productionCenters', filters] as const,
+  adminProductionCenters: ['admin', 'productionCenters'] as const,
+  adminProductionCenter: (id: string | number) =>
+    ['admin', 'productionCenters', 'detail', String(id)] as const,
+  centerEmployees: (centerId: string | number) =>
+    ['admin', 'productionCenters', String(centerId), 'employees'] as const,
   adminUsers: (filters: object = {}) =>
     ['admin', 'users', 'list', filters] as const,
 } as const;

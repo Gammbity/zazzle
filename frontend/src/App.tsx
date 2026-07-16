@@ -22,7 +22,7 @@ import AdminOrdersListPage from '@/pages/admin/AdminOrdersListPage';
 import AdminOrderDetailPage from '@/pages/admin/AdminOrderDetailPage';
 import AdminProductsListPage from '@/pages/admin/AdminProductsListPage';
 import AdminProductDetailPage from '@/pages/admin/AdminProductDetailPage';
-import AdminPickupLocationsPage from '@/pages/admin/AdminPickupLocationsPage';
+import AdminProductionCentersPage from '@/pages/admin/AdminProductionCentersPage';
 import AdminUsersPage from '@/pages/admin/AdminUsersPage';
 
 const MugCustomizer = lazy(
@@ -154,7 +154,7 @@ const STATIC_ROUTES: Record<string, () => ReactNode> = {
   '/admin': () => <AdminDashboardPage />,
   '/admin/orders': () => <AdminOrdersListPage />,
   '/admin/products': () => <AdminProductsListPage />,
-  '/admin/pickup-locations': () => <AdminPickupLocationsPage />,
+  '/admin/production-centers': () => <AdminProductionCentersPage />,
   '/admin/users': () => <AdminUsersPage />,
 };
 

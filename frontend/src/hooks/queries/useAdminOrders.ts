@@ -3,30 +3,30 @@ import {
   assignOrder,
   getAdminOrder,
   getAdminOrders,
-  getOperators,
+  getCenterEmployees,
   updateAdminOrder,
   updateOrderProductionStatus,
   type AdminOrderFilters,
   type UpdateAdminOrderPayload,
 } from '@/lib/adminApi';
 import { queryKeys } from '@/lib/queryClient';
-import { useCanManageOrders } from '@/hooks/queries/useAuth';
+import { useIsProductionStaff } from '@/hooks/queries/useAuth';
 
 export function useAdminOrders(filters: AdminOrderFilters = {}) {
-  const canManageOrders = useCanManageOrders();
+  const isProductionStaff = useIsProductionStaff();
   return useQuery({
     queryKey: queryKeys.adminOrders(filters),
     queryFn: () => getAdminOrders(filters),
-    enabled: canManageOrders,
+    enabled: isProductionStaff,
   });
 }
 
 export function useAdminOrder(id: number | string | undefined) {
-  const canManageOrders = useCanManageOrders();
+  const isProductionStaff = useIsProductionStaff();
   return useQuery({
     queryKey: queryKeys.adminOrder(id ?? 'none'),
     queryFn: () => getAdminOrder(id as number | string),
-    enabled: Boolean(id) && canManageOrders,
+    enabled: Boolean(id) && isProductionStaff,
   });
 }
 
@@ -73,11 +73,11 @@ export function useAssignOrder() {
   return useMutation({
     mutationFn: ({
       orderId,
-      operatorId,
+      managerId,
     }: {
       orderId: number | string;
-      operatorId: number;
-    }) => assignOrder(orderId, operatorId),
+      managerId: number;
+    }) => assignOrder(orderId, managerId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.adminOrder(variables.orderId),
@@ -86,14 +86,14 @@ export function useAssignOrder() {
   });
 }
 
-export function useOperators() {
-  const canManageOrders = useCanManageOrders();
+// Production managers of one specific center — used to populate the
+// assign-order picker, scoped to the order's own production_center.
+export function useCenterEmployees(centerId: number | string | undefined) {
+  const isProductionStaff = useIsProductionStaff();
   return useQuery({
-    queryKey: queryKeys.adminOperators,
-    queryFn: getOperators,
-    enabled: canManageOrders,
-    // The backing endpoint requires role=admin (a narrower check than is_staff);
-    // a staff-only admin will 403 here — treat that as "no operators to show".
+    queryKey: queryKeys.centerEmployees(centerId ?? 'none'),
+    queryFn: () => getCenterEmployees(centerId as number | string),
+    enabled: Boolean(centerId) && isProductionStaff,
     retry: false,
     throwOnError: false,
   });

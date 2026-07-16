@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, UserCog, X } from 'lucide-react';
 import {
+  useAdminProductionCenters,
   useAdminUsers,
   useCreateAdminUser,
   useUpdateUserRole,
@@ -12,17 +13,16 @@ const inputClass =
 
 const ROLE_OPTIONS: Array<{ value: UserRole; label: string }> = [
   { value: 'customer', label: 'Mijoz' },
-  { value: 'print_operator', label: 'Bosmachi (operator)' },
   { value: 'support', label: 'Qo’llab-quvvatlash' },
-  { value: 'manager', label: 'Menejer' },
-  { value: 'admin', label: 'Admin' },
+  { value: 'production_manager', label: 'Ishlab chiqarish menejeri' },
+  { value: 'production_admin', label: 'Ishlab chiqarish admini' },
+  { value: 'super_admin', label: 'Super Admin' },
 ];
 
-const PERMISSION_FIELDS = [
-  { key: 'can_manage_orders', label: 'Buyurtmalar' },
-  { key: 'can_manage_products', label: 'Mahsulotlar' },
-  { key: 'can_manage_pickup_locations', label: 'Olib ketish punktlari' },
-] as const;
+const ROLES_REQUIRING_CENTER: UserRole[] = [
+  'production_admin',
+  'production_manager',
+];
 
 interface NewUserForm {
   username: string;
@@ -31,6 +31,7 @@ interface NewUserForm {
   first_name: string;
   last_name: string;
   role: UserRole;
+  production_center: number | null;
 }
 
 const EMPTY_NEW_USER: NewUserForm = {
@@ -39,22 +40,58 @@ const EMPTY_NEW_USER: NewUserForm = {
   password: '',
   first_name: '',
   last_name: '',
-  role: 'manager',
+  role: 'production_manager',
+  production_center: null,
 };
+
+function CenterSelect({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  const centersQuery = useAdminProductionCenters();
+  const data = centersQuery.data;
+  const centers = data ? (Array.isArray(data) ? data : data.results) : [];
+
+  return (
+    <select
+      className='rounded-xl border border-stone-200 px-3 py-2 text-sm font-medium text-slate-900 outline-none focus:border-amber-400'
+      value={value ?? ''}
+      onChange={event =>
+        onChange(event.target.value ? Number(event.target.value) : null)
+      }
+    >
+      <option value=''>Markaz tanlang...</option>
+      {centers.map(center => (
+        <option key={center.id} value={center.id}>
+          {center.name}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function UserRow({ user }: { user: CommerceUser }) {
   const updateRole = useUpdateUserRole();
 
   const handleRoleChange = (role: UserRole) => {
-    updateRole.mutate({ id: user.id, payload: { role } });
-  };
-
-  const handlePermissionToggle = (
-    key: (typeof PERMISSION_FIELDS)[number]['key']
-  ) => {
     updateRole.mutate({
       id: user.id,
-      payload: { role: 'manager', [key]: !user[key] },
+      payload: {
+        role,
+        production_center: ROLES_REQUIRING_CENTER.includes(role)
+          ? user.production_center
+          : null,
+      },
+    });
+  };
+
+  const handleCenterChange = (production_center: number | null) => {
+    updateRole.mutate({
+      id: user.id,
+      payload: { role: user.role, production_center },
     });
   };
 
@@ -68,39 +105,41 @@ function UserRow({ user }: { user: CommerceUser }) {
           <p className='text-sm text-slate-500'>{user.email}</p>
         </div>
 
-        <label className='flex items-center gap-2'>
-          <span className='text-xs font-medium text-slate-500'>Rol</span>
-          <select
-            className='rounded-xl border border-stone-200 px-3 py-2 text-sm font-medium text-slate-900 outline-none focus:border-amber-400'
-            value={user.role ?? 'customer'}
-            onChange={event => handleRoleChange(event.target.value as UserRole)}
-            disabled={updateRole.isPending}
-          >
-            {ROLE_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className='flex items-center gap-3'>
+          <label className='flex items-center gap-2'>
+            <span className='text-xs font-medium text-slate-500'>Rol</span>
+            <select
+              className='rounded-xl border border-stone-200 px-3 py-2 text-sm font-medium text-slate-900 outline-none focus:border-amber-400'
+              value={user.role ?? 'customer'}
+              onChange={event =>
+                handleRoleChange(event.target.value as UserRole)
+              }
+              disabled={updateRole.isPending}
+            >
+              {ROLE_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {user.role && ROLES_REQUIRING_CENTER.includes(user.role) && (
+            <CenterSelect
+              value={user.production_center ?? null}
+              onChange={handleCenterChange}
+            />
+          )}
+        </div>
       </div>
 
-      {user.role === 'manager' && (
-        <div className='mt-4 flex flex-wrap gap-4 border-t border-stone-100 pt-4'>
-          {PERMISSION_FIELDS.map(field => (
-            <label key={field.key} className='flex items-center gap-2'>
-              <input
-                type='checkbox'
-                checked={Boolean(user[field.key])}
-                onChange={() => handlePermissionToggle(field.key)}
-                disabled={updateRole.isPending}
-                className='h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-400'
-              />
-              <span className='text-sm text-slate-700'>{field.label}</span>
-            </label>
-          ))}
-        </div>
-      )}
+      {user.role &&
+        ROLES_REQUIRING_CENTER.includes(user.role) &&
+        !user.production_center && (
+          <p className='mt-3 text-xs font-medium text-rose-600'>
+            Markaz tanlanmaguncha bu foydalanuvchi ishlay olmaydi.
+          </p>
+        )}
     </article>
   );
 }
@@ -135,8 +174,8 @@ export default function AdminUsersPage() {
             Foydalanuvchilar
           </h1>
           <p className='mt-2 max-w-2xl text-base leading-7 text-slate-500'>
-            Rollarni va menejerlar uchun ruxsatlarni boshqaring. Faqat admin bu
-            sahifaga kira oladi.
+            Rollarni va ishlab chiqarish markaziga tayinlashni boshqaring. Faqat
+            super admin bu sahifaga kira oladi.
           </p>
         </div>
         <button
@@ -248,6 +287,11 @@ export default function AdminUsersPage() {
                   setForm(prev => ({
                     ...prev,
                     role: event.target.value as UserRole,
+                    production_center: ROLES_REQUIRING_CENTER.includes(
+                      event.target.value as UserRole
+                    )
+                      ? prev.production_center
+                      : null,
                   }))
                 }
               >
@@ -258,17 +302,30 @@ export default function AdminUsersPage() {
                 ))}
               </select>
             </label>
+            {ROLES_REQUIRING_CENTER.includes(form.role) && (
+              <label className='block'>
+                <span className='mb-1.5 block text-sm font-medium text-slate-700'>
+                  Ishlab chiqarish markazi{' '}
+                  <span className='text-amber-600'>*</span>
+                </span>
+                <CenterSelect
+                  value={form.production_center}
+                  onChange={value =>
+                    setForm(prev => ({ ...prev, production_center: value }))
+                  }
+                />
+              </label>
+            )}
           </div>
-
-          <p className='mt-3 text-xs text-slate-500'>
-            Menejer ruxsatlarini yaratilgandan so&apos;ng quyidagi
-            ro&apos;yxatdan belgilashingiz mumkin.
-          </p>
 
           <div className='mt-5 flex items-center gap-3'>
             <button
               type='submit'
-              disabled={createUser.isPending}
+              disabled={
+                createUser.isPending ||
+                (ROLES_REQUIRING_CENTER.includes(form.role) &&
+                  !form.production_center)
+              }
               className='rounded-2xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50'
             >
               {createUser.isPending ? 'Yaratilmoqda...' : 'Yaratish'}

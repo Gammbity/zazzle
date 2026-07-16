@@ -1,11 +1,11 @@
 """
-Seed a demo/test dataset: an admin, managers with varied granular
-permissions, customers, a print operator, pickup locations, a minimal
-product catalog, and one order per status value so the order status
-workflow can be exercised end-to-end.
+Seed a demo/test dataset: a super admin, production centers (partner + own),
+a production admin and production managers scoped to those centers,
+customers, a minimal product catalog, and one order per status value so the
+full production status workflow can be exercised end-to-end.
 
 Idempotent — safe to re-run; existing rows (matched by email / order_number /
-category / name+city) are left untouched rather than duplicated.
+category / name+slug) are left untouched rather than duplicated.
 
 Usage:
     DJANGO_ENV=test python manage.py seed_demo_data
@@ -17,13 +17,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from apps.orders.models import (
-    Order,
-    OrderAssignment,
-    OrderItem,
-    PickupLocation,
-    ProductionFile,
-)
+from apps.orders.models import Order, OrderAssignment, OrderItem, ProductionFile
+from apps.production.models import ProductionCenter
 from apps.products.models import ProductType, ProductVariant
 from apps.users.models import UserProfile
 
@@ -33,43 +28,41 @@ DEMO_PASSWORD = 'Demo12345!'
 
 
 class Command(BaseCommand):
-    help = 'Seed demo users (admin/managers/customers/operator), pickup locations, a product, and orders across every status.'
+    help = (
+        'Seed a super admin, production centers, a production admin/managers, '
+        'customers, a product, and orders across every status.'
+    )
 
     def handle(self, *args, **options):
         with transaction.atomic():
-            admin = self._seed_admin()
-            managers = self._seed_managers()
+            super_admin = self._seed_super_admin()
+            centers = self._seed_centers()
+            production_admin, managers = self._seed_production_staff(centers)
             customers = self._seed_customers()
-            operator = self._seed_operator()
-            locations = self._seed_pickup_locations()
             variant = self._seed_product()
-            orders = self._seed_orders(customers, operator, locations, variant)
+            orders = self._seed_orders(customers, centers, managers)
 
         self.stdout.write(self.style.SUCCESS('\nSeed complete.'))
         self.stdout.write(f'  Password for all seeded accounts: {DEMO_PASSWORD}')
-        self.stdout.write(f'  Admin: {admin.email}')
+        self.stdout.write(f'  Super admin: {super_admin.email}')
+        self.stdout.write(f'  Production centers: {", ".join(f"{c.name} [{c.type}]" for c in centers)}')
+        self.stdout.write(f'  Production admin: {production_admin.email} @ {production_admin.production_center.name}')
         for m in managers:
-            grants = ', '.join(
-                name for name in ('can_manage_orders', 'can_manage_products', 'can_manage_pickup_locations')
-                if getattr(m, name)
-            ) or 'none'
-            self.stdout.write(f'  Manager: {m.email} ({grants})')
+            self.stdout.write(f'  Production manager: {m.email} @ {m.production_center.name}')
         for c in customers:
             self.stdout.write(f'  Customer: {c.email}')
-        self.stdout.write(f'  Operator: {operator.email}')
-        self.stdout.write(f'  Pickup locations: {", ".join(l.name for l in locations)}')
         self.stdout.write(f'  Orders: {", ".join(f"{o.order_number} [{o.status}]" for o in orders)}')
 
-    # -- Users ---------------------------------------------------------
+    # -- Users -----------------------------------------------------------
 
-    def _seed_admin(self):
+    def _seed_super_admin(self):
         user, created = User.objects.get_or_create(
             email='admin@zazzle.uz',
             defaults=dict(
                 username='admin',
                 first_name='Admin',
                 last_name='Zazzle',
-                role=User.Role.ADMIN,
+                role=User.Role.SUPER_ADMIN,
                 is_staff=True,
                 is_superuser=True,
             ),
@@ -79,40 +72,51 @@ class Command(BaseCommand):
             user.save()
         return user
 
-    def _seed_managers(self):
-        specs = [
-            ('manager.orders@zazzle.uz', 'manager_orders', dict(can_manage_orders=True)),
-            ('manager.products@zazzle.uz', 'manager_products', dict(can_manage_products=True)),
-            (
-                'manager.full@zazzle.uz',
-                'manager_full',
-                dict(can_manage_orders=True, can_manage_products=True, can_manage_pickup_locations=True),
+    def _seed_production_staff(self, centers):
+        print_uz, colorlab, factory = centers
+
+        admin_user, created = User.objects.get_or_create(
+            email='padmin.colorlab@zazzle.uz',
+            defaults=dict(
+                username='padmin_colorlab',
+                first_name='ColorLab',
+                last_name='Admin',
+                role=User.Role.PRODUCTION_ADMIN,
+                production_center=colorlab,
             ),
-        ]
+        )
+        if created:
+            admin_user.set_password(DEMO_PASSWORD)
+            admin_user.save()
+
         managers = []
-        for email, username, grants in specs:
+        for email, username, first_name, center in [
+            ('manager.printuz@zazzle.uz', 'manager_printuz', 'PrintUz', print_uz),
+            ('manager.colorlab@zazzle.uz', 'manager_colorlab', 'ColorLab', colorlab),
+        ]:
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults=dict(
                     username=username,
-                    first_name='Manager',
-                    last_name=username.replace('manager_', '').capitalize(),
-                    role=User.Role.MANAGER,
-                    **grants,
+                    first_name=first_name,
+                    last_name='Manager',
+                    role=User.Role.PRODUCTION_MANAGER,
+                    production_center=center,
                 ),
             )
             if created:
                 user.set_password(DEMO_PASSWORD)
                 user.save()
             managers.append(user)
-        return managers
+
+        return admin_user, managers
 
     def _seed_customers(self):
         customers = []
-        for i, (email, username, display_name, phone) in enumerate([
+        for email, username, display_name, phone in [
             ('customer1@zazzle.uz', 'customer1', 'Aziz Karimov', '+998901112233'),
             ('customer2@zazzle.uz', 'customer2', 'Dilnoza Yusupova', '+998902223344'),
-        ], start=1):
+        ]:
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults=dict(
@@ -132,63 +136,54 @@ class Command(BaseCommand):
             customers.append(user)
         return customers
 
-    def _seed_operator(self):
-        user, created = User.objects.get_or_create(
-            email='operator@zazzle.uz',
-            defaults=dict(
-                username='operator1',
-                first_name='Botir',
-                last_name='Rasulov',
-                role=User.Role.PRINT_OPERATOR,
-            ),
-        )
-        if created:
-            user.set_password(DEMO_PASSWORD)
-            user.save()
-        return user
+    # -- Production centers -----------------------------------------------
 
-    # -- Pickup locations ------------------------------------------------
-
-    def _seed_pickup_locations(self):
+    def _seed_centers(self):
         specs = [
             dict(
-                name='Zazzle showroom — Amir Temur',
-                address="Toshkent sh., Amir Temur ko'chasi 1",
-                city='Tashkent',
-                latitude=Decimal('41.311081'),
-                longitude=Decimal('69.240562'),
-                working_hours='Dush-Shan 09:00-19:00',
-                is_active=True,
+                name='Print.uz',
+                slug='print-uz',
+                type=ProductionCenter.Type.PARTNER,
+                address="Toshkent sh., Chilonzor tumani, Bunyodkor shoh ko'chasi 12",
+                latitude=Decimal('41.284360'),
+                longitude=Decimal('69.204520'),
+                phone='+998712001122',
+                supports_pickup=True,
+                supports_delivery=False,
                 sort_order=1,
             ),
             dict(
-                name='Zazzle showroom — Chilonzor',
-                address="Toshkent sh., Chilonzor tumani, Bunyodkor shoh ko'chasi 12",
-                city='Tashkent',
-                latitude=Decimal('41.284360'),
-                longitude=Decimal('69.204520'),
-                working_hours='Dush-Shan 10:00-20:00',
-                is_active=True,
+                name='ColorLab',
+                slug='colorlab',
+                type=ProductionCenter.Type.PARTNER,
+                address="Toshkent sh., Yunusobod tumani, Amir Temur shoh ko'chasi 45",
+                latitude=Decimal('41.348740'),
+                longitude=Decimal('69.288330'),
+                phone='+998712003344',
+                supports_pickup=True,
+                supports_delivery=True,
                 sort_order=2,
             ),
             dict(
-                name='Zazzle showroom — Yunusobod (yopiq)',
-                address="Toshkent sh., Yunusobod tumani, Amir Temur shoh ko'chasi 45",
-                city='Tashkent',
-                latitude=Decimal('41.348740'),
-                longitude=Decimal('69.288330'),
-                working_hours='Vaqtincha yopiq',
-                is_active=False,
+                name='Zazzle Factory #1',
+                slug='zazzle-factory-1',
+                type=ProductionCenter.Type.OWN,
+                address="Toshkent sh., Amir Temur ko'chasi 1",
+                latitude=Decimal('41.311081'),
+                longitude=Decimal('69.240562'),
+                phone='+998712005566',
+                supports_pickup=True,
+                supports_delivery=True,
                 sort_order=3,
             ),
         ]
-        locations = []
+        centers = []
         for spec in specs:
-            location, _created = PickupLocation.objects.get_or_create(
-                name=spec['name'], city=spec['city'], defaults=spec,
+            center, _created = ProductionCenter.objects.get_or_create(
+                slug=spec['slug'], defaults=spec,
             )
-            locations.append(location)
-        return locations
+            centers.append(center)
+        return centers
 
     # -- Product catalog ---------------------------------------------
 
@@ -219,10 +214,12 @@ class Command(BaseCommand):
 
     # -- Orders --------------------------------------------------------
 
-    def _make_order(self, order_number, customer, status, delivery_method, variant, *, pickup_location=None, quantity=1):
+    def _make_order(self, order_number, customer, status, delivery_method, center, variant, *, quantity=1):
         unit_price = variant.sale_price
         total_price = unit_price * quantity
         profile = getattr(customer, 'profile', None)
+        is_pickup = delivery_method == Order.DeliveryMethod.PICKUP
+
         order, created = Order.objects.get_or_create(
             order_number=order_number,
             defaults=dict(
@@ -232,14 +229,14 @@ class Command(BaseCommand):
                 # order already at rest in that state, not a live move.
                 status=status,
                 delivery_method=delivery_method,
-                pickup_location=pickup_location,
-                latitude=pickup_location.latitude if pickup_location else None,
-                longitude=pickup_location.longitude if pickup_location else None,
+                production_center=center,
+                latitude=center.latitude if is_pickup else None,
+                longitude=center.longitude if is_pickup else None,
                 shipping_name=customer.get_full_name() or customer.username,
                 shipping_email=customer.email,
                 shipping_phone=getattr(profile, 'phone_number', ''),
-                shipping_address='' if pickup_location else 'Toshkent sh., Mustaqillik ko\'chasi 10',
-                shipping_city='' if pickup_location else 'Tashkent',
+                shipping_address='' if is_pickup else "Toshkent sh., Mustaqillik ko'chasi 10",
+                shipping_city='' if is_pickup else 'Tashkent',
                 shipping_country='Uzbekistan',
                 subtotal=total_price,
                 total_amount=total_price,
@@ -260,11 +257,13 @@ class Command(BaseCommand):
             total_price=total_price,
         )
 
-        if status in ('READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'DONE'):
-            # READY_FOR_PRODUCTION / IN_PRODUCTION / DONE — give every item a
-            # production file so the real READY_FOR_PRODUCTION prerequisite
-            # (validate_status_transition) is satisfiable if someone drives
-            # this order through the state machine by hand afterwards.
+        if status in (
+            'READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'QUALITY_CHECK',
+            'READY_FOR_PICKUP', 'READY_FOR_DELIVERY', 'COMPLETED',
+        ):
+            # Give every item a production file so the real
+            # READY_FOR_PRODUCTION prerequisite (validate_status_transition)
+            # is satisfiable if someone drives this order forward by hand.
             for item in order.items.all():
                 ProductionFile.objects.create(
                     order=order,
@@ -272,42 +271,49 @@ class Command(BaseCommand):
                     s3_key=f'demo/{order.order_number}/{item.id}.png',
                 )
 
-        if status == 'DONE':
+        if status == 'COMPLETED':
             order.shipped_at = timezone.now()
             order.delivered_at = timezone.now()
             order.save(update_fields=['shipped_at', 'delivered_at'])
 
         return order
 
-    def _seed_orders(self, customers, operator, locations, variant):
-        customer1, customer2 = customers[0], customers[1]
-        active_locations = [l for l in locations if l.is_active]
+    def _seed_orders(self, customers, centers, managers):
+        customer1, customer2 = customers
+        print_uz, colorlab, factory = centers
+        manager_printuz, manager_colorlab = managers
+
+        DELIVERY = Order.DeliveryMethod.DELIVERY
+        PICKUP = Order.DeliveryMethod.PICKUP
+
+        # Reuse one variant across all orders.
+        variant = ProductVariant.objects.filter(product_type__category='tshirt').first()
 
         orders = [
-            self._make_order('DEMO-NEW', customer1, 'NEW', Order.DeliveryMethod.DELIVERY, variant),
-            self._make_order(
-                'DEMO-PAYPEND', customer2, 'PAYMENT_PENDING', Order.DeliveryMethod.DELIVERY, variant,
-            ),
-            self._make_order(
-                'DEMO-PAID', customer1, 'PAID', Order.DeliveryMethod.PICKUP, variant,
-                pickup_location=active_locations[0],
-            ),
-            self._make_order(
-                'DEMO-READY', customer2, 'READY_FOR_PRODUCTION', Order.DeliveryMethod.DELIVERY, variant,
-                quantity=2,
-            ),
-            self._make_order(
-                'DEMO-INPROD', customer1, 'IN_PRODUCTION', Order.DeliveryMethod.PICKUP, variant,
-                pickup_location=active_locations[-1],
-            ),
-            self._make_order('DEMO-DONE', customer2, 'DONE', Order.DeliveryMethod.DELIVERY, variant),
-            self._make_order('DEMO-CANCEL', customer1, 'CANCELLED', Order.DeliveryMethod.DELIVERY, variant),
+            self._make_order('DEMO-NEW', customer1, 'NEW', DELIVERY, colorlab, variant),
+            self._make_order('DEMO-PAYPEND', customer2, 'PAYMENT_PENDING', DELIVERY, factory, variant),
+            self._make_order('DEMO-PAID', customer1, 'PAID', PICKUP, print_uz, variant),
+            self._make_order('DEMO-READY', customer2, 'READY_FOR_PRODUCTION', DELIVERY, colorlab, variant, quantity=2),
+            self._make_order('DEMO-INPROD', customer1, 'IN_PRODUCTION', PICKUP, print_uz, variant),
+            self._make_order('DEMO-QC', customer2, 'QUALITY_CHECK', DELIVERY, colorlab, variant),
+            self._make_order('DEMO-READYPICKUP', customer1, 'READY_FOR_PICKUP', PICKUP, print_uz, variant),
+            self._make_order('DEMO-READYDELIVERY', customer2, 'READY_FOR_DELIVERY', DELIVERY, colorlab, variant),
+            self._make_order('DEMO-COMPLETED', customer1, 'COMPLETED', PICKUP, print_uz, variant),
+            self._make_order('DEMO-CANCEL', customer2, 'CANCELLED', DELIVERY, colorlab, variant),
         ]
 
-        in_prod_order = next(o for o in orders if o.order_number == 'DEMO-INPROD')
+        by_number = {o.order_number: o for o in orders}
         OrderAssignment.objects.get_or_create(
-            order=in_prod_order,
-            defaults=dict(operator=operator, assigned_by=None),
+            order=by_number['DEMO-INPROD'],
+            defaults=dict(
+                production_center=print_uz, manager=manager_printuz, assigned_by=None,
+            ),
+        )
+        OrderAssignment.objects.get_or_create(
+            order=by_number['DEMO-QC'],
+            defaults=dict(
+                production_center=colorlab, manager=manager_colorlab, assigned_by=None,
+            ),
         )
 
         return orders

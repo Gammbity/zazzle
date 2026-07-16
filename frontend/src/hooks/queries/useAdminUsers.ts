@@ -8,14 +8,14 @@ import {
   type UpdateUserRolePayload,
 } from '@/lib/adminApi';
 import { queryKeys } from '@/lib/queryClient';
-import { useIsTrueAdmin } from '@/hooks/queries/useAuth';
+import { useIsSuperAdmin } from '@/hooks/queries/useAuth';
 
 export function useAdminUsers(filters: AdminUserFilters = {}) {
-  const isTrueAdmin = useIsTrueAdmin();
+  const isSuperAdmin = useIsSuperAdmin();
   return useQuery({
     queryKey: queryKeys.adminUsers(filters),
     queryFn: () => getAdminUsers(filters),
-    enabled: isTrueAdmin,
+    enabled: isSuperAdmin,
   });
 }
 

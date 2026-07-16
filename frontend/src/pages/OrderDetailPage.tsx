@@ -41,7 +41,9 @@ const PAYMENT_PROVIDERS = [
 export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
   const queryClient = useQueryClient();
   const [authOpen, setAuthOpen] = useState(false);
-  const [paymentResult, setPaymentResult] = useState<PaymentInitResult | null>(null);
+  const [paymentResult, setPaymentResult] = useState<PaymentInitResult | null>(
+    null
+  );
   const [actionError, setActionError] = useState<string | null>(null);
 
   const orderQuery = useOrder(orderLookup);
@@ -131,7 +133,8 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                 Buyurtma topilmadi
               </h1>
               <p className='mt-3 text-base leading-7 text-slate-600'>
-                Order raqamini tekshiring yoki buyurtmalar ro&apos;yxatiga qayting.
+                Order raqamini tekshiring yoki buyurtmalar ro&apos;yxatiga
+                qayting.
               </p>
             </div>
           ) : (
@@ -147,7 +150,8 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                       {order.order_number}
                     </h1>
                     <p className='mt-2 text-sm text-slate-500'>
-                      {new Date(order.created_at).toLocaleString('uz-UZ')} da yaratilgan
+                      {new Date(order.created_at).toLocaleString('uz-UZ')} da
+                      yaratilgan
                     </p>
                   </div>
                   <span
@@ -184,7 +188,8 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                                 {item.product_name}
                               </h3>
                               <p className='mt-0.5 text-sm text-slate-500'>
-                                {item.design_title || 'Dizayn nomi kiritilmagan'}
+                                {item.design_title ||
+                                  'Dizayn nomi kiritilmagan'}
                               </p>
                               <div className='mt-2 flex flex-wrap gap-3 text-xs text-slate-500'>
                                 <span>
@@ -194,7 +199,9 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                                     .join(' · ') || 'Standart'}
                                 </span>
                                 <span>Soni: {item.quantity}</span>
-                                <span>Bir dona: {formatMoney(item.unit_price)}</span>
+                                <span>
+                                  Bir dona: {formatMoney(item.unit_price)}
+                                </span>
                               </div>
                               <p className='mt-1.5 text-xs text-slate-400'>
                                 Ishlab chiqarish: {item.production_status}
@@ -317,10 +324,12 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
 
                         {paymentResult?.provider_payload.redirect_url && (
                           <a
-                            href={String(paymentResult.provider_payload.redirect_url)}
+                            href={String(
+                              paymentResult.provider_payload.redirect_url
+                            )}
                             target='_blank'
                             rel='noreferrer'
-                            className='mt-4 inline-flex items-center gap-2 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 w-full justify-center'
+                            className='mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700'
                           >
                             <ExternalLink className='h-3.5 w-3.5' />
                             Provider sahifasini ochish
@@ -341,17 +350,20 @@ export default function OrderDetailPage({ orderLookup }: OrderDetailPageProps) {
                       </h2>
                     </div>
                     <div className='mt-4 flex flex-col gap-2.5'>
-                      {order.status !== 'DONE' && order.status !== 'CANCELLED' && (
-                        <button
-                          type='button'
-                          onClick={() => void handleCancel()}
-                          disabled={cancelBusy}
-                          className='inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60'
-                        >
-                          <XCircle className='h-4 w-4' />
-                          {cancelBusy ? 'Bekor qilinmoqda...' : 'Buyurtmani bekor qilish'}
-                        </button>
-                      )}
+                      {order.status !== 'COMPLETED' &&
+                        order.status !== 'CANCELLED' && (
+                          <button
+                            type='button'
+                            onClick={() => void handleCancel()}
+                            disabled={cancelBusy}
+                            className='inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60'
+                          >
+                            <XCircle className='h-4 w-4' />
+                            {cancelBusy
+                              ? 'Bekor qilinmoqda...'
+                              : 'Buyurtmani bekor qilish'}
+                          </button>
+                        )}
                       <Link
                         to='/orders'
                         className='rounded-2xl border border-stone-200 px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-stone-50'

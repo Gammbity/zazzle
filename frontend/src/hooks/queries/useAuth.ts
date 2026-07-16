@@ -18,32 +18,40 @@ export function useCurrentUser() {
   });
 }
 
-// "Can enter the admin panel shell at all" — true staff/admins, plus any
-// manager (page/section-level checks below narrow what they actually see).
+// "Can enter the admin panel shell at all" — staff, super admins, and any
+// production-center-scoped staff (page/nav-level checks below narrow what
+// they actually see once inside).
 export function useIsAdmin(): boolean {
   const { data } = useCurrentUser();
-  return Boolean(data?.is_staff) || data?.role === 'manager';
+  return Boolean(
+    data?.is_staff ||
+    data?.is_super_admin ||
+    data?.is_production_admin ||
+    data?.is_production_manager
+  );
 }
 
-// True admin/superuser only — grants roles/permissions, sees the Users page.
-export function useIsTrueAdmin(): boolean {
+// Platform-wide access only — manages production centers, users/roles.
+export function useIsSuperAdmin(): boolean {
   const { data } = useCurrentUser();
-  return Boolean(data?.is_admin_user);
+  return Boolean(data?.is_super_admin);
 }
 
-export function useCanManageOrders(): boolean {
+// Super admin, or a production admin (their own center's employees/orders).
+export function useIsProductionAdmin(): boolean {
   const { data } = useCurrentUser();
-  return Boolean(data?.is_admin_user || data?.can_manage_orders);
+  return Boolean(data?.is_super_admin || data?.is_production_admin);
 }
 
-export function useCanManageProducts(): boolean {
+// Super admin, or any production-center-scoped staff — gates the Orders nav
+// section; actual row-level scoping happens server-side.
+export function useIsProductionStaff(): boolean {
   const { data } = useCurrentUser();
-  return Boolean(data?.is_admin_user || data?.can_manage_products);
-}
-
-export function useCanManagePickupLocations(): boolean {
-  const { data } = useCurrentUser();
-  return Boolean(data?.is_admin_user || data?.can_manage_pickup_locations);
+  return Boolean(
+    data?.is_super_admin ||
+    data?.is_production_admin ||
+    data?.is_production_manager
+  );
 }
 
 export function useLogin() {

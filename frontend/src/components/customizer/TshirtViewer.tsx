@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { Camera } from 'lucide-react';
+import ProductColorizedImage from '@/components/ProductColorizedImage';
 
 interface TshirtViewerProps {
   textureUrl: string;
@@ -59,15 +60,14 @@ export default function TshirtViewer({
           aspectRatio: '3/4',
         }}
       >
-        <img
+        <ProductColorizedImage
           src={imageSrc}
+          productColorHex={shirtColor}
           alt={`Futbolka ${viewSide === 'front' ? 'oldi' : 'orqasi'}`}
           style={{
             width: '100%',
             height: '100%',
             objectFit: 'contain',
-            backgroundColor: shirtColor,
-            mixBlendMode: 'multiply',
           }}
         />
 

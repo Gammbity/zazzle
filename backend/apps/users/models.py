@@ -9,16 +9,23 @@ class User(AbstractUser):
     class Role(models.TextChoices):
         CUSTOMER = 'customer', _('Customer')
         PRINT_OPERATOR = 'print_operator', _('Print Operator')
+        MANAGER = 'manager', _('Manager')
         ADMIN = 'admin', _('Admin')
         SUPPORT = 'support', _('Support')
-    
+
     email = models.EmailField(_('email address'), unique=True)
     role = models.CharField(
-        _('role'), 
-        max_length=20, 
+        _('role'),
+        max_length=20,
         choices=Role.choices,
         default=Role.CUSTOMER
     )
+
+    # Granular admin-panel grants for role=MANAGER — an admin turns these on
+    # per manager instead of managers inheriting full admin access.
+    can_manage_orders = models.BooleanField(_('can manage orders'), default=False)
+    can_manage_products = models.BooleanField(_('can manage products'), default=False)
+    can_manage_pickup_locations = models.BooleanField(_('can manage pickup locations'), default=False)
     date_of_birth = models.DateField(_('date of birth'), blank=True, null=True)
     
     # Address information
@@ -65,12 +72,32 @@ class User(AbstractUser):
     def is_support(self):
         """Check if user is support staff."""
         return self.role == self.Role.SUPPORT
-    
-    @property  
+
+    @property
+    def is_manager(self):
+        """Check if user is a manager."""
+        return self.role == self.Role.MANAGER
+
+    @property
     def is_admin_user(self):
         """Check if user is admin."""
         return self.role == self.Role.ADMIN or self.is_superuser
-        
+
+    def has_admin_permission(self, resource=None):
+        """
+        Single source of truth for "can this user use the admin panel /
+        resource X". Admins/superusers get everything; managers only get
+        the specific `can_manage_<resource>` grants an admin turned on for
+        them. `resource=None` just checks "allowed into the admin shell".
+        """
+        if self.is_superuser or self.role == self.Role.ADMIN:
+            return True
+        if self.role == self.Role.MANAGER:
+            if resource is None:
+                return True
+            return getattr(self, f'can_manage_{resource}', False)
+        return False
+
     @property
     def full_address(self):
         """Return formatted full address."""

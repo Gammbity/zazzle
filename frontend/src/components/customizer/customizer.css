@@ -45,15 +45,25 @@ body {
     sans-serif;
   background-color: var(--bg-color);
   color: var(--text-primary);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
-/* Base Layout */
+/* Base Layout — mobile-first: panels stack vertically and the page scrolls
+   naturally. Side-by-side desktop layout is restored at the lg breakpoint. */
 .app-container {
   display: flex;
-  height: 100vh;
-  width: 100vw;
-  flex-direction: row;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+}
+
+@media (min-width: 1024px) {
+  .app-container {
+    flex-direction: row;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
 }
 
 /* UI Structure */
@@ -69,30 +79,47 @@ body {
   padding: 1rem;
   padding-bottom: 2rem;
   gap: 1rem;
+  width: 100%;
 }
 
-/* The 3D view container — fills available width, fixed height */
+/* The 3D view container — fills available width, fluid height on mobile */
 .canvas-wrapper {
   background: #cbd5e1;
   width: 100%;
   max-width: 700px;
   flex: 1;
-  min-height: 350px;
-  max-height: 520px;
+  min-height: 260px;
+  max-height: 420px;
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   position: relative;
   overflow: hidden;
 }
 
+@media (min-width: 640px) {
+  .canvas-wrapper {
+    min-height: 350px;
+    max-height: 520px;
+  }
+}
+
 .right-panel-container {
   display: flex;
   flex-direction: column;
-  width: 360px;
+  width: 100%;
   background: var(--panel-bg);
-  border-left: 1px solid var(--border-color);
-  box-shadow: -4px 0 25px rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.05);
   z-index: 20;
+}
+
+@media (min-width: 1024px) {
+  .right-panel-container {
+    width: 360px;
+    border-top: none;
+    border-left: 1px solid var(--border-color);
+    box-shadow: -4px 0 25px rgba(0, 0, 0, 0.05);
+  }
 }
 
 /* 2D Editor sits directly below the 3D Viewer in the left panel */
@@ -607,8 +634,8 @@ body {
 }
 
 .color-swatch {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: 2px solid var(--border-color);
   cursor: pointer;
@@ -618,6 +645,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .color-swatch {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 .color-swatch:hover {
@@ -643,6 +678,282 @@ body {
   width: 100%;
   accent-color: var(--primary-color);
   cursor: pointer;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   T-shirt new two-column layout
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.tshirt-left-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  background: #e8edf4;
+  overflow-y: auto;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .tshirt-left-col {
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+}
+
+/* Color bar at top of left column */
+.tshirt-color-bar {
+  background: white;
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .tshirt-color-bar {
+    padding: 0.875rem 1.1rem;
+    gap: 0.75rem;
+  }
+}
+
+.tshirt-color-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.tshirt-color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Front / Back toggle */
+.tshirt-view-toggle {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tshirt-view-toggle .action-btn {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+}
+
+/* Viewer fill remaining height */
+.tshirt-viewer-wrap {
+  flex: 1;
+  min-height: 260px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+@media (min-width: 640px) {
+  .tshirt-viewer-wrap {
+    min-height: 300px;
+  }
+}
+
+.tshirt-viewer-wrap .canvas-wrapper {
+  max-height: none;
+  min-height: 0;
+  flex: 1;
+  border-radius: 0;
+}
+
+/* ── Right column ── */
+.tshirt-right-col {
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.85rem;
+  background: white;
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+  overflow-y: auto;
+  gap: 0;
+}
+
+@media (min-width: 640px) {
+  .tshirt-right-col {
+    padding: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .tshirt-right-col {
+    width: min(420px, 38vw);
+    border-top: none;
+    border-left: 1px solid var(--border-color);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.04);
+  }
+}
+
+@media (min-width: 1280px) {
+  .tshirt-right-col {
+    width: 460px;
+  }
+}
+
+.right-panel-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+/* ── Compact design toolbar ── */
+.design-toolbar {
+  display: flex;
+  gap: 6px;
+  background: var(--bg-main);
+  border-radius: 10px;
+  padding: 6px;
+  margin-bottom: 0.75rem;
+}
+
+.tool-btn {
+  flex: 1;
+  padding: 0.5rem 0.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: white;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.tool-btn:hover,
+.tool-btn.active {
+  background: #eff6ff;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.tool-btn.danger {
+  color: var(--danger-color);
+  flex: 0 0 40px;
+}
+
+.tool-btn.danger:hover {
+  background: #fef2f2;
+  border-color: var(--danger-color);
+}
+
+/* ── Tool panels (upload / stickers) ── */
+.tool-panel {
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Size selector (step 2) ── */
+.size-selector-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+.size-section,
+.quantity-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.size-label,
+.qty-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.size-grid-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.size-btn {
+  padding: 0.875rem 0.5rem;
+  border-radius: 10px;
+  border: 2px solid var(--border-color);
+  background: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text-primary);
+}
+
+.size-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: #eff6ff;
+}
+
+.size-btn.selected {
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  color: white;
+}
+
+.qty-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.qty-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: white;
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.qty-btn:hover {
+  background: var(--bg-main);
+  border-color: var(--primary-color);
+}
+
+.qty-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 2rem;
+  text-align: center;
+}
+
+.add-to-cart-btn {
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 1rem;
 }
 
 /* ── Spin animation ──────────────────────────────────────────────────────── */

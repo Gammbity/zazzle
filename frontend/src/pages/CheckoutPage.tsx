@@ -1,12 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, MapPin, ShoppingBag, UserRound } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  MapPin,
+  ShoppingBag,
+  Store,
+  UserRound,
+} from 'lucide-react';
 import CommerceAuthModal from '@/components/commerce/CommerceAuthModal';
+import DeliveryMethodToggle, {
+  type DeliveryMethod,
+} from '@/components/checkout/DeliveryMethodToggle';
+import AddressMapPicker from '@/components/checkout/AddressMapPicker';
 import {
   useCart,
   useCheckout,
   useCurrentUser,
   useInitPayment,
+  usePickupLocations,
 } from '@/hooks/queries';
 import {
   formatMoney,
@@ -41,7 +56,7 @@ const PROVIDERS: Array<{
   {
     value: 'uzcard_humo',
     title: 'Uzcard / Humo',
-    description: 'Mahalliy karta orqali to\'lov.',
+    description: "Mahalliy karta orqali to'lov.",
     badge: '',
   },
 ];
@@ -72,6 +87,10 @@ export default function CheckoutPage() {
     contact_name: '',
     contact_email: '',
     contact_phone: '',
+    delivery_method: 'DELIVERY' as DeliveryMethod,
+    latitude: null as number | null,
+    longitude: null as number | null,
+    pickup_location: null as number | null,
     shipping_name: '',
     shipping_email: '',
     shipping_phone: '',
@@ -82,6 +101,9 @@ export default function CheckoutPage() {
     shipping_country: 'Uzbekistan',
     customer_notes: '',
   });
+
+  const pickupLocationsQuery = usePickupLocations();
+  const pickupLocations = pickupLocationsQuery.data ?? [];
 
   const cart = result ? null : (cartQuery.data ?? null);
   const user = userQuery.data ?? null;
@@ -121,9 +143,20 @@ export default function CheckoutPage() {
         !cart.is_empty &&
         form.contact_name &&
         form.contact_email &&
-        form.contact_phone
+        form.contact_phone &&
+        (form.delivery_method === 'PICKUP'
+          ? Boolean(form.pickup_location)
+          : form.shipping_address)
       ),
-    [cart, form.contact_email, form.contact_name, form.contact_phone]
+    [
+      cart,
+      form.contact_email,
+      form.contact_name,
+      form.contact_phone,
+      form.delivery_method,
+      form.pickup_location,
+      form.shipping_address,
+    ]
   );
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -360,7 +393,8 @@ export default function CheckoutPage() {
                       <div className='mt-4 grid gap-4 sm:grid-cols-2'>
                         <label className='block sm:col-span-1'>
                           <span className='mb-1.5 block text-sm font-medium text-slate-700'>
-                            Ism va familiya <span className='text-amber-600'>*</span>
+                            Ism va familiya{' '}
+                            <span className='text-amber-600'>*</span>
                           </span>
                           <input
                             className={inputClass}
@@ -369,7 +403,8 @@ export default function CheckoutPage() {
                               setForm(prev => ({
                                 ...prev,
                                 contact_name: event.target.value,
-                                shipping_name: prev.shipping_name || event.target.value,
+                                shipping_name:
+                                  prev.shipping_name || event.target.value,
                               }))
                             }
                             required
@@ -388,7 +423,8 @@ export default function CheckoutPage() {
                               setForm(prev => ({
                                 ...prev,
                                 contact_email: event.target.value,
-                                shipping_email: prev.shipping_email || event.target.value,
+                                shipping_email:
+                                  prev.shipping_email || event.target.value,
                               }))
                             }
                             required
@@ -406,7 +442,8 @@ export default function CheckoutPage() {
                               setForm(prev => ({
                                 ...prev,
                                 contact_phone: event.target.value,
-                                shipping_phone: prev.shipping_phone || event.target.value,
+                                shipping_phone:
+                                  prev.shipping_phone || event.target.value,
                               }))
                             }
                             required
@@ -426,70 +463,173 @@ export default function CheckoutPage() {
                           Yetkazib berish
                         </h2>
                       </div>
-                      <div className='mt-4 grid gap-4 sm:grid-cols-2'>
-                        <label className='block sm:col-span-2'>
-                          <span className='mb-1.5 block text-sm font-medium text-slate-700'>
-                            Manzil
-                          </span>
-                          <input
-                            className={inputClass}
-                            value={form.shipping_address}
-                            onChange={event =>
-                              setForm(prev => ({
-                                ...prev,
-                                shipping_address: event.target.value,
-                              }))
-                            }
-                            placeholder="Ko'cha, uy raqami, ofis"
-                          />
-                        </label>
-                        <label className='block'>
-                          <span className='mb-1.5 block text-sm font-medium text-slate-700'>
-                            Shahar
-                          </span>
-                          <input
-                            className={inputClass}
-                            value={form.shipping_city}
-                            onChange={event =>
-                              setForm(prev => ({
-                                ...prev,
-                                shipping_city: event.target.value,
-                              }))
-                            }
-                          />
-                        </label>
-                        <label className='block'>
-                          <span className='mb-1.5 block text-sm font-medium text-slate-700'>
-                            Viloyat
-                          </span>
-                          <input
-                            className={inputClass}
-                            value={form.shipping_state}
-                            onChange={event =>
-                              setForm(prev => ({
-                                ...prev,
-                                shipping_state: event.target.value,
-                              }))
-                            }
-                          />
-                        </label>
-                        <label className='block sm:col-span-2'>
-                          <span className='mb-1.5 block text-sm font-medium text-slate-700'>
-                            Izoh (ixtiyoriy)
-                          </span>
-                          <textarea
-                            className={`${inputClass} min-h-24 resize-none`}
-                            value={form.customer_notes}
-                            onChange={event =>
-                              setForm(prev => ({
-                                ...prev,
-                                customer_notes: event.target.value,
-                              }))
-                            }
-                            placeholder="Masalan, qo'ng'iroq qilib yetib kelishdan oldin xabar bering"
-                          />
-                        </label>
+
+                      <div className='mt-4'>
+                        <DeliveryMethodToggle
+                          value={form.delivery_method}
+                          onChange={method =>
+                            setForm(prev => ({
+                              ...prev,
+                              delivery_method: method,
+                              pickup_location:
+                                method === 'PICKUP'
+                                  ? prev.pickup_location
+                                  : null,
+                            }))
+                          }
+                        />
                       </div>
+
+                      {form.delivery_method === 'DELIVERY' ? (
+                        <div className='mt-4 grid gap-4 sm:grid-cols-2'>
+                          <div className='sm:col-span-2'>
+                            <span className='mb-1.5 block text-sm font-medium text-slate-700'>
+                              Manzil <span className='text-amber-600'>*</span>
+                            </span>
+                            <AddressMapPicker
+                              address={form.shipping_address}
+                              latitude={form.latitude}
+                              longitude={form.longitude}
+                              onAddressChange={value =>
+                                setForm(prev => ({
+                                  ...prev,
+                                  shipping_address: value,
+                                }))
+                              }
+                              onCoordsChange={(latitude, longitude) =>
+                                setForm(prev => ({
+                                  ...prev,
+                                  latitude,
+                                  longitude,
+                                }))
+                              }
+                              inputClassName={inputClass}
+                            />
+                          </div>
+                          <label className='block'>
+                            <span className='mb-1.5 block text-sm font-medium text-slate-700'>
+                              Shahar
+                            </span>
+                            <input
+                              className={inputClass}
+                              value={form.shipping_city}
+                              onChange={event =>
+                                setForm(prev => ({
+                                  ...prev,
+                                  shipping_city: event.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className='block'>
+                            <span className='mb-1.5 block text-sm font-medium text-slate-700'>
+                              Viloyat
+                            </span>
+                            <input
+                              className={inputClass}
+                              value={form.shipping_state}
+                              onChange={event =>
+                                setForm(prev => ({
+                                  ...prev,
+                                  shipping_state: event.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className='block sm:col-span-2'>
+                            <span className='mb-1.5 block text-sm font-medium text-slate-700'>
+                              Izoh (ixtiyoriy)
+                            </span>
+                            <textarea
+                              className={`${inputClass} min-h-24 resize-none`}
+                              value={form.customer_notes}
+                              onChange={event =>
+                                setForm(prev => ({
+                                  ...prev,
+                                  customer_notes: event.target.value,
+                                }))
+                              }
+                              placeholder="Masalan, qo'ng'iroq qilib yetib kelishdan oldin xabar bering"
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        <div className='mt-4 space-y-4'>
+                          <div>
+                            <span className='mb-1.5 block text-sm font-medium text-slate-700'>
+                              Olib ketish punkti{' '}
+                              <span className='text-amber-600'>*</span>
+                            </span>
+                            {pickupLocationsQuery.isLoading ? (
+                              <div className='h-20 animate-pulse rounded-2xl bg-amber-50' />
+                            ) : pickupLocations.length === 0 ? (
+                              <p className='rounded-2xl border border-dashed border-amber-200 bg-amber-50/30 p-4 text-sm text-slate-500'>
+                                Hozircha olib ketish punktlari mavjud emas.
+                              </p>
+                            ) : (
+                              <div className='space-y-2.5'>
+                                {pickupLocations.map(location => {
+                                  const selected =
+                                    form.pickup_location === location.id;
+                                  return (
+                                    <button
+                                      key={location.id}
+                                      type='button'
+                                      onClick={() =>
+                                        setForm(prev => ({
+                                          ...prev,
+                                          pickup_location: location.id,
+                                        }))
+                                      }
+                                      className={`w-full rounded-2xl border p-4 text-left transition ${
+                                        selected
+                                          ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-200'
+                                          : 'border-stone-200 bg-white hover:border-amber-200'
+                                      }`}
+                                    >
+                                      <div className='flex items-start gap-3'>
+                                        <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700'>
+                                          <Store className='h-4 w-4' />
+                                        </div>
+                                        <div>
+                                          <p className='text-sm font-semibold text-slate-900'>
+                                            {location.name}
+                                          </p>
+                                          <p className='mt-0.5 text-sm text-slate-600'>
+                                            {location.address}
+                                          </p>
+                                          {location.working_hours && (
+                                            <p className='mt-1.5 inline-flex items-center gap-1.5 text-xs text-slate-500'>
+                                              <Clock className='h-3.5 w-3.5' />
+                                              {location.working_hours}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <label className='block'>
+                            <span className='mb-1.5 block text-sm font-medium text-slate-700'>
+                              Izoh (ixtiyoriy)
+                            </span>
+                            <textarea
+                              className={`${inputClass} min-h-24 resize-none`}
+                              value={form.customer_notes}
+                              onChange={event =>
+                                setForm(prev => ({
+                                  ...prev,
+                                  customer_notes: event.target.value,
+                                }))
+                              }
+                              placeholder='Masalan, qachon olib ketishni rejalashtirganingizni yozing'
+                            />
+                          </label>
+                        </div>
+                      )}
                     </section>
 
                     {/* Payment provider */}
@@ -573,7 +713,8 @@ export default function CheckoutPage() {
                                   {item.draft_name || item.product_name}
                                 </p>
                                 <p className='mt-0.5 text-xs text-amber-200'>
-                                  {item.product_type_name} · {item.variant_display}
+                                  {item.product_type_name} ·{' '}
+                                  {item.variant_display}
                                 </p>
                               </div>
                               <span className='text-xs text-amber-200'>
@@ -595,8 +736,16 @@ export default function CheckoutPage() {
                           <span>{formatMoney(cart.subtotal)}</span>
                         </div>
                         <div className='flex items-center justify-between text-sm text-slate-500'>
-                          <span>Yetkazib berish</span>
-                          <span className='text-xs'>Formdan keyin aniqlanadi</span>
+                          <span>
+                            {form.delivery_method === 'PICKUP'
+                              ? "Do'kondan olib ketish"
+                              : 'Yetkazib berish'}
+                          </span>
+                          <span className='text-xs'>
+                            {form.delivery_method === 'PICKUP'
+                              ? 'Bepul'
+                              : 'Formdan keyin aniqlanadi'}
+                          </span>
                         </div>
                         <div className='border-t border-stone-100 pt-3'>
                           <div className='flex items-center justify-between'>

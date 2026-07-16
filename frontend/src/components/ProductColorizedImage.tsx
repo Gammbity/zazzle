@@ -59,14 +59,68 @@ function isNeutralLightPixel(
   return alpha > 12 && luminance > 145 && spread < 72;
 }
 
+// A generic "is this pixel roughly neutral gray" test isn't enough to find the
+// backdrop: studio product photos often shade the backdrop only slightly
+// darker than the (also neutral, off-white) product itself, so both pass the
+// same luminance/spread cutoff and the flood fill swallows the whole product.
+// Instead we sample the actual border color and require a pixel to be close
+// to *that specific* color to count as background.
+const BACKGROUND_COLOR_TOLERANCE = 40;
+
+function colorDistance(
+  data: Uint8ClampedArray,
+  index: number,
+  ref: Rgb
+): number {
+  const dr = data[index] - ref.r;
+  const dg = data[index + 1] - ref.g;
+  const db = data[index + 2] - ref.b;
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+function estimateBackgroundColor(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number
+): Rgb {
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let count = 0;
+
+  const accumulate = (pixelIndex: number) => {
+    const index = pixelIndex * 4;
+    if (data[index + 3] <= 12) return;
+    r += data[index];
+    g += data[index + 1];
+    b += data[index + 2];
+    count += 1;
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    accumulate(x);
+    accumulate((height - 1) * width + x);
+  }
+  for (let y = 1; y < height - 1; y += 1) {
+    accumulate(y * width);
+    accumulate(y * width + width - 1);
+  }
+
+  if (!count) return { r: 255, g: 255, b: 255 };
+  return { r: r / count, g: g / count, b: b / count };
+}
+
 function isBackgroundCandidate(
   data: Uint8ClampedArray,
-  pixelIndex: number
+  pixelIndex: number,
+  backgroundColor: Rgb
 ): boolean {
   const index = pixelIndex * 4;
   const alpha = data[index + 3];
-  const { luminance, spread } = getPixelMetrics(data, index);
-  return alpha <= 12 || (luminance > 112 && spread < 86);
+  return (
+    alpha <= 12 ||
+    colorDistance(data, index, backgroundColor) < BACKGROUND_COLOR_TOLERANCE
+  );
 }
 
 function markEdgeConnectedBackground(
@@ -74,11 +128,15 @@ function markEdgeConnectedBackground(
   width: number,
   height: number
 ): Uint8Array {
+  const backgroundColor = estimateBackgroundColor(data, width, height);
   const background = new Uint8Array(width * height);
   const queue: number[] = [];
 
   const push = (pixelIndex: number) => {
-    if (background[pixelIndex] || !isBackgroundCandidate(data, pixelIndex)) {
+    if (
+      background[pixelIndex] ||
+      !isBackgroundCandidate(data, pixelIndex, backgroundColor)
+    ) {
       return;
     }
 

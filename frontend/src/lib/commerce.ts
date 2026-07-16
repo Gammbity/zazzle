@@ -2,16 +2,48 @@ import type { SurfaceState } from '@/types/editor';
 import type { TextLayer } from '@/types/layer';
 import { apiClient } from '@/lib/api-client';
 
+export type DeliveryMethod = 'DELIVERY' | 'PICKUP';
+
+export type UserRole =
+  | 'customer'
+  | 'print_operator'
+  | 'manager'
+  | 'admin'
+  | 'support';
+
 export interface CommerceUser {
   id: number;
   email: string;
   first_name: string;
   last_name: string;
   full_name: string;
+  is_staff?: boolean;
+  is_active?: boolean;
+  role?: UserRole;
+  role_display?: string;
+  is_admin_user?: boolean;
+  is_manager?: boolean;
+  can_manage_orders?: boolean;
+  can_manage_products?: boolean;
+  can_manage_pickup_locations?: boolean;
   profile?: {
     phone_number?: string;
     display_name?: string;
   };
+}
+
+export interface PickupLocation {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  latitude: string | number | null;
+  longitude: string | number | null;
+  working_hours: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CommerceVariant {
@@ -24,6 +56,10 @@ export interface CommerceVariant {
   variant_name: string;
   is_default: boolean;
   is_active: boolean;
+  production_cost?: string;
+  profit_margin?: string;
+  profit_percentage?: string;
+  stock_quantity?: number;
 }
 
 export interface CommerceProductType {
@@ -37,6 +73,11 @@ export interface CommerceProductType {
   has_size_variants: boolean;
   has_color_variants: boolean;
   variants: CommerceVariant[];
+  is_active?: boolean;
+  sort_order?: number;
+  variant_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CommerceDraft {
@@ -80,6 +121,7 @@ export interface CommerceOrderSummary {
   order_number: string;
   customer_name?: string;
   status: string;
+  delivery_method?: DeliveryMethod;
   total_amount: string;
   item_count: number;
   created_at: string;
@@ -118,6 +160,10 @@ export interface CommerceOrderDetail {
   shipping_cost: string;
   discount_amount: string;
   total_amount: string;
+  delivery_method: DeliveryMethod;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  pickup_location?: PickupLocation | null;
   shipping_name: string;
   shipping_email: string;
   shipping_phone: string;
@@ -127,6 +173,9 @@ export interface CommerceOrderDetail {
   shipping_postal_code: string;
   shipping_country: string;
   customer_notes: string;
+  admin_notes?: string;
+  tracking_number?: string;
+  carrier?: string;
   items: CommerceOrderItem[];
   payments: Array<{
     id: number;
@@ -157,6 +206,10 @@ export interface CheckoutInput {
   contact_name: string;
   contact_email: string;
   contact_phone: string;
+  delivery_method?: DeliveryMethod;
+  latitude?: number | null;
+  longitude?: number | null;
+  pickup_location?: number | null;
   shipping_name?: string;
   shipping_email?: string;
   shipping_phone?: string;
@@ -369,7 +422,9 @@ export function isAuthenticated(): boolean {
     return false;
   }
 
-  return document.cookie.split('; ').some(cookie => cookie === 'zazzle_session=1');
+  return document.cookie
+    .split('; ')
+    .some(cookie => cookie === 'zazzle_session=1');
 }
 
 async function ensureSessionCookie(): Promise<void> {
@@ -662,6 +717,14 @@ export async function removeCartItem(itemUuid: string): Promise<void> {
 
 export async function clearCart(): Promise<void> {
   await apiClient.delete('/cart/clear/');
+}
+
+export async function getPickupLocations(): Promise<PickupLocation[]> {
+  const response = await apiClient.get<ListResponse<PickupLocation>>(
+    '/orders/pickup-locations/'
+  );
+  const data = response.data;
+  return Array.isArray(data) ? data : (data.results ?? []);
 }
 
 export async function checkoutCart(

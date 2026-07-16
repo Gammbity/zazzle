@@ -20,7 +20,11 @@ class Order(models.Model):
         ('DONE', _('Done')),
         ('CANCELLED', _('Cancelled')),
     ]
-    
+
+    class DeliveryMethod(models.TextChoices):
+        DELIVERY = 'DELIVERY', _('Delivery')
+        PICKUP = 'PICKUP', _('Pickup')
+
     # Order identification
     order_number = models.CharField(_('order number'), max_length=20, unique=True, blank=True)
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
@@ -35,14 +39,29 @@ class Order(models.Model):
     discount_amount = models.DecimalField(_('discount amount'), max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(_('total amount'), max_digits=10, decimal_places=2, default=0)
     
+    # Delivery method
+    delivery_method = models.CharField(
+        _('delivery method'), max_length=16,
+        choices=DeliveryMethod.choices, default=DeliveryMethod.DELIVERY,
+    )
+    latitude = models.DecimalField(_('latitude'), max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(_('longitude'), max_digits=9, decimal_places=6, null=True, blank=True)
+    pickup_location = models.ForeignKey(
+        'PickupLocation',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='orders',
+    )
+
     # Shipping information
     shipping_name = models.CharField(_('shipping name'), max_length=100)
     shipping_email = models.EmailField(_('shipping email'))
     shipping_phone = models.CharField(_('shipping phone'), max_length=20, blank=True)
-    shipping_address = models.TextField(_('shipping address'))
-    shipping_city = models.CharField(_('shipping city'), max_length=100)
-    shipping_state = models.CharField(_('shipping state'), max_length=100)
-    shipping_postal_code = models.CharField(_('shipping postal code'), max_length=20)
+    shipping_address = models.TextField(_('shipping address'), blank=True)
+    shipping_city = models.CharField(_('shipping city'), max_length=100, blank=True)
+    shipping_state = models.CharField(_('shipping state'), max_length=100, blank=True)
+    shipping_postal_code = models.CharField(_('shipping postal code'), max_length=20, blank=True)
     shipping_country = models.CharField(_('shipping country'), max_length=100, default='Uzbekistan')
     
     # Order notes
@@ -100,6 +119,30 @@ class Order(models.Model):
     def item_count(self):
         """Get total number of items."""
         return sum(item.quantity for item in self.items.all())
+
+
+class PickupLocation(models.Model):
+    """Admin-editable pickup point shown at checkout for PICKUP orders."""
+
+    name = models.CharField(_('name'), max_length=150)
+    address = models.CharField(_('address'), max_length=255)
+    city = models.CharField(_('city'), max_length=100, default='Tashkent')
+    latitude = models.DecimalField(_('latitude'), max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(_('longitude'), max_digits=9, decimal_places=6, null=True, blank=True)
+    working_hours = models.CharField(_('working hours'), max_length=150, blank=True)
+    is_active = models.BooleanField(_('is active'), default=True)
+    sort_order = models.PositiveIntegerField(_('sort order'), default=0)
+
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Pickup Location')
+        verbose_name_plural = _('Pickup Locations')
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f"{self.name} ({self.city})"
 
 
 class ProductionFile(models.Model):

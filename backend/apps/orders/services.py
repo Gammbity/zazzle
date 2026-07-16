@@ -90,7 +90,7 @@ def is_assigned_operator(order: Order, user) -> bool:
 
 
 def can_manage_order(order: Order, user) -> bool:
-    return user.is_staff or is_assigned_operator(order, user)
+    return user.has_admin_permission('orders') or is_assigned_operator(order, user)
 
 
 def validate_status_transition(order: Order, new_status: str) -> str | None:

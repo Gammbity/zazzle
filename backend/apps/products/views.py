@@ -9,6 +9,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_cookie
 
+from apps.users.permissions import IsAdminOrCanManageProducts
+
 from .models import ProductType, ProductVariant, ProductAssetTemplate
 from .serializers import (
     ProductTypeListSerializer, ProductTypeDetailSerializer,
@@ -321,7 +323,7 @@ class ProductTypeCreateView(generics.CreateAPIView):
     
     queryset = ProductType.objects.all()
     serializer_class = ProductTypeDetailSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminOrCanManageProducts]
 
 
 class ProductVariantCreateView(generics.CreateAPIView):
@@ -329,18 +331,60 @@ class ProductVariantCreateView(generics.CreateAPIView):
     Admin-only view to create product variants.
     POST /api/admin/products/{product_id}/variants/
     """
-    
+
     serializer_class = ProductVariantDetailSerializer
-    permission_classes = [permissions.IsAdminUser]
-    
+    permission_classes = [IsAdminOrCanManageProducts]
+
     def get_queryset(self):
         product_id = self.kwargs['product_id']
         return ProductVariant.objects.filter(product_type_id=product_id)
-    
+
     def perform_create(self, serializer):
         product_id = self.kwargs['product_id']
         product_type = get_object_or_404(ProductType, id=product_id)
         serializer.save(product_type=product_type)
+
+
+class AdminProductTypeListView(generics.ListAPIView):
+    """
+    Admin-only view listing all product types, including inactive ones.
+    GET /api/products/admin/list/
+    """
+
+    queryset = ProductType.objects.all().prefetch_related('variants')
+    serializer_class = ProductTypeListSerializer
+    permission_classes = [IsAdminOrCanManageProducts]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['category', 'is_active']
+    search_fields = ['name', 'description']
+    ordering_fields = ['name', 'sort_order', 'created_at']
+
+
+class AdminProductTypeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Admin-only view to retrieve, update, or delete a product type.
+    GET/PATCH/DELETE /api/products/admin/{id}/
+    """
+
+    queryset = ProductType.objects.all()
+    serializer_class = ProductTypeDetailSerializer
+    permission_classes = [IsAdminOrCanManageProducts]
+    lookup_field = 'id'
+
+
+class AdminProductVariantDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Admin-only view to retrieve, update, or delete a product variant.
+    GET/PATCH/DELETE /api/products/admin/{product_id}/variants/{id}/
+    """
+
+    serializer_class = ProductVariantDetailSerializer
+    permission_classes = [IsAdminOrCanManageProducts]
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        product_id = self.kwargs['product_id']
+        return ProductVariant.objects.filter(product_type_id=product_id)
 
 
 # Search functionality

@@ -18,6 +18,34 @@ export function useCurrentUser() {
   });
 }
 
+// "Can enter the admin panel shell at all" — true staff/admins, plus any
+// manager (page/section-level checks below narrow what they actually see).
+export function useIsAdmin(): boolean {
+  const { data } = useCurrentUser();
+  return Boolean(data?.is_staff) || data?.role === 'manager';
+}
+
+// True admin/superuser only — grants roles/permissions, sees the Users page.
+export function useIsTrueAdmin(): boolean {
+  const { data } = useCurrentUser();
+  return Boolean(data?.is_admin_user);
+}
+
+export function useCanManageOrders(): boolean {
+  const { data } = useCurrentUser();
+  return Boolean(data?.is_admin_user || data?.can_manage_orders);
+}
+
+export function useCanManageProducts(): boolean {
+  const { data } = useCurrentUser();
+  return Boolean(data?.is_admin_user || data?.can_manage_products);
+}
+
+export function useCanManagePickupLocations(): boolean {
+  const { data } = useCurrentUser();
+  return Boolean(data?.is_admin_user || data?.can_manage_pickup_locations);
+}
+
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({

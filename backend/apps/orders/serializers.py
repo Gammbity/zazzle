@@ -4,6 +4,7 @@ from .models import (
     Order,
     OrderItem,
     Payment,
+    PickupLocation,
     ShippingMethod,
     Coupon,
     PaymentTransaction,
@@ -52,33 +53,47 @@ class ShippingMethodSerializer(serializers.ModelSerializer):
         ]
 
 
+class PickupLocationSerializer(serializers.ModelSerializer):
+    """Serializer for PickupLocation model."""
+
+    class Meta:
+        model = PickupLocation
+        fields = [
+            'id', 'name', 'address', 'city', 'latitude', 'longitude',
+            'working_hours', 'is_active', 'sort_order', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
 class OrderListSerializer(serializers.ModelSerializer):
     """Serializer for Order list view."""
-    
+
     customer_name = serializers.CharField(source='customer.get_full_name', read_only=True)
     item_count = serializers.ReadOnlyField()
-    
+
     class Meta:
         model = Order
         fields = [
-            'id', 'order_number', 'customer_name', 'status',
+            'id', 'order_number', 'customer_name', 'status', 'delivery_method',
             'total_amount', 'item_count', 'created_at', 'updated_at'
         ]
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
     """Serializer for Order detail view."""
-    
+
     items = OrderItemSerializer(many=True, read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
     customer = serializers.SerializerMethodField()
     shipping_method_info = ShippingMethodSerializer(source='shipping_method', read_only=True)
-    
+    pickup_location = PickupLocationSerializer(read_only=True)
+
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'customer', 'status', 'subtotal',
             'tax_amount', 'shipping_cost', 'discount_amount', 'total_amount',
+            'delivery_method', 'latitude', 'longitude', 'pickup_location',
             'shipping_name', 'shipping_email', 'shipping_phone',
             'shipping_address', 'shipping_city', 'shipping_state',
             'shipping_postal_code', 'shipping_country', 'customer_notes',
@@ -185,6 +200,17 @@ class CheckoutSerializer(serializers.Serializer):
     contact_email = serializers.EmailField()
     contact_phone = serializers.CharField(max_length=20)
     note = serializers.CharField(required=False, allow_blank=True)
+    delivery_method = serializers.ChoiceField(
+        choices=Order.DeliveryMethod.choices,
+        default=Order.DeliveryMethod.DELIVERY,
+    )
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    pickup_location = serializers.PrimaryKeyRelatedField(
+        queryset=PickupLocation.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
     shipping_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     shipping_email = serializers.EmailField(required=False, allow_blank=True)
     shipping_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
@@ -215,6 +241,24 @@ class CheckoutSerializer(serializers.Serializer):
         attrs['shipping_postal_code'] = attrs.get('shipping_postal_code', '')
         attrs['shipping_country'] = attrs.get('shipping_country') or 'Uzbekistan'
         attrs['customer_notes'] = attrs.get('customer_notes') or attrs.get('note', '')
+
+        if attrs.get('delivery_method') == Order.DeliveryMethod.PICKUP:
+            pickup_location = attrs.get('pickup_location')
+            if not pickup_location:
+                raise serializers.ValidationError(
+                    {'pickup_location': "Olib ketish punkti tanlanishi shart."}
+                )
+            attrs['shipping_address'] = ''
+            attrs['shipping_city'] = ''
+            attrs['shipping_state'] = ''
+            attrs['shipping_postal_code'] = ''
+            attrs['latitude'] = pickup_location.latitude
+            attrs['longitude'] = pickup_location.longitude
+        else:
+            attrs['pickup_location'] = None
+            if not attrs['shipping_address']:
+                raise serializers.ValidationError({'shipping_address': "Manzil kiritilishi shart."})
+
         return attrs
 
 

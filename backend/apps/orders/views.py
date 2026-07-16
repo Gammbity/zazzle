@@ -15,10 +15,15 @@ from .models import (
     OrderAssignment,
     OrderItem,
     PaymentTransaction,
+    PickupLocation,
     ProductionFile,
     ShippingMethod,
 )
 from apps.common import idempotency
+from apps.users.permissions import (
+    IsAdminOrCanManageOrders,
+    IsAdminOrCanManagePickupLocations,
+)
 
 from .payment_providers import init_payment_for_provider, verify_provider_signature
 from .state import InvalidTransition, transition as order_transition
@@ -33,6 +38,7 @@ from .serializers import (
     OrderStatusUpdateInputSerializer,
     OrderStatusUpdateSerializer,
     PaymentInitSerializer,
+    PickupLocationSerializer,
     ShippingMethodSerializer,
 )
 from .services import (
@@ -152,9 +158,9 @@ class AdminOrderListView(generics.ListAPIView):
     """Admin view for all orders."""
 
     serializer_class = OrderListSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminOrCanManageOrders]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['status', 'shipping_country', 'created_at']
+    filterset_fields = ['status', 'delivery_method', 'shipping_country', 'created_at']
     search_fields = ['order_number', 'customer__email', 'shipping_name']
     ordering_fields = ['created_at', 'total_amount', 'status']
     ordering = ['-created_at']
@@ -168,7 +174,7 @@ class AdminOrderDetailView(generics.RetrieveUpdateAPIView):
     """Admin view for order detail and updates."""
 
     serializer_class = OrderDetailSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminOrCanManageOrders]
 
     def get_queryset(self):
         """Get all orders for admin."""
@@ -197,6 +203,30 @@ class ShippingMethodListView(generics.ListAPIView):
             models.Q(available_countries__contains=[country])
             | models.Q(available_countries=[])
         )
+
+
+class PickupLocationListView(generics.ListAPIView):
+    """Public list of active pickup locations, shown at checkout."""
+
+    queryset = PickupLocation.objects.filter(is_active=True)
+    serializer_class = PickupLocationSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class AdminPickupLocationListCreateView(generics.ListCreateAPIView):
+    """Admin view to list (incl. inactive) and create pickup locations."""
+
+    queryset = PickupLocation.objects.all()
+    serializer_class = PickupLocationSerializer
+    permission_classes = [IsAdminOrCanManagePickupLocations]
+
+
+class AdminPickupLocationDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Admin view to retrieve, update, or delete a pickup location."""
+
+    queryset = PickupLocation.objects.all()
+    serializer_class = PickupLocationSerializer
+    permission_classes = [IsAdminOrCanManagePickupLocations]
 
 
 @api_view(['POST'])
@@ -250,6 +280,10 @@ def _checkout(request):
 
             order = Order.objects.create(
                 customer=request.user,
+                delivery_method=serializer.validated_data['delivery_method'],
+                latitude=serializer.validated_data.get('latitude'),
+                longitude=serializer.validated_data.get('longitude'),
+                pickup_location=serializer.validated_data.get('pickup_location'),
                 shipping_name=serializer.validated_data['shipping_name'],
                 shipping_email=serializer.validated_data['shipping_email'],
                 shipping_phone=serializer.validated_data['shipping_phone'],
@@ -378,7 +412,7 @@ def order_stats(request):
     """Get order statistics for user or admin."""
     user = request.user
 
-    if user.is_staff:
+    if user.has_admin_permission('orders'):
         stats = build_order_stats(
             get_admin_order_queryset(),
             amount_label='total_revenue',
@@ -539,7 +573,7 @@ def operator_orders(request):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.IsAdminUser])
+@permission_classes([IsAdminOrCanManageOrders])
 def assign_order(request, order_id: int):
     """
     Assign an order to an operator (admin-only).

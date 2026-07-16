@@ -21,7 +21,8 @@ from .serializers import (
     UserSerializer, UserUpdateSerializer, UserRegistrationSerializer,
     CustomTokenObtainPairSerializer, LoginSerializer, ChangePasswordSerializer,
     SocialConnectionSerializer, PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer, AdminUserRoleUpdateSerializer,
+    AdminUserCreateSerializer,
 )
 
 User = get_user_model()
@@ -202,6 +203,34 @@ class UserListView(generics.ListAPIView):
     search_fields = ['username', 'email', 'first_name', 'last_name']
     ordering_fields = ['created_at', 'username', 'email']
     ordering = ['-created_at']
+
+
+class AdminUserRoleUpdateView(generics.UpdateAPIView):
+    """Admin-only: change a user's role and manager permission grants."""
+
+    queryset = User.objects.all()
+    serializer_class = AdminUserRoleUpdateSerializer
+    permission_classes = [IsAdmin]
+
+    def update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        response = super().update(request, *args, **kwargs)
+        response.data = UserSerializer(self.get_object()).data
+        return response
+
+
+class AdminUserCreateView(generics.CreateAPIView):
+    """Admin-only: create a user directly with a chosen role (e.g. manager)."""
+
+    queryset = User.objects.all()
+    serializer_class = AdminUserCreateSerializer
+    permission_classes = [IsAdmin]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
 class UserDetailView(generics.RetrieveAPIView):

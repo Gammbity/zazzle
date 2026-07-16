@@ -7,6 +7,8 @@ import Navbar from '@/components/Navbar';
 import NavigationProgress from '@/components/NavigationProgress';
 import ProductGrid from '@/components/ProductGrid';
 import SkipToContent from '@/components/SkipToContent';
+import AdminGuard from '@/components/admin/AdminGuard';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { getProductBySlug } from '@/lib/products/catalog';
 import { Link, matchPath, navigate, useLocation } from '@/lib/router';
 import CartPage from '@/pages/CartPage';
@@ -15,6 +17,13 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import OrderDetailPage from '@/pages/OrderDetailPage';
 import OrdersPage from '@/pages/OrdersPage';
 import ProductDetailPage from '@/pages/ProductDetailPage';
+import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
+import AdminOrdersListPage from '@/pages/admin/AdminOrdersListPage';
+import AdminOrderDetailPage from '@/pages/admin/AdminOrderDetailPage';
+import AdminProductsListPage from '@/pages/admin/AdminProductsListPage';
+import AdminProductDetailPage from '@/pages/admin/AdminProductDetailPage';
+import AdminPickupLocationsPage from '@/pages/admin/AdminPickupLocationsPage';
+import AdminUsersPage from '@/pages/admin/AdminUsersPage';
 
 const MugCustomizer = lazy(
   () => import('@/components/customizer/CustomizerWrapper')
@@ -142,6 +151,11 @@ const STATIC_ROUTES: Record<string, () => ReactNode> = {
   '/cart': () => <CartPage />,
   '/checkout': () => <CheckoutPage />,
   '/orders': () => <OrdersPage />,
+  '/admin': () => <AdminDashboardPage />,
+  '/admin/orders': () => <AdminOrdersListPage />,
+  '/admin/products': () => <AdminProductsListPage />,
+  '/admin/pickup-locations': () => <AdminPickupLocationsPage />,
+  '/admin/users': () => <AdminUsersPage />,
 };
 
 const REDIRECTS: Record<string, { to: string; replace?: boolean }> = {
@@ -172,6 +186,16 @@ function resolvePage(pathname: string): ReactNode {
 
   const orderMatch = matchPath('/orders/:id', pathname);
   if (orderMatch?.id) return <OrderDetailPage orderLookup={orderMatch.id} />;
+
+  const adminOrderMatch = matchPath('/admin/orders/:id', pathname);
+  if (adminOrderMatch?.id) {
+    return <AdminOrderDetailPage orderId={adminOrderMatch.id} />;
+  }
+
+  const adminProductMatch = matchPath('/admin/products/:id', pathname);
+  if (adminProductMatch?.id) {
+    return <AdminProductDetailPage productId={adminProductMatch.id} />;
+  }
 
   const editorMatch = matchPath('/editor/:draftId', pathname);
   if (editorMatch?.draftId) {
@@ -210,6 +234,21 @@ export default function App() {
     () => resolvePage(location.pathname),
     [location.pathname]
   );
+
+  if (location.pathname.startsWith('/admin')) {
+    return (
+      <>
+        <SkipToContent />
+        <div id='main-content'>
+          <ErrorBoundary>
+            <AdminGuard>
+              <AdminLayout>{page}</AdminLayout>
+            </AdminGuard>
+          </ErrorBoundary>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

@@ -35,6 +35,8 @@ social_urlpatterns = [
 admin_urlpatterns = [
     path('list/', views.UserListView.as_view(), name='list'),
     path('role-stats/', views.user_role_stats, name='role_stats'),
+    path('create/', views.AdminUserCreateView.as_view(), name='admin_create'),
+    path('<int:pk>/role/', views.AdminUserRoleUpdateView.as_view(), name='admin_update_role'),
 ]
 
 urlpatterns = [

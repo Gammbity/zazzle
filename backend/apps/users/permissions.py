@@ -56,6 +56,39 @@ class IsAdmin(permissions.BasePermission):
         )
 
 
+class IsAdminOrCanManageOrders(permissions.BasePermission):
+    """Admins, or managers granted `can_manage_orders`."""
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.has_admin_permission('orders')
+        )
+
+
+class IsAdminOrCanManageProducts(permissions.BasePermission):
+    """Admins, or managers granted `can_manage_products`."""
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.has_admin_permission('products')
+        )
+
+
+class IsAdminOrCanManagePickupLocations(permissions.BasePermission):
+    """Admins, or managers granted `can_manage_pickup_locations`."""
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.has_admin_permission('pickup_locations')
+        )
+
+
 class IsCustomerOrAdmin(permissions.BasePermission):
     """
     Permission to allow customers and admins to access the view.

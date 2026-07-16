@@ -37,19 +37,26 @@ class UserSerializer(serializers.ModelSerializer):
     is_customer = serializers.ReadOnlyField()
     is_print_operator = serializers.ReadOnlyField()
     is_support = serializers.ReadOnlyField()
+    is_manager = serializers.ReadOnlyField()
     is_admin_user = serializers.ReadOnlyField()
-    
+
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name', 'full_name',
-            'role', 'role_display', 'is_customer', 'is_print_operator', 'is_support', 'is_admin_user',
+            'role', 'role_display', 'is_customer', 'is_print_operator', 'is_support',
+            'is_manager', 'is_admin_user',
+            'can_manage_orders', 'can_manage_products', 'can_manage_pickup_locations',
+            'is_staff', 'is_active',
             'date_of_birth', 'address_line', 'city', 'state',
             'postal_code', 'country', 'full_address', 'avatar', 'bio',
             'is_seller', 'store_name', 'store_description', 'created_at',
             'updated_at', 'profile'
         ]
-        read_only_fields = ['id', 'role', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'role', 'is_staff', 'can_manage_orders', 'can_manage_products',
+            'can_manage_pickup_locations', 'created_at', 'updated_at',
+        ]
         extra_kwargs = {
             'email': {'required': True},
         }
@@ -292,6 +299,66 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         if not User.objects.filter(email=value).exists():
             raise serializers.ValidationError("No user found with this email address.")
         return value
+
+
+class AdminUserRoleUpdateSerializer(serializers.ModelSerializer):
+    """Admin-only: change a user's role and manager permission grants."""
+
+    class Meta:
+        model = User
+        fields = [
+            'role', 'can_manage_orders', 'can_manage_products',
+            'can_manage_pickup_locations',
+        ]
+
+    def validate(self, attrs):
+        role = attrs.get('role', getattr(self.instance, 'role', None))
+        if role != User.Role.MANAGER:
+            # Grants are meaningless (and hidden in the UI) for non-managers —
+            # keep the stored state clean rather than leaving stale flags.
+            attrs['can_manage_orders'] = False
+            attrs['can_manage_products'] = False
+            attrs['can_manage_pickup_locations'] = False
+        return attrs
+
+
+class AdminUserCreateSerializer(serializers.ModelSerializer):
+    """Admin-only: create a user directly with a chosen role (e.g. manager/admin)."""
+
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'email', 'password', 'first_name', 'last_name',
+            'role', 'can_manage_orders', 'can_manage_products', 'can_manage_pickup_locations',
+        ]
+
+    def validate_password(self, value):
+        try:
+            validate_password(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        role = validated_data.get('role', User.Role.CUSTOMER)
+        if role != User.Role.MANAGER:
+            validated_data['can_manage_orders'] = False
+            validated_data['can_manage_products'] = False
+            validated_data['can_manage_pickup_locations'] = False
+        if role == User.Role.ADMIN:
+            validated_data['is_staff'] = True
+        user = User.objects.create_user(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):

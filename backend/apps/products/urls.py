@@ -19,7 +19,10 @@ urlpatterns = [
     path('featured/', views.featured_products, name='featured-products'),
     path('search/', views.search_products, name='search-products'),
     
-    # Admin endpoints (for future use)
+    # Admin endpoints
     path('admin/create/', views.ProductTypeCreateView.as_view(), name='admin-create-product'),
     path('admin/<int:product_id>/variants/create/', views.ProductVariantCreateView.as_view(), name='admin-create-variant'),
+    path('admin/list/', views.AdminProductTypeListView.as_view(), name='admin-product-list'),
+    path('admin/<int:id>/', views.AdminProductTypeDetailView.as_view(), name='admin-product-detail'),
+    path('admin/<int:product_id>/variants/<int:id>/', views.AdminProductVariantDetailView.as_view(), name='admin-variant-detail'),
 ]

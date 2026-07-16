@@ -2,13 +2,14 @@ import base64
 import hashlib
 import hmac
 import json
+from decimal import Decimal
 
 from django.urls import reverse
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
-from .models import Order, PaymentTransaction, ProductionFile, OrderAssignment
+from .models import Order, PaymentTransaction, PickupLocation, ProductionFile, OrderAssignment
 from apps.cart.models import Cart, CartItem
 from apps.designs.models import Draft
 from apps.products.models import ProductType, ProductVariant
@@ -91,6 +92,7 @@ class PaymentIdempotencyTests(TestCase):
                 'contact_name': 'User',
                 'contact_email': 'user@example.com',
                 'contact_phone': '+998900000000',
+                'shipping_address': 'Test street 1',
                 'note': 'Test order',
             },
             format='json',
@@ -260,6 +262,7 @@ class ProductionWorkflowPermissionTests(TestCase):
                 'contact_name': 'Customer',
                 'contact_email': 'other@example.com',
                 'contact_phone': '+998901111111',
+                'shipping_address': 'Test street 2',
                 'note': 'Prod test',
             },
             format='json',
@@ -346,4 +349,124 @@ class ProductionWorkflowPermissionTests(TestCase):
         url = reverse('orders:order-detail', kwargs={'pk': 'missing-order'})
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 404)
+
+
+class PickupLocationCheckoutTests(TestCase):
+    """PICKUP checkout must require a pickup_location; DELIVERY must not."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.customer = User.objects.create_user(
+            email='pickup@example.com', password='password', username='pickupuser',
+        )
+        self.client.force_authenticate(self.customer)
+
+        self.location = PickupLocation.objects.create(
+            name='Test Showroom', address='Test address 1', city='Tashkent',
+            latitude=Decimal('41.311081'), longitude=Decimal('69.240562'),
+        )
+
+        product_type, _ = ProductType.objects.get_or_create(
+            category=ProductType.ProductCategory.MUG,
+            defaults={'name': 'Mug', 'slug': 'mug-pickup'},
+        )
+        variant = ProductVariant.objects.create(
+            product_type=product_type, size='', color='QA Pickup',
+            color_hex='#111111', sale_price=90000, production_cost=30000, is_active=True,
+        )
+        draft = Draft.objects.create(
+            product_type=product_type, product_variant=variant, customer=self.customer,
+            status=Draft.DraftStatus.PREVIEW_READY, name='Pickup Draft',
+            text_layers=[{'id': 't1', 'text': 'QA', 'x': 0, 'y': 0}],
+            editor_state={'zoom': 1, 'pan_x': 0, 'pan_y': 0},
+        )
+        self.cart = Cart.objects.create(customer=self.customer)
+        CartItem.objects.create(cart=self.cart, draft=draft, quantity=1, unit_price=variant.sale_price)
+
+    def _checkout_payload(self, **overrides):
+        payload = {
+            'contact_name': 'Pickup User',
+            'contact_email': 'pickup@example.com',
+            'contact_phone': '+998903334455',
+            'delivery_method': 'PICKUP',
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_pickup_without_location_is_rejected(self):
+        resp = self.client.post(reverse('api-checkout'), data=self._checkout_payload(), format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('pickup_location', resp.data)
+
+    def test_pickup_with_location_succeeds_and_copies_coords(self):
+        resp = self.client.post(
+            reverse('api-checkout'),
+            data=self._checkout_payload(pickup_location=self.location.id),
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 201)
+        order = Order.objects.get(id=resp.data['order_id'])
+        self.assertEqual(order.pickup_location_id, self.location.id)
+        self.assertEqual(order.latitude, self.location.latitude)
+        self.assertEqual(order.longitude, self.location.longitude)
+
+    def test_inactive_pickup_location_is_rejected(self):
+        self.location.is_active = False
+        self.location.save()
+        resp = self.client.post(
+            reverse('api-checkout'),
+            data=self._checkout_payload(pickup_location=self.location.id),
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+
+
+class ManagerPermissionTests(TestCase):
+    """A manager's admin-panel access is scoped to the grants an admin gave them."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.orders_manager = User.objects.create_user(
+            email='mgr.orders@example.com', password='password', username='mgrorders',
+            role=User.Role.MANAGER, can_manage_orders=True,
+        )
+        self.unscoped_manager = User.objects.create_user(
+            email='mgr.none@example.com', password='password', username='mgrnone',
+            role=User.Role.MANAGER,
+        )
+        self.admin = User.objects.create_user(
+            email='admin2@example.com', password='password', username='admin2',
+            role=User.Role.ADMIN,
+        )
+
+    def test_orders_manager_can_access_orders_admin(self):
+        self.client.force_authenticate(self.orders_manager)
+        resp = self.client.get(reverse('orders:admin-order-list'))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_orders_manager_cannot_access_pickup_location_admin(self):
+        self.client.force_authenticate(self.orders_manager)
+        resp = self.client.get(reverse('orders:admin-pickup-location-list'))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_orders_manager_cannot_access_products_admin(self):
+        self.client.force_authenticate(self.orders_manager)
+        resp = self.client.get(reverse('products:admin-product-list'))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_unscoped_manager_gets_403_everywhere(self):
+        self.client.force_authenticate(self.unscoped_manager)
+        for url_name in ('orders:admin-order-list', 'orders:admin-pickup-location-list'):
+            resp = self.client.get(reverse(url_name))
+            self.assertEqual(resp.status_code, 403)
+
+    def test_admin_can_access_everything(self):
+        self.client.force_authenticate(self.admin)
+        for url_name in (
+            'orders:admin-order-list',
+            'orders:admin-pickup-location-list',
+            'products:admin-product-list',
+        ):
+            resp = self.client.get(reverse(url_name))
+            self.assertEqual(resp.status_code, 200)
 

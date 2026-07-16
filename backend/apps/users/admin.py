@@ -39,7 +39,10 @@ class UserAdmin(BaseUserAdmin):
     
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Role & Permissions', {
-            'fields': ('role',)
+            'fields': (
+                'role', 'can_manage_orders', 'can_manage_products',
+                'can_manage_pickup_locations',
+            )
         }),
         ('Profile Information', {
             'fields': ('date_of_birth', 'avatar', 'bio')
@@ -64,6 +67,7 @@ class UserAdmin(BaseUserAdmin):
             User.Role.CUSTOMER: '#28a745',
             User.Role.PRINT_OPERATOR: '#007bff',
             User.Role.SUPPORT: '#ffc107',
+            User.Role.MANAGER: '#6f42c1',
             User.Role.ADMIN: '#dc3545',
         }
         color = colors.get(obj.role, '#6c757d')
@@ -75,8 +79,17 @@ class UserAdmin(BaseUserAdmin):
     role_display.short_description = 'Role'
     
     # Admin Actions
-    actions = ['make_customer', 'make_print_operator', 'make_support', 'make_admin', 'deactivate_users']
-    
+    actions = [
+        'make_customer', 'make_print_operator', 'make_support', 'make_manager',
+        'make_admin', 'deactivate_users',
+    ]
+
+    def make_manager(self, request, queryset):
+        """Bulk action to set role to MANAGER."""
+        updated = queryset.update(role=User.Role.MANAGER)
+        self.message_user(request, f'{updated} users updated to Manager role.')
+    make_manager.short_description = "Set selected users as Managers"
+
     def make_customer(self, request, queryset):
         """Bulk action to set role to CUSTOMER."""
         updated = queryset.update(role=User.Role.CUSTOMER)

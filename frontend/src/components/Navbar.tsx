@@ -6,9 +6,10 @@ import {
   Package,
   Home,
   ClipboardList,
+  ShieldCheck,
 } from 'lucide-react';
 import { Link, useLocation } from '@/lib/router';
-import { useCart } from '@/hooks/queries';
+import { useCart, useIsAdmin } from '@/hooks/queries';
 import { isAuthenticated } from '@/lib/commerce';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,7 @@ export default function Navbar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const cartQuery = useCart();
+  const isAdmin = useIsAdmin();
 
   const cartCount = cartQuery.data?.total_items ?? 0;
   const showCartBadge = isAuthenticated() && cartCount > 0;
@@ -44,7 +46,8 @@ export default function Navbar() {
   const isActive = useCallback(
     (to: string) => {
       if (to === '/') return location.pathname === '/';
-      if (to.includes('#')) return location.pathname === '/' && location.hash === '#products';
+      if (to.includes('#'))
+        return location.pathname === '/' && location.hash === '#products';
       return location.pathname.startsWith(to);
     },
     [location.pathname, location.hash]
@@ -70,7 +73,10 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className='hidden items-center gap-1 md:flex' aria-label='Asosiy navigatsiya'>
+        <nav
+          className='hidden items-center gap-1 md:flex'
+          aria-label='Asosiy navigatsiya'
+        >
           {NAV_LINKS.map(link => (
             <Link
               key={link.to}
@@ -85,6 +91,14 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to='/admin'
+              className='rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-amber-50/60 hover:text-slate-900'
+            >
+              Admin panel
+            </Link>
+          )}
         </nav>
 
         {/* Right side: cart + mobile toggle */}
@@ -115,7 +129,11 @@ export default function Navbar() {
             aria-label={mobileOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
             aria-expanded={mobileOpen}
           >
-            {mobileOpen ? <X className='h-5 w-5' /> : <Menu className='h-5 w-5' />}
+            {mobileOpen ? (
+              <X className='h-5 w-5' />
+            ) : (
+              <Menu className='h-5 w-5' />
+            )}
           </button>
         </div>
       </div>
@@ -152,6 +170,20 @@ export default function Navbar() {
                   </Link>
                 );
               })}
+              {isAdmin && (
+                <Link
+                  to='/admin'
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors',
+                    location.pathname.startsWith('/admin')
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'text-slate-700 hover:bg-amber-50/60'
+                  )}
+                >
+                  <ShieldCheck className='h-4 w-4' />
+                  Admin panel
+                </Link>
+              )}
               <Link
                 to='/cart'
                 className={cn(

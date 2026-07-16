@@ -24,15 +24,18 @@
     "clsx": "^2.0.0",
     "fabric": "^5.5.2",
     "konva": "^9.3.22",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.577.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-konva": "^18.2.14",
+    "react-leaflet": "^4.2.1",
     "tailwind-merge": "^2.0.0",
     "three": "^0.183.2",
     "zustand": "^4.4.6"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^20.9.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",

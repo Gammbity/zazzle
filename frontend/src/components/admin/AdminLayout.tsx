@@ -15,6 +15,7 @@ import {
   useIsSuperAdmin,
   useLogout,
 } from '@/hooks/queries';
+import { useAdminPath } from '@/components/admin/AdminBaseContext';
 import { cn } from '@/lib/utils';
 
 interface NavLink {
@@ -30,13 +31,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const logoutMutation = useLogout();
   const isProductionStaff = useIsProductionStaff();
   const isSuperAdmin = useIsSuperAdmin();
+  const adminPath = useAdminPath();
 
   const navLinks: NavLink[] = [
-    { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    {
+      to: adminPath(''),
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      exact: true,
+    },
     ...(isProductionStaff
       ? [
           {
-            to: '/admin/orders',
+            to: adminPath('/orders'),
             label: 'Buyurtmalar',
             icon: ClipboardList,
             exact: false,
@@ -46,7 +53,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     ...(isSuperAdmin
       ? [
           {
-            to: '/admin/products',
+            to: adminPath('/products'),
             label: 'Mahsulotlar',
             icon: Package,
             exact: false,
@@ -56,7 +63,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     ...(isSuperAdmin
       ? [
           {
-            to: '/admin/production-centers',
+            to: adminPath('/production-centers'),
             label: 'Ishlab chiqarish markazlari',
             icon: MapPin,
             exact: false,
@@ -66,7 +73,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     ...(isSuperAdmin
       ? [
           {
-            to: '/admin/users',
+            to: adminPath('/users'),
             label: 'Foydalanuvchilar',
             icon: Users,
             exact: false,

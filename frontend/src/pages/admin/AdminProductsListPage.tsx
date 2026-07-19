@@ -1,8 +1,10 @@
 import { ArrowRight, Package } from 'lucide-react';
 import { useAdminProducts } from '@/hooks/queries';
 import { Link } from '@/lib/router';
+import { useAdminPath } from '@/components/admin/AdminBaseContext';
 
 export default function AdminProductsListPage() {
+  const adminPath = useAdminPath();
   const productsQuery = useAdminProducts();
   const data = productsQuery.data;
   const products = data ? (Array.isArray(data) ? data : data.results) : [];
@@ -60,7 +62,7 @@ export default function AdminProductsListPage() {
                 </div>
 
                 <Link
-                  to={`/admin/products/${product.id}`}
+                  to={adminPath(`/products/${product.id}`)}
                   className='inline-flex items-center gap-1.5 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700'
                 >
                   Tahrirlash

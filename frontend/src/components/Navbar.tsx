@@ -9,7 +9,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Link, useLocation } from '@/lib/router';
-import { useCart, useIsAdmin } from '@/hooks/queries';
+import { useCart, useCurrentUser, useIsAdmin } from '@/hooks/queries';
 import { isAuthenticated } from '@/lib/commerce';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,13 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const cartQuery = useCart();
   const isAdmin = useIsAdmin();
+  const { data: user } = useCurrentUser();
+  // Partner staff land on their own /<slug>/admin; super admins (and staff
+  // without a center) use the generic shell.
+  const adminHref =
+    user && !user.is_super_admin && user.production_center_slug
+      ? `/${user.production_center_slug}/admin`
+      : '/admin';
 
   const cartCount = cartQuery.data?.total_items ?? 0;
   const showCartBadge = isAuthenticated() && cartCount > 0;
@@ -93,7 +100,7 @@ export default function Navbar() {
           ))}
           {isAdmin && (
             <Link
-              to='/admin'
+              to={adminHref}
               className='rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-amber-50/60 hover:text-slate-900'
             >
               Admin panel
@@ -172,10 +179,10 @@ export default function Navbar() {
               })}
               {isAdmin && (
                 <Link
-                  to='/admin'
+                  to={adminHref}
                   className={cn(
                     'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors',
-                    location.pathname.startsWith('/admin')
+                    location.pathname.startsWith(adminHref)
                       ? 'bg-amber-50 text-amber-700'
                       : 'text-slate-700 hover:bg-amber-50/60'
                   )}

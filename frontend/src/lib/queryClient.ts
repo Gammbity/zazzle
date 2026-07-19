@@ -8,6 +8,7 @@ export const queryKeys = {
   orders: ['orders'] as const,
   orderList: ['orders', 'list'] as const,
   orderStats: ['orders', 'stats'] as const,
+  orderAnalytics: (days: number) => ['orders', 'analytics', days] as const,
   order: (lookup: string | number) =>
     ['orders', 'detail', String(lookup)] as const,
   commerceProduct: (slug: string) => ['commerceProduct', slug] as const,

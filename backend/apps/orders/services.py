@@ -1,11 +1,13 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.db.models import Count, DecimalField, Q, QuerySet, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDate
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
-from .models import Order, OrderAssignment
+from .models import Order, OrderAssignment, OrderItem
 
 PRODUCTION_ACTIVE_STATUSES = [
     'READY_FOR_PRODUCTION', 'IN_PRODUCTION', 'QUALITY_CHECK',
@@ -190,3 +192,99 @@ def build_order_stats(
         stats['cancelled_orders'] = aggregated['cancelled_orders']
 
     return stats
+
+
+def build_order_analytics(queryset: QuerySet[Order], *, days: int = 30) -> dict:
+    """
+    Aggregate data for the admin dashboard's analytics charts: a daily
+    revenue/order-count trend, a status breakdown, delivery-method split,
+    top products by units sold, and orders per production center.
+    `queryset` is expected to already be scoped to what the requesting
+    user may see (see get_admin_order_queryset).
+    """
+    decimal_field = DecimalField(max_digits=10, decimal_places=2)
+    since = timezone.now() - timedelta(days=days - 1)
+
+    daily_rows = (
+        queryset
+        .filter(created_at__gte=since)
+        .annotate(day=TruncDate('created_at'))
+        .values('day')
+        .annotate(
+            orders=Count('id'),
+            revenue=Coalesce(
+                Sum('total_amount', filter=Q(status__in=REVENUE_STATUSES)),
+                Value(Decimal('0.00')),
+                output_field=decimal_field,
+            ),
+        )
+    )
+    by_day = {row['day']: row for row in daily_rows}
+    revenue_by_day = []
+    for offset in range(days):
+        day = (since + timedelta(days=offset)).date()
+        row = by_day.get(day)
+        revenue_by_day.append({
+            'date': day.isoformat(),
+            'orders': row['orders'] if row else 0,
+            'revenue': row['revenue'] if row else Decimal('0.00'),
+        })
+
+    status_counts = {
+        row['status']: row['count']
+        for row in queryset.values('status').annotate(count=Count('id'))
+    }
+    orders_by_status = [
+        {'status': code, 'label': str(label), 'count': status_counts.get(code, 0)}
+        for code, label in Order.ORDER_STATUS
+    ]
+
+    delivery_labels = dict(Order.DeliveryMethod.choices)
+    orders_by_delivery_method = [
+        {
+            'method': row['delivery_method'],
+            'label': str(delivery_labels.get(row['delivery_method'], row['delivery_method'])),
+            'count': row['count'],
+        }
+        for row in (
+            queryset.values('delivery_method')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+    ]
+
+    orders_by_center = [
+        {'center': row['production_center__name'] or '—', 'count': row['count']}
+        for row in (
+            queryset.values('production_center__name')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+    ]
+
+    top_products = [
+        {
+            'product_name': row['product_name'],
+            'units_sold': row['units_sold'],
+            'revenue': row['revenue'],
+        }
+        for row in (
+            OrderItem.objects.filter(order__in=queryset)
+            .values('product_name')
+            .annotate(
+                units_sold=Coalesce(Sum('quantity'), 0),
+                revenue=Coalesce(
+                    Sum('total_price'), Value(Decimal('0.00')), output_field=decimal_field,
+                ),
+            )
+            .order_by('-units_sold')[:5]
+        )
+    ]
+
+    return {
+        'revenue_by_day': revenue_by_day,
+        'orders_by_status': orders_by_status,
+        'orders_by_delivery_method': orders_by_delivery_method,
+        'orders_by_center': orders_by_center,
+        'top_products': top_products,
+    }

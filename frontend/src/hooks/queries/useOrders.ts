@@ -3,10 +3,12 @@ import {
   cancelOrder,
   checkoutCart,
   getOrder,
+  getOrderAnalytics,
   getOrders,
   getOrderStats,
   initPayment,
   isAuthenticated,
+  type CommerceOrderAnalytics,
   type CommerceOrderDetail,
   type CommerceOrderStats,
   type CommerceOrderSummary,
@@ -25,6 +27,14 @@ export function useOrderStats() {
   return useQuery<CommerceOrderStats>({
     queryKey: queryKeys.orderStats,
     queryFn: getOrderStats,
+    enabled: isAuthenticated(),
+  });
+}
+
+export function useOrderAnalytics(days = 30) {
+  return useQuery<CommerceOrderAnalytics>({
+    queryKey: queryKeys.orderAnalytics(days),
+    queryFn: () => getOrderAnalytics(days),
     enabled: isAuthenticated(),
   });
 }

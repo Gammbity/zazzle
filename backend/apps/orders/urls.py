@@ -7,6 +7,7 @@ urlpatterns = [
     # Customer order endpoints
     path('', views.OrderListView.as_view(), name='order-list'),
     path('stats/', views.order_stats, name='order-stats'),
+    path('analytics/', views.order_analytics, name='order-analytics'),
 
     # Checkout
     path('checkout/', views.checkout, name='checkout'),

@@ -13,6 +13,7 @@ import {
   getOrderStatusMeta,
 } from '@/lib/commerce';
 import { Link } from '@/lib/router';
+import { useAdminPath } from '@/components/admin/AdminBaseContext';
 
 interface AdminOrderDetailPageProps {
   orderId: string;
@@ -58,6 +59,7 @@ export default function AdminOrderDetailPage({
 }: AdminOrderDetailPageProps) {
   const orderQuery = useAdminOrder(orderId);
   const order = orderQuery.data ?? null;
+  const adminPath = useAdminPath();
 
   const updateOrderMutation = useUpdateAdminOrder();
   const productionMutation = useUpdateOrderProductionStatus();
@@ -145,7 +147,7 @@ export default function AdminOrderDetailPage({
   return (
     <div>
       <Link
-        to='/admin/orders'
+        to={adminPath('/orders')}
         className='inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-stone-50'
       >
         <ArrowLeft className='h-4 w-4' />

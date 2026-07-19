@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+
+# Environment variables — never bake secrets into images
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Docs
+docs/
+*.md
+
+# Backend
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.egg-info/
+backend/staticfiles/
+backend/media/
+backend/logs/
+backend/*.sqlite3
+backend/.venv/
+backend/venv/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/out/
+frontend/dev.log
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Backups / infra state
+backups/
+*.log
+*.tmp
+*.backup

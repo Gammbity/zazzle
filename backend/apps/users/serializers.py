@@ -40,6 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
     is_support = serializers.ReadOnlyField()
     is_super_admin = serializers.ReadOnlyField()
     production_center_name = serializers.ReadOnlyField(source='production_center.name', default=None)
+    production_center_slug = serializers.ReadOnlyField(source='production_center.slug', default=None)
 
     class Meta:
         model = User
@@ -47,7 +48,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name', 'full_name',
             'role', 'role_display', 'is_customer', 'is_production_manager',
             'is_production_admin', 'is_support', 'is_super_admin',
-            'production_center', 'production_center_name',
+            'production_center', 'production_center_name', 'production_center_slug',
             'is_staff', 'is_active',
             'date_of_birth', 'address_line', 'city', 'state',
             'postal_code', 'country', 'full_address', 'avatar', 'bio',

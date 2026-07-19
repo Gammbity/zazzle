@@ -37,6 +37,7 @@ from .serializers import (
     ShippingMethodSerializer,
 )
 from .services import (
+    build_order_analytics,
     build_order_stats,
     build_signed_file_url,
     can_manage_order,
@@ -398,6 +399,27 @@ def order_stats(request):
         )
 
     return Response(stats)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def order_analytics(request):
+    """Aggregated data for the admin dashboard's analytics charts."""
+    user = request.user
+
+    if not (user.has_platform_permission() or user.is_production_admin or user.is_production_manager):
+        return Response(
+            {'detail': "Sizda analitika ma'lumotlarini ko'rish huquqi yo'q."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        days = max(1, min(int(request.query_params.get('days', 30)), 90))
+    except ValueError:
+        days = 30
+
+    analytics = build_order_analytics(get_admin_order_queryset(user), days=days)
+    return Response(analytics)
 
 
 @api_view(['POST'])

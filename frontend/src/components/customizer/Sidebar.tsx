@@ -7,13 +7,11 @@ import React, {
 } from 'react';
 import { fabric } from 'fabric';
 import {
-  AlignCenter,
   AlertCircle,
   ArrowRight,
   CheckCircle,
   Image,
   Loader2,
-  Maximize2,
   Settings,
   Smile,
   Trash2,
@@ -22,8 +20,8 @@ import {
   X,
 } from 'lucide-react';
 import CommerceAuthModal from '@/components/commerce/CommerceAuthModal';
+import { useAddCartItem } from '@/hooks/queries';
 import {
-  addCartItem,
   createLegacyDraftForCart,
   fetchCommerceProductBySlug,
   getCommerceErrorMessage,
@@ -111,6 +109,7 @@ export default function Sidebar({
   const [authOpen, setAuthOpen] = useState(false);
   const [queuedAfterAuth, setQueuedAfterAuth] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addCartItemMutation = useAddCartItem();
 
   useEffect(() => {
     let cancelled = false;
@@ -259,48 +258,6 @@ export default function Sidebar({
     setIsDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) loadImageToCanvas(file);
-  };
-
-  const fitImageToFill = () => {
-    if (!canvas) return;
-    const activeImg = canvas.getActiveObject() as fabric.Image;
-    if (!activeImg || activeImg.type !== 'image') return;
-    const canvasW = canvas.getWidth();
-    const canvasH = canvas.getHeight();
-    const rawW = activeImg.width!;
-    const rawH = activeImg.height!;
-    const scale = Math.max(canvasW / rawW, canvasH / rawH);
-    activeImg.set({
-      scaleX: scale,
-      scaleY: scale,
-      left: canvasW / 2,
-      top: canvasH / 2,
-      originX: 'center',
-      originY: 'center',
-    });
-    activeImg.setCoords();
-    canvas.renderAll();
-  };
-
-  const fitImageToContain = () => {
-    if (!canvas) return;
-    const activeImg = canvas.getActiveObject() as fabric.Image;
-    if (!activeImg || activeImg.type !== 'image') return;
-    const canvasW = canvas.getWidth();
-    const canvasH = canvas.getHeight();
-    const rawW = activeImg.width!;
-    const rawH = activeImg.height!;
-    const scale = Math.min(canvasW / rawW, canvasH / rawH);
-    activeImg.set({
-      scaleX: scale,
-      scaleY: scale,
-      left: canvasW / 2,
-      top: canvasH / 2,
-      originX: 'center',
-      originY: 'center',
-    });
-    activeImg.setCoords();
-    canvas.renderAll();
   };
 
   const resetUpload = () => {
@@ -465,7 +422,10 @@ export default function Sidebar({
         },
       });
 
-      await addCartItem(draft.uuid, 1);
+      await addCartItemMutation.mutateAsync({
+        draftUuid: draft.uuid,
+        quantity: 1,
+      });
       setOrderSuccess("Dizayn savatga qo'shildi.");
       navigate('/cart');
     } catch (error: unknown) {
@@ -476,6 +436,7 @@ export default function Sidebar({
       setOrderSubmitting(false);
     }
   }, [
+    addCartItemMutation,
     backendProduct,
     canvas,
     extractLegacyTextLayers,
@@ -608,26 +569,6 @@ export default function Sidebar({
                   </button>
                 </div>
               )}
-
-              <div className='fit-controls'>
-                <p className='fit-label'>Tanlangan rasmni moslashtirish:</p>
-                <div className='fit-buttons'>
-                  <button
-                    className='action-btn'
-                    onClick={fitImageToFill}
-                    title="To'liq to'ldirish"
-                  >
-                    <Maximize2 size={16} /> To'ldirish
-                  </button>
-                  <button
-                    className='action-btn'
-                    onClick={fitImageToContain}
-                    title='Markazlash'
-                  >
-                    <AlignCenter size={16} /> Markazlash
-                  </button>
-                </div>
-              </div>
 
               <p className='hint-text'>
                 Rasm yuklangandan so'ng bosma hududida suring va

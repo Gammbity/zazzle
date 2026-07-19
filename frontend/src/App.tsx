@@ -9,7 +9,9 @@ import ProductGrid from '@/components/ProductGrid';
 import SkipToContent from '@/components/SkipToContent';
 import AdminGuard from '@/components/admin/AdminGuard';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { AdminBaseProvider } from '@/components/admin/AdminBaseContext';
 import { getProductBySlug } from '@/lib/products/catalog';
+import { matchAdminRoute } from '@/lib/adminRoute';
 import { Link, matchPath, navigate, useLocation } from '@/lib/router';
 import CartPage from '@/pages/CartPage';
 import CheckoutPage from '@/pages/CheckoutPage';
@@ -230,14 +232,20 @@ export default function App() {
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [location.hash, location.pathname]);
 
-  const page = useMemo(
-    () => resolvePage(location.pathname),
+  const adminRoute = useMemo(
+    () => matchAdminRoute(location.pathname),
     [location.pathname]
   );
 
-  if (location.pathname.startsWith('/admin')) {
+  const page = useMemo(
+    () =>
+      resolvePage(adminRoute ? `/admin${adminRoute.rest}` : location.pathname),
+    [location.pathname, adminRoute]
+  );
+
+  if (adminRoute) {
     return (
-      <>
+      <AdminBaseProvider base={adminRoute.base} slug={adminRoute.slug}>
         <SkipToContent />
         <div id='main-content'>
           <ErrorBoundary>
@@ -246,7 +254,7 @@ export default function App() {
             </AdminGuard>
           </ErrorBoundary>
         </div>
-      </>
+      </AdminBaseProvider>
     );
   }
 

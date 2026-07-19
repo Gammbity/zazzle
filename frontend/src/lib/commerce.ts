@@ -28,6 +28,7 @@ export interface CommerceUser {
   is_production_manager?: boolean;
   production_center?: number | null;
   production_center_name?: string | null;
+  production_center_slug?: string | null;
   profile?: {
     phone_number?: string;
     display_name?: string;
@@ -209,6 +210,33 @@ export interface CommerceOrderStats {
   done_orders: number;
   total_spent?: string;
   total_revenue?: string;
+}
+
+export interface CommerceOrderAnalytics {
+  revenue_by_day: Array<{
+    date: string;
+    orders: number;
+    revenue: string;
+  }>;
+  orders_by_status: Array<{
+    status: string;
+    label: string;
+    count: number;
+  }>;
+  orders_by_delivery_method: Array<{
+    method: string;
+    label: string;
+    count: number;
+  }>;
+  orders_by_center: Array<{
+    center: string;
+    count: number;
+  }>;
+  top_products: Array<{
+    product_name: string;
+    units_sold: number;
+    revenue: string;
+  }>;
 }
 
 export interface CheckoutInput {
@@ -800,5 +828,15 @@ export async function cancelOrder(orderId: number): Promise<void> {
 
 export async function getOrderStats(): Promise<CommerceOrderStats> {
   const response = await apiClient.get<CommerceOrderStats>('/orders/stats/');
+  return response.data;
+}
+
+export async function getOrderAnalytics(
+  days = 30
+): Promise<CommerceOrderAnalytics> {
+  const response = await apiClient.get<CommerceOrderAnalytics>(
+    '/orders/analytics/',
+    { params: { days } }
+  );
   return response.data;
 }

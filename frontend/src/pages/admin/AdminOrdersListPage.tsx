@@ -3,6 +3,7 @@ import { ArrowRight, Search, Store, Truck } from 'lucide-react';
 import { useAdminOrders } from '@/hooks/queries';
 import { formatMoney, getOrderStatusMeta } from '@/lib/commerce';
 import { Link } from '@/lib/router';
+import { useAdminPath } from '@/components/admin/AdminBaseContext';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Barcha holatlar' },
@@ -28,6 +29,7 @@ const selectClass =
   'rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100';
 
 export default function AdminOrdersListPage() {
+  const adminPath = useAdminPath();
   const [status, setStatus] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState('');
   const [search, setSearch] = useState('');
@@ -155,7 +157,7 @@ export default function AdminOrdersListPage() {
                       </p>
                     </div>
                     <Link
-                      to={`/admin/orders/${order.id}`}
+                      to={adminPath(`/orders/${order.id}`)}
                       className='inline-flex items-center gap-1.5 rounded-2xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700'
                     >
                       Tafsilotlar

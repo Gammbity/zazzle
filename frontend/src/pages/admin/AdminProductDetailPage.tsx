@@ -9,6 +9,7 @@ import {
 } from '@/hooks/queries';
 import { getCommerceErrorMessage, type CommerceVariant } from '@/lib/commerce';
 import { Link } from '@/lib/router';
+import { useAdminPath } from '@/components/admin/AdminBaseContext';
 
 interface AdminProductDetailPageProps {
   productId: string;
@@ -248,6 +249,7 @@ export default function AdminProductDetailPage({
   const productQuery = useAdminProduct(productId);
   const product = productQuery.data ?? null;
   const updateProductMutation = useUpdateAdminProduct();
+  const adminPath = useAdminPath();
 
   const [form, setForm] = useState({
     name: '',
@@ -294,7 +296,7 @@ export default function AdminProductDetailPage({
   return (
     <div>
       <Link
-        to='/admin/products'
+        to={adminPath('/products')}
         className='inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-stone-50'
       >
         <ArrowLeft className='h-4 w-4' />

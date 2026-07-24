@@ -1217,3 +1217,589 @@ body {
   );
   border: 1px solid rgba(239, 68, 68, 0.5);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Garment studio — flat 2D editor for T-shirt / Hoodie
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.garment-studio {
+  --g-primary: #ea580c;
+  --g-primary-hover: #c2410c;
+  --g-ink: #1e293b;
+  --g-muted: #64748b;
+  --g-border: #e5e7eb;
+  --g-bg: #f8f8f8;
+  --g-panel-bg: #ffffff;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+  background: var(--g-bg);
+  color: var(--g-ink);
+}
+
+/* ── Header ── */
+.garment-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  background: var(--g-panel-bg);
+  border-bottom: 1px solid var(--g-border);
+  flex-shrink: 0;
+}
+
+.garment-header-back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--g-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.4rem 0.25rem;
+}
+
+.garment-header-back:hover {
+  color: var(--g-ink);
+}
+
+.garment-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-right: auto;
+}
+
+.garment-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: #fff7ed;
+  color: var(--g-primary);
+  flex-shrink: 0;
+}
+
+.garment-header-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--g-ink);
+  line-height: 1.2;
+}
+
+.garment-header-surface {
+  font-size: 0.78rem;
+  color: var(--g-muted);
+  line-height: 1.2;
+}
+
+.garment-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.garment-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--g-border);
+  background: white;
+  color: var(--g-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.garment-icon-btn:hover:not(:disabled) {
+  background: var(--g-bg);
+}
+
+.garment-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.garment-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--g-border);
+  background: white;
+  color: var(--g-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.garment-btn:hover:not(:disabled) {
+  background: var(--g-bg);
+}
+
+.garment-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.garment-btn.primary {
+  background: var(--g-primary);
+  border-color: var(--g-primary);
+  color: white;
+}
+
+.garment-btn.primary:hover:not(:disabled) {
+  background: var(--g-primary-hover);
+  border-color: var(--g-primary-hover);
+}
+
+/* ── Body layout ── */
+.garment-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .garment-body {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+/* ── Left icon rail ── */
+.garment-rail {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  background: var(--g-panel-bg);
+  border-bottom: 1px solid var(--g-border);
+  overflow-x: auto;
+  flex-shrink: 0;
+  order: 1;
+}
+
+@media (min-width: 768px) {
+  .garment-rail {
+    flex-direction: column;
+    width: 84px;
+    border-bottom: none;
+    border-right: 1px solid var(--g-border);
+    padding: 1rem 0.5rem;
+    overflow-x: visible;
+  }
+}
+
+.garment-rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 68px;
+  padding: 0.6rem 0.4rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--g-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.garment-rail-btn:hover {
+  background: var(--g-bg);
+  color: var(--g-ink);
+}
+
+.garment-rail-btn.active {
+  background: #fff7ed;
+  color: var(--g-primary);
+}
+
+/* ── Canvas stage (center column) ── */
+.garment-stage-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  padding: 1.25rem 1rem;
+  order: 2;
+}
+
+.garment-side-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--g-panel-bg);
+  border: 1px solid var(--g-border);
+  border-radius: 999px;
+}
+
+.garment-side-btn {
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--g-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.garment-side-btn.active {
+  background: var(--g-primary);
+  color: white;
+}
+
+.garment-stage-frame {
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 1 / 1.05;
+  background: var(--g-panel-bg);
+  border-radius: 20px;
+  border: 1px solid var(--g-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 1.5rem;
+}
+
+.garment-stage-zoomable {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.15s ease-out;
+}
+
+.garment-photo-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.garment-photo-base {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.garment-photo-tint {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: multiply;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  pointer-events: none;
+}
+
+.garment-print-area {
+  position: absolute;
+  z-index: 5;
+}
+
+.garment-fabric-canvas-host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.garment-fabric-canvas-host canvas,
+.garment-fabric-canvas-host .canvas-container {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.garment-fabric-canvas-host .upper-canvas {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  pointer-events: auto !important;
+}
+
+/* ── Toolbar under canvas ── */
+.garment-canvas-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--g-panel-bg);
+  border: 1px solid var(--g-border);
+  border-radius: 12px;
+}
+
+.garment-tool-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--g-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.garment-tool-icon-btn:hover:not(:disabled) {
+  background: var(--g-bg);
+}
+
+.garment-tool-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.garment-tool-icon-btn.danger:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* ── Zoom controls ── */
+.garment-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.garment-zoom-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--g-border);
+  background: white;
+  color: var(--g-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.garment-zoom-btn:hover {
+  background: var(--g-bg);
+}
+
+.garment-zoom-value {
+  min-width: 44px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--g-muted);
+}
+
+/* ── Right panel (color / tools / layers / purchase) ── */
+.garment-right-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: var(--g-panel-bg);
+  border-top: 1px solid var(--g-border);
+  order: 3;
+}
+
+@media (min-width: 768px) {
+  .garment-right-panel {
+    width: clamp(320px, 27vw, 380px);
+    border-top: none;
+    border-left: 1px solid var(--g-border);
+    overflow-y: auto;
+  }
+}
+
+.garment-sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.garment-panel-scroll {
+  display: flex;
+  flex-direction: column;
+  padding: 1.1rem;
+  gap: 0.25rem;
+}
+
+.garment-panel-section {
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--g-border);
+}
+
+.garment-section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--g-ink);
+  margin-bottom: 0.6rem;
+}
+
+.garment-color-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.garment-color-row .color-swatch[aria-pressed='true'] {
+  border-color: var(--g-primary);
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.22);
+}
+
+.garment-color-add {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px dashed var(--g-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--g-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.garment-color-add:hover {
+  border-color: var(--g-primary);
+  color: var(--g-primary);
+}
+
+.garment-color-add input[type='color'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ── Purchase panel ── */
+.garment-purchase-panel {
+  padding: 1.1rem;
+  border-top: 1px solid var(--g-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.garment-price-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.garment-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--g-muted);
+}
+
+.garment-price-row.total {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--g-ink);
+}
+
+.garment-price-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 0.8rem;
+}
+
+.garment-retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  color: var(--g-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.garment-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--g-border);
+  background: white;
+  color: var(--g-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.85rem;
+  transition: all 0.15s;
+}
+
+.garment-cta.primary {
+  background: var(--g-primary);
+  border-color: var(--g-primary);
+  color: white;
+}
+
+.garment-cta.primary:hover:not(:disabled) {
+  background: var(--g-primary-hover);
+}
+
+.garment-cta.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.garment-cta.danger {
+  color: #dc2626;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.garment-cta.danger:hover {
+  background: #fee2e2;
+}
+
+@media (min-width: 1024px) {
+  .garment-stage-frame {
+    max-width: 720px;
+  }
+
+  .garment-panel-scroll,
+  .garment-purchase-panel {
+    padding: 1.5rem;
+  }
+}

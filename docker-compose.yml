@@ -128,10 +128,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    command: sh -c "npm run dev -- --host 0.0.0.0"
+    command: sh -c "npm run dev -- --hostname 0.0.0.0 --webpack"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - /app/.next
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:

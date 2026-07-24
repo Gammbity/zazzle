@@ -64,6 +64,43 @@ export default function TshirtPrintEditor({
       }
     };
 
+    // Keep objects fully inside the print area - dragging stops at the edge,
+    // and scaling can never grow the object past the canvas in either axis.
+    const constrainToCanvas = (e: fabric.IEvent) => {
+      const obj = e.target;
+      if (!obj) return;
+
+      const bound = obj.getBoundingRect(true, true);
+      if (bound.width > CANVAS_W) {
+        obj.scaleX = (obj.scaleX ?? 1) * (CANVAS_W / bound.width);
+      }
+      if (bound.height > CANVAS_H) {
+        obj.scaleY = (obj.scaleY ?? 1) * (CANVAS_H / bound.height);
+      }
+      obj.setCoords();
+
+      const clamped = obj.getBoundingRect(true, true);
+      let dx = 0;
+      let dy = 0;
+      if (clamped.left < 0) {
+        dx = -clamped.left;
+      } else if (clamped.left + clamped.width > CANVAS_W) {
+        dx = CANVAS_W - (clamped.left + clamped.width);
+      }
+      if (clamped.top < 0) {
+        dy = -clamped.top;
+      } else if (clamped.top + clamped.height > CANVAS_H) {
+        dy = CANVAS_H - (clamped.top + clamped.height);
+      }
+      if (dx || dy) {
+        obj.left = (obj.left ?? 0) + dx;
+        obj.top = (obj.top ?? 0) + dy;
+        obj.setCoords();
+      }
+    };
+    canvas.on('object:moving', constrainToCanvas);
+    canvas.on('object:scaling', constrainToCanvas);
+
     canvas.on('object:added', function (e) {
       const obj = e.target;
       if (obj) {
@@ -98,11 +135,14 @@ export default function TshirtPrintEditor({
           if (!isEditing) {
             e.preventDefault();
             canvas.discardActiveObject();
-            active.forEach(obj => canvas.remove(obj));
+            canvas.remove(...active);
             canvas.requestRenderAll();
             updateAndExport();
           }
         }
+      } else if (e.key === 'Escape' && canvas.getActiveObject()) {
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -129,38 +169,8 @@ export default function TshirtPrintEditor({
   }, [viewSide]);
 
   return (
-    <div className='print-editor-sidebar'>
-      <div className='canvas-header'>
-        <h3 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-          Bosma hududi ({viewSide === 'front' ? 'Oldi' : 'Orqa'})
-        </h3>
-      </div>
-
-      <div
-        className='canvas-wrapper-2d'
-        style={{
-          aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
-          maxWidth: '100%',
-          borderRadius: '6px',
-          border: '2px solid #94a3b8',
-          position: 'relative',
-          background:
-            'repeating-conic-gradient(#f1f5f9 0% 25%, white 0% 50%) 50% / 20px 20px',
-        }}
-      >
-        <canvas ref={canvasRef} />
-      </div>
-
-      <div className='handle-legend' style={{ marginTop: '12px' }}>
-        <span
-          className='handle-legend-dot'
-          style={{ backgroundColor: '#94a3b8' }}
-        />
-        <span>
-          Kengaytirilgan maydon: Endi dizayn yengingizgacha yetib borishi
-          mumkin.
-        </span>
-      </div>
+    <div className='garment-fabric-canvas-host'>
+      <canvas ref={canvasRef} />
     </div>
   );
 }

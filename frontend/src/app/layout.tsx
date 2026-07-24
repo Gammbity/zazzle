@@ -46,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang='uz' data-scroll-behavior='smooth'>
+    <html lang='uz' data-scroll-behavior='smooth' suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
       </body>

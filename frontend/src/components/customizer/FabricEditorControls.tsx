@@ -23,19 +23,18 @@ interface FabricLayersPanelProps {
 
 const MAX_HISTORY = 50;
 
-export default function FabricEditorControls({
-  canvas,
-  draftKey,
-}: FabricEditorControlsProps) {
+export function useFabricHistory(canvas: fabric.Canvas | null, draftKey: string) {
   const [, setCanvasVersion] = useState(0);
   const [historyState, setHistoryState] = useState({ index: -1, length: 0 });
+  const [hasSelection, setHasSelection] = useState(false);
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
   const applyingHistoryRef = useRef(false);
 
   const syncCanvasState = useCallback(() => {
     setCanvasVersion(version => version + 1);
-  }, []);
+    setHasSelection(!!canvas?.getActiveObject());
+  }, [canvas]);
 
   const commitHistory = useCallback(() => {
     if (!canvas || applyingHistoryRef.current) return;
@@ -88,7 +87,7 @@ export default function FabricEditorControls({
     if (!canvas) return;
 
     applyingHistoryRef.current = true;
-    canvas.getObjects().forEach(object => canvas.remove(object));
+    canvas.clear();
     canvas.discardActiveObject();
 
     let savedDraft: string | null = null;
@@ -133,7 +132,8 @@ export default function FabricEditorControls({
       canvas.off('selection:updated', syncCanvasState);
       canvas.off('selection:cleared', syncCanvasState);
     };
-  }, [canvas, commitHistory, draftKey, syncCanvasState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvas, draftKey]);
 
   const mutateSelected = useCallback(
     (action: 'forward' | 'backward' | 'duplicate') => {
@@ -171,7 +171,7 @@ export default function FabricEditorControls({
   const clearDesign = useCallback(() => {
     if (!canvas || !window.confirm("Dizaynni to'liq tozalaysizmi?")) return;
 
-    canvas.getObjects().forEach(object => canvas.remove(object));
+    canvas.clear();
     canvas.discardActiveObject();
     canvas.requestRenderAll();
     try {
@@ -181,7 +181,34 @@ export default function FabricEditorControls({
     }
   }, [canvas, draftKey]);
 
-  const selectedObject = canvas?.getActiveObject() ?? null;
+  return {
+    canUndo: historyState.index > 0,
+    canRedo: historyState.index < historyState.length - 1,
+    hasSelection,
+    undo: () => restoreHistory(historyState.index - 1),
+    redo: () => restoreHistory(historyState.index + 1),
+    duplicateSelected: () => mutateSelected('duplicate'),
+    bringForward: () => mutateSelected('forward'),
+    sendBackward: () => mutateSelected('backward'),
+    clearDesign,
+  };
+}
+
+export default function FabricEditorControls({
+  canvas,
+  draftKey,
+}: FabricEditorControlsProps) {
+  const {
+    canUndo,
+    canRedo,
+    hasSelection,
+    undo,
+    redo,
+    duplicateSelected,
+    bringForward,
+    sendBackward,
+    clearDesign,
+  } = useFabricHistory(canvas, draftKey);
 
   return (
     <div className='editor-actions-panel'>
@@ -189,8 +216,8 @@ export default function FabricEditorControls({
         <button
           type='button'
           className='action-btn'
-          disabled={historyState.index <= 0}
-          onClick={() => restoreHistory(historyState.index - 1)}
+          disabled={!canUndo}
+          onClick={undo}
           aria-label='Ortga'
           title='Ortga'
         >
@@ -199,8 +226,8 @@ export default function FabricEditorControls({
         <button
           type='button'
           className='action-btn'
-          disabled={historyState.index >= historyState.length - 1}
-          onClick={() => restoreHistory(historyState.index + 1)}
+          disabled={!canRedo}
+          onClick={redo}
           aria-label='Qaytarish'
           title='Qaytarish'
         >
@@ -209,8 +236,8 @@ export default function FabricEditorControls({
         <button
           type='button'
           className='action-btn'
-          disabled={!selectedObject}
-          onClick={() => mutateSelected('forward')}
+          disabled={!hasSelection}
+          onClick={bringForward}
           aria-label='Oldinga'
           title='Oldinga'
         >
@@ -219,8 +246,8 @@ export default function FabricEditorControls({
         <button
           type='button'
           className='action-btn'
-          disabled={!selectedObject}
-          onClick={() => mutateSelected('backward')}
+          disabled={!hasSelection}
+          onClick={sendBackward}
           aria-label='Orqaga'
           title='Orqaga'
         >
@@ -229,8 +256,8 @@ export default function FabricEditorControls({
         <button
           type='button'
           className='action-btn'
-          disabled={!selectedObject}
-          onClick={() => mutateSelected('duplicate')}
+          disabled={!hasSelection}
+          onClick={duplicateSelected}
           aria-label='Nusxa'
           title='Nusxa'
         >

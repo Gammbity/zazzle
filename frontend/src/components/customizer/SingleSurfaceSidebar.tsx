@@ -7,17 +7,22 @@ import {
   Image,
   Loader2,
   Maximize2,
+  Settings,
   Smile,
   Trash2,
   Type,
   Upload,
   X,
 } from 'lucide-react';
+import { FabricLayersPanel } from './FabricEditorControls';
 import type { SingleSurfaceSidebarConfig } from './single-surface-presets';
 
 interface SingleSurfaceSidebarProps {
   canvas: fabric.Canvas | null;
   config: SingleSurfaceSidebarConfig;
+  settings?: React.ReactNode;
+  footer?: React.ReactNode;
+  showImageFitControls?: boolean;
 }
 
 type UploadStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -102,10 +107,13 @@ function fitActiveImage(canvas: fabric.Canvas, mode: 'contain' | 'fill'): void {
 export default function SingleSurfaceSidebar({
   canvas,
   config,
+  settings,
+  footer,
+  showImageFitControls = true,
 }: SingleSurfaceSidebarProps) {
-  const [activeTab, setActiveTab] = useState<'image' | 'text' | 'stickers'>(
-    'image'
-  );
+  const [activeTab, setActiveTab] = useState<
+    'image' | 'text' | 'stickers' | 'config'
+  >('image');
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [imageState, setImageState] = useState<ImageState | null>(null);
@@ -287,33 +295,41 @@ export default function SingleSurfaceSidebar({
 
   return (
     <div className='modern-sidebar'>
-      <div className='sidebar-header'>
-        <h2>{config.title}</h2>
-        <p>{config.description}</p>
-      </div>
-
       <div className='tab-menu'>
         <button
           className={`tab-btn ${activeTab === 'image' ? 'active' : ''}`}
           onClick={() => setActiveTab('image')}
+          aria-label='Rasm'
+          title='Rasm'
         >
           <Image size={20} />
-          <span>Rasm</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'text' ? 'active' : ''}`}
           onClick={() => setActiveTab('text')}
+          aria-label='Matn'
+          title='Matn'
         >
           <Type size={20} />
-          <span>Matn</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'stickers' ? 'active' : ''}`}
           onClick={() => setActiveTab('stickers')}
+          aria-label='Stiker'
+          title='Stiker'
         >
           <Smile size={20} />
-          <span>Stiker</span>
         </button>
+        {settings ? (
+          <button
+            className={`tab-btn ${activeTab === 'config' ? 'active' : ''}`}
+            onClick={() => setActiveTab('config')}
+            aria-label='Sozlama'
+            title='Sozlama'
+          >
+            <Settings size={20} />
+          </button>
+        ) : null}
       </div>
 
       <div className='tab-content'>
@@ -415,25 +431,32 @@ export default function SingleSurfaceSidebar({
               </div>
             ) : null}
 
-            <div className='fit-controls'>
-              <p className='fit-label'>Tanlangan rasmni moslashtirish:</p>
-              <div className='fit-buttons'>
-                <button
-                  className='action-btn'
-                  onClick={() => canvas && fitActiveImage(canvas, 'fill')}
-                  title="To'liq to'ldirish"
-                >
-                  <Maximize2 size={16} /> To'ldirish
-                </button>
-                <button
-                  className='action-btn'
-                  onClick={() => canvas && fitActiveImage(canvas, 'contain')}
-                  title='Markazlash'
-                >
-                  <AlignCenter size={16} /> Markazlash
-                </button>
+            {showImageFitControls ? (
+              <div className='fit-controls'>
+                <p className='fit-label'>Tanlangan rasmni moslashtirish:</p>
+                <div className='fit-buttons'>
+                  <button
+                    className='action-btn'
+                    onClick={() => canvas && fitActiveImage(canvas, 'fill')}
+                    title="To'liq to'ldirish"
+                  >
+                    <Maximize2 size={16} /> To'ldirish
+                  </button>
+                  <button
+                    className='action-btn'
+                    onClick={() => canvas && fitActiveImage(canvas, 'contain')}
+                    title='Markazlash'
+                  >
+                    <AlignCenter size={16} /> Markazlash
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className='hint-text'>
+                Rasm yuklangandan so&apos;ng bosma hududida suring va
+                kattalashtiring.
+              </p>
+            )}
           </div>
         ) : null}
 
@@ -490,7 +513,12 @@ export default function SingleSurfaceSidebar({
           </div>
         ) : null}
 
+        {activeTab === 'config' ? settings : null}
+
+        <FabricLayersPanel canvas={canvas} />
+
         <div className='global-actions'>
+          {footer}
           <button className='action-btn danger' onClick={handleDeleteSelected}>
             <Trash2 size={16} /> Tanlanganni o'chirish
           </button>

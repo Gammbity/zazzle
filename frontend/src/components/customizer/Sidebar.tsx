@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useRouter } from 'next/navigation';
 import { fabric } from 'fabric';
 import {
   AlertCircle,
@@ -22,14 +23,14 @@ import {
 import CommerceAuthModal from '@/components/commerce/CommerceAuthModal';
 import { useAddCartItem } from '@/hooks/queries';
 import {
-  createLegacyDraftForCart,
+  createCustomizerDraftForCart,
   fetchCommerceProductBySlug,
   getCommerceErrorMessage,
   isAuthenticated,
   type CommerceProductType,
   type CommerceVariant,
 } from '@/lib/commerce';
-import { navigate } from '@/lib/router';
+import { FabricLayersPanel } from './FabricEditorControls';
 
 interface SidebarProps {
   canvas: fabric.Canvas | null;
@@ -93,6 +94,7 @@ export default function Sidebar({
   mugColor,
   setMugColor,
 }: SidebarProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<
     'image' | 'text' | 'stickers' | 'config'
   >('image');
@@ -106,6 +108,7 @@ export default function Sidebar({
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [quantity, setQuantity] = useState(1);
   const [authOpen, setAuthOpen] = useState(false);
   const [queuedAfterAuth, setQueuedAfterAuth] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -337,7 +340,7 @@ export default function Sidebar({
     }
   };
 
-  const extractLegacyTextLayers = useCallback(() => {
+  const extractTextLayers = useCallback(() => {
     if (!canvas) {
       return [];
     }
@@ -353,7 +356,7 @@ export default function Sidebar({
         const fontStyle = String(textObject.fontStyle || '').toLowerCase();
 
         return {
-          id: `legacy-text-${index + 1}`,
+          id: `fabric-text-${index + 1}`,
           surface_id: 'wrap',
           text: textObject.text || '',
           x: textObject.left || 0,
@@ -405,15 +408,15 @@ export default function Sidebar({
         multiplier: 2,
       });
 
-      const draft = await createLegacyDraftForCart({
+      const draft = await createCustomizerDraftForCart({
         productTypeId: backendProduct.id,
         variantId: selectedVariant.id,
         productName: backendProduct.name || 'Krujka',
         productSlug: 'mug',
-        textLayers: extractLegacyTextLayers(),
+        textLayers: extractTextLayers(),
         editorState: {
           active_surface_id: 'wrap',
-          legacy_fabric_json: canvas.toJSON(),
+          fabric_json: canvas.toJSON(),
           preview_data_url: previewDataUrl,
           mug_color: mugColor,
           texture_offset: textureOffset,
@@ -424,10 +427,10 @@ export default function Sidebar({
 
       await addCartItemMutation.mutateAsync({
         draftUuid: draft.uuid,
-        quantity: 1,
+        quantity,
       });
       setOrderSuccess("Dizayn savatga qo'shildi.");
-      navigate('/cart');
+      router.push('/cart');
     } catch (error: unknown) {
       setOrderError(
         getCommerceErrorMessage(error, "Dizaynni savatga qo'shib bo'lmadi.")
@@ -439,8 +442,10 @@ export default function Sidebar({
     addCartItemMutation,
     backendProduct,
     canvas,
-    extractLegacyTextLayers,
+    extractTextLayers,
     mugColor,
+    quantity,
+    router,
     selectedVariant,
     textureOffset,
     textureRepeat,
@@ -459,39 +464,38 @@ export default function Sidebar({
   return (
     <>
       <div className='modern-sidebar'>
-        <div className='sidebar-header'>
-          <h2>Dizayn asboblari</h2>
-          <p>Professional darajadagi tahrirlash tajribasi.</p>
-        </div>
-
         <div className='tab-menu'>
           <button
             className={`tab-btn ${activeTab === 'image' ? 'active' : ''}`}
             onClick={() => setActiveTab('image')}
+            aria-label='Rasm'
+            title='Rasm'
           >
             <Image size={20} />
-            <span>Rasm</span>
           </button>
           <button
             className={`tab-btn ${activeTab === 'text' ? 'active' : ''}`}
             onClick={() => setActiveTab('text')}
+            aria-label='Matn'
+            title='Matn'
           >
             <Type size={20} />
-            <span>Matn</span>
           </button>
           <button
             className={`tab-btn ${activeTab === 'stickers' ? 'active' : ''}`}
             onClick={() => setActiveTab('stickers')}
+            aria-label='Stiker'
+            title='Stiker'
           >
             <Smile size={20} />
-            <span>Stiker</span>
           </button>
           <button
             className={`tab-btn ${activeTab === 'config' ? 'active' : ''}`}
             onClick={() => setActiveTab('config')}
+            aria-label='Sozlama'
+            title='Sozlama'
           >
             <Settings size={20} />
-            <span>Sozlama</span>
           </button>
         </div>
 
@@ -711,7 +715,26 @@ export default function Sidebar({
             </div>
           )}
 
+          <FabricLayersPanel canvas={canvas} />
+
           <div className='global-actions'>
+            <div className='qty-row'>
+              <button
+                type='button'
+                className='qty-btn'
+                onClick={() => setQuantity(value => Math.max(1, value - 1))}
+              >
+                −
+              </button>
+              <span className='qty-value'>{quantity}</span>
+              <button
+                type='button'
+                className='qty-btn'
+                onClick={() => setQuantity(value => Math.min(500, value + 1))}
+              >
+                +
+              </button>
+            </div>
             {orderError && <p className='order-feedback error'>{orderError}</p>}
             {orderSuccess && (
               <p className='order-feedback success'>{orderSuccess}</p>

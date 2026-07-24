@@ -1,6 +1,5 @@
-import { useRef, Suspense, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ContactShadows } from '@react-three/drei/core/ContactShadows';
 import {
   BackSide,
   CircleGeometry,
@@ -126,7 +125,10 @@ const ProceduralMug = ({
       // The Fabric canvas contains the FULL 100% circumference, including the red margins.
       // We map exactly the printable band from PrintEditor into the decal geometry.
       // GAP is derived from PrintEditor margins, so 2D and 3D stay in sync.
-      tex.offset.set(textureOffset.x + GAP / 2, textureOffset.y);
+      // CylinderGeometry's front-facing UV lands around 0.75 for this partial
+      // wrap. Shift the texture so the editor center is visible on the mug's
+      // front at the default camera angle; users can still fine-tune it.
+      tex.offset.set(textureOffset.x + GAP / 2 + 0.75, textureOffset.y);
       tex.repeat.set(textureRepeat.x * PRINT_COVERAGE, textureRepeat.y || 1);
 
       setCanvasTexture(prev => {
@@ -140,6 +142,9 @@ const ProceduralMug = ({
     textureOffset.x,
     textureOffset.y,
     textureRepeat.x,
+    textureRepeat.y,
+    GAP,
+    PRINT_COVERAGE,
   ]);
 
   // The entirely solid base mug (uses mugColor)
@@ -288,26 +293,25 @@ export default function MugViewer({
         <directionalLight position={[5, 5, 5]} intensity={1.5} castShadow />
         <pointLight position={[-5, 3, -5]} intensity={0.5} />
 
-        <Suspense fallback={null}>
-          <group rotation={[0, rotationY, 0]} position={[0, 0, 0]} scale={0.8}>
-            <ProceduralMug
-              fabricCanvas={fabricCanvas}
-              textureVersion={textureVersion}
-              textureOffset={textureOffset}
-              textureRepeat={textureRepeat}
-              mugColor={mugColor}
-            />
-          </group>
-        </Suspense>
+        <group rotation={[0, rotationY, 0]} position={[0, 0, 0]} scale={0.8}>
+          <ProceduralMug
+            fabricCanvas={fabricCanvas}
+            textureVersion={textureVersion}
+            textureOffset={textureOffset}
+            textureRepeat={textureRepeat}
+            mugColor={mugColor}
+          />
+        </group>
 
-        <ContactShadows
-          position={[0, -1.8, 0]}
-          opacity={0.3}
-          scale={10}
-          blur={2.5}
-          far={4}
-          color='#000000'
-        />
+        <mesh position={[0, -1.82, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[2.4, 64]} />
+          <meshBasicMaterial
+            color='#000000'
+            transparent
+            opacity={0.12}
+            depthWrite={false}
+          />
+        </mesh>
       </Canvas>
     </div>
   );

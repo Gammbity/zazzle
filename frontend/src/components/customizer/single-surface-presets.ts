@@ -25,12 +25,21 @@ export interface SingleSurfaceSidebarConfig {
 }
 
 export interface SingleSurfaceCustomizerConfig {
+  productSlug: string;
+  productName: string;
+  surfaces?: Array<{ id: string; label: string }>;
   viewer: SingleSurfaceViewerConfig;
   editor: SingleSurfaceEditorConfig;
   sidebar: SingleSurfaceSidebarConfig;
 }
 
 export const businessCardCustomizerConfig: SingleSurfaceCustomizerConfig = {
+  productSlug: 'business-card',
+  productName: 'Vizitka',
+  surfaces: [
+    { id: 'front', label: 'Old tomoni' },
+    { id: 'back', label: 'Orqa tomoni' },
+  ],
   viewer: {
     productImageSrc: '/products/business-card/front.jpg',
     productImageAlt: 'Vizitka',
@@ -80,6 +89,8 @@ export const businessCardCustomizerConfig: SingleSurfaceCustomizerConfig = {
 };
 
 export const calendarCustomizerConfig: SingleSurfaceCustomizerConfig = {
+  productSlug: 'desk-calendar',
+  productName: 'Stol kalendari',
   viewer: {
     productImageSrc: '/products/desk-calendar/front.jpg',
     productImageAlt: 'Stol kalendari',
@@ -129,7 +140,56 @@ export const calendarCustomizerConfig: SingleSurfaceCustomizerConfig = {
   },
 };
 
+export const penCustomizerConfig: SingleSurfaceCustomizerConfig = {
+  productSlug: 'pen',
+  productName: 'Ruchka',
+  viewer: {
+    productImageSrc: '/products/pen/side.svg',
+    productImageAlt: 'Ruchka',
+    exportMessage: 'Ruchka uchun yakuniy birlashtirilgan rasm tayyorlanadi.',
+    stageStyle: {
+      position: 'relative',
+      width: '94%',
+      maxWidth: '900px',
+      aspectRatio: '4 / 3',
+    },
+    overlayStyle: {
+      top: '40%',
+      left: '28.75%',
+      width: '45%',
+      height: '20%',
+      aspectRatio: '4.5 / 1',
+      borderRadius: '999px',
+    },
+  },
+  editor: {
+    canvasWidth: 640,
+    canvasHeight: 142,
+    title: 'Bosma hududi (ruchka korpusi)',
+    legend: 'Sahifa maydoni: 640x142 px (4.5:1 nisbatda)',
+  },
+  sidebar: {
+    title: 'Ruchka dizayneri',
+    description: 'Logo, nom yoki qisqa yozuvni ruchkaga joylashtiring.',
+    defaultText: 'Brend nomi',
+    defaultTextFontSize: 30,
+    stickerFontSize: 46,
+    stickers: [
+      '\u2728',
+      '\u2B50',
+      '\u{1F4A1}',
+      '\u{1F4BC}',
+      '\u{1F4CC}',
+      '\u{1F680}',
+      '\u{1F3A8}',
+      '\u{1F525}',
+    ],
+  },
+};
+
 export const shopperBagCustomizerConfig: SingleSurfaceCustomizerConfig = {
+  productSlug: 'shopper-bag',
+  productName: 'Xarid sumkasi',
   viewer: {
     productImageSrc: '/products/shopper_bag/front.jpg',
     productImageAlt: 'Xarid sumkasi',

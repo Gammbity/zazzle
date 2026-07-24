@@ -1,5 +1,3 @@
-import type { SurfaceState } from '@/types/editor';
-import type { TextLayer } from '@/types/layer';
 import { apiClient } from '@/lib/api-client';
 
 export type DeliveryMethod = 'DELIVERY' | 'PICKUP';
@@ -293,12 +291,6 @@ export interface RegisterPayload extends AuthPayload {
   last_name: string;
   phone_number: string;
   display_name?: string;
-}
-
-interface AuthResponse {
-  access: string;
-  refresh: string;
-  user: CommerceUser;
 }
 
 interface PaginatedResponse<T> {
@@ -661,61 +653,7 @@ export async function fetchCommerceProductBySlug(
   }
 }
 
-function flattenTextLayers(surfaces: SurfaceState[]) {
-  return surfaces.flatMap(surface =>
-    surface.layers
-      .filter(layer => layer.type === 'text')
-      .map(layer => {
-        const textLayer = layer as TextLayer;
-        return {
-          id: textLayer.id,
-          surface_id: surface.id,
-          text: textLayer.text,
-          x: textLayer.x,
-          y: textLayer.y,
-          width: textLayer.width,
-          height: textLayer.height,
-          font_size: textLayer.fontSize,
-          color: textLayer.fill,
-          font_family: textLayer.fontFamily,
-          rotation: textLayer.rotation,
-          opacity: textLayer.opacity,
-          align: textLayer.align,
-          font_style: textLayer.fontStyle,
-        };
-      })
-  );
-}
-
-export async function createDraftForCart(input: {
-  productTypeId: number;
-  variantId: number;
-  productName: string;
-  productSlug: string;
-  productColor?: ProductColorSelection | null;
-  activeSurfaceId: string;
-  surfaces: SurfaceState[];
-  previewDataUrl?: string | null;
-}): Promise<CommerceDraft> {
-  const response = await apiClient.post<CommerceDraft>('/designs/drafts/', {
-    product_type: input.productTypeId,
-    product_variant: input.variantId,
-    name: `${input.productName} dizayni`,
-    text_layers: flattenTextLayers(input.surfaces),
-    editor_state: {
-      product_slug: input.productSlug,
-      product_color: input.productColor ?? null,
-      active_surface_id: input.activeSurfaceId,
-      surfaces: input.surfaces,
-      preview_data_url: input.previewDataUrl || '',
-      saved_from: 'vite_spa_checkout_flow',
-    },
-  });
-
-  return response.data;
-}
-
-export async function createLegacyDraftForCart(input: {
+export async function createCustomizerDraftForCart(input: {
   productTypeId: number;
   variantId: number;
   productName: string;
@@ -731,7 +669,7 @@ export async function createLegacyDraftForCart(input: {
     editor_state: {
       ...input.editorState,
       product_slug: input.productSlug,
-      saved_from: 'legacy_mug_customizer',
+      saved_from: 'next_customizer',
     },
   });
 

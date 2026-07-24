@@ -2,10 +2,6 @@ import { useEffect, useRef } from 'react';
 import { fabric } from 'fabric';
 
 type EditableFabricObject = fabric.Object & { isEditing?: boolean };
-type SavedCanvasState = Record<
-  'front' | 'back',
-  ReturnType<fabric.Canvas['toJSON']> | null
->;
 
 interface TshirtPrintEditorProps {
   onCanvasReady: (canvas: fabric.Canvas) => void;
@@ -24,9 +20,7 @@ export default function TshirtPrintEditor({
 }: TshirtPrintEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<fabric.Canvas | null>(null);
-  // Store JSON states for front and back designs
-  const savedState = useRef<SavedCanvasState>({ front: null, back: null });
-  const prevViewSide = useRef(viewSide);
+  const activeSideRef = useRef(viewSide);
 
   const exportTexture = (canvas: fabric.Canvas, side: 'front' | 'back') => {
     const url = canvas.toDataURL({
@@ -66,7 +60,7 @@ export default function TshirtPrintEditor({
 
     const updateAndExport = () => {
       if (fabricRef.current) {
-        exportTexture(fabricRef.current, prevViewSide.current);
+        exportTexture(fabricRef.current, activeSideRef.current);
       }
     };
 
@@ -125,32 +119,11 @@ export default function TshirtPrintEditor({
     };
   }, []);
 
-  // Handle viewSide changes: save current state, load new state
+  // FabricEditorControls restores an independent draft for each side.
   useEffect(() => {
     const canvas = fabricRef.current;
-    if (canvas && prevViewSide.current !== viewSide) {
-      // Save current state
-      savedState.current[prevViewSide.current] = canvas.toJSON();
-
-      // Prepare to load new state
-      const newState = savedState.current[viewSide];
-      const upcomingSide = viewSide;
-      prevViewSide.current = viewSide;
-
-      if (newState) {
-        canvas.loadFromJSON(newState, () => {
-          canvas.renderAll();
-          exportTexture(canvas, upcomingSide);
-        });
-      } else {
-        canvas.clear();
-        canvas.setBackgroundColor('transparent', () => {
-          canvas.renderAll();
-          exportTexture(canvas, upcomingSide);
-        });
-      }
-
-      // Re-assign canvas reference to external components (like sidebar)
+    activeSideRef.current = viewSide;
+    if (canvas) {
       onCanvasReady(canvas);
     }
   }, [viewSide]);
@@ -166,6 +139,7 @@ export default function TshirtPrintEditor({
       <div
         className='canvas-wrapper-2d'
         style={{
+          aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
           maxWidth: '100%',
           borderRadius: '6px',
           border: '2px solid #94a3b8',

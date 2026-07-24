@@ -1,4 +1,8 @@
+'use client';
+
 import type { ComponentType, ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   LogOut,
@@ -8,7 +12,6 @@ import {
   Store,
   Users,
 } from 'lucide-react';
-import { Link, useLocation } from '@/lib/router';
 import {
   useCurrentUser,
   useIsProductionStaff,
@@ -26,7 +29,7 @@ interface NavLink {
 }
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const location = useLocation();
+  const pathname = usePathname();
   const { data: user } = useCurrentUser();
   const logoutMutation = useLogout();
   const isProductionStaff = useIsProductionStaff();
@@ -83,13 +86,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   ];
 
   const isActive = (to: string, exact: boolean) =>
-    exact ? location.pathname === to : location.pathname.startsWith(to);
+    exact ? pathname === to : pathname.startsWith(to);
 
   return (
     <div className='flex min-h-screen bg-brand-bg'>
       <aside className='hidden w-64 shrink-0 border-r border-stone-200 bg-white md:flex md:flex-col'>
         <Link
-          to='/'
+          href='/'
           className='flex items-center gap-2 border-b border-stone-100 px-6 py-5'
         >
           <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-brand shadow-sm shadow-brand/20'>
@@ -110,7 +113,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             return (
               <Link
                 key={link.to}
-                to={link.to}
+                href={link.to}
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                   active
@@ -127,7 +130,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         <div className='border-t border-stone-100 p-3'>
           <Link
-            to='/'
+            href='/'
             className='flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-stone-50'
           >
             <Store className='h-4 w-4' />

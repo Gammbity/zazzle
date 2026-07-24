@@ -1,4 +1,8 @@
+'use client';
+
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   Menu,
   ShoppingCart,
@@ -8,7 +12,6 @@ import {
   ClipboardList,
   ShieldCheck,
 } from 'lucide-react';
-import { Link, useLocation } from '@/lib/router';
 import { useCart, useCurrentUser, useIsAdmin } from '@/hooks/queries';
 import { isAuthenticated } from '@/lib/commerce';
 import { cn } from '@/lib/utils';
@@ -20,7 +23,8 @@ const NAV_LINKS = [
 ] as const;
 
 export default function Navbar() {
-  const location = useLocation();
+  const pathname = usePathname();
+  const [hash, setHash] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
   const cartQuery = useCart();
   const isAdmin = useIsAdmin();
@@ -37,7 +41,14 @@ export default function Navbar() {
 
   useEffect(() => {
     setMobileOpen(false);
-  }, [location.pathname]);
+  }, [pathname]);
+
+  useEffect(() => {
+    const syncHash = () => setHash(window.location.hash);
+    syncHash();
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
+  }, [pathname]);
 
   useEffect(() => {
     if (mobileOpen) {
@@ -52,12 +63,11 @@ export default function Navbar() {
 
   const isActive = useCallback(
     (to: string) => {
-      if (to === '/') return location.pathname === '/';
-      if (to.includes('#'))
-        return location.pathname === '/' && location.hash === '#products';
-      return location.pathname.startsWith(to);
+      if (to === '/') return pathname === '/' && !hash;
+      if (to.includes('#')) return pathname === '/' && hash === '#products';
+      return pathname.startsWith(to);
     },
-    [location.pathname, location.hash]
+    [hash, pathname]
   );
 
   return (
@@ -65,7 +75,7 @@ export default function Navbar() {
       <div className='mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8'>
         {/* Logo */}
         <Link
-          to='/'
+          href='/'
           className='flex items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2'
         >
           <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-brand shadow-sm shadow-brand/20'>
@@ -87,7 +97,7 @@ export default function Navbar() {
           {NAV_LINKS.map(link => (
             <Link
               key={link.to}
-              to={link.to}
+              href={link.to}
               className={cn(
                 'rounded-full px-4 py-2 text-sm font-medium transition-colors',
                 isActive(link.to)
@@ -100,7 +110,7 @@ export default function Navbar() {
           ))}
           {isAdmin && (
             <Link
-              to={adminHref}
+              href={adminHref}
               className='rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-amber-50/60 hover:text-slate-900'
             >
               Admin panel
@@ -111,10 +121,10 @@ export default function Navbar() {
         {/* Right side: cart + mobile toggle */}
         <div className='flex items-center gap-2'>
           <Link
-            to='/cart'
+            href='/cart'
             className={cn(
               'relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition-colors',
-              location.pathname === '/cart'
+              pathname === '/cart'
                 ? 'border-amber-200 bg-amber-50 text-amber-700'
                 : 'border-stone-200 bg-white text-slate-600 hover:bg-amber-50 hover:text-amber-700'
             )}
@@ -164,7 +174,7 @@ export default function Navbar() {
                 return (
                   <Link
                     key={link.to}
-                    to={link.to}
+                    href={link.to}
                     className={cn(
                       'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors',
                       isActive(link.to)
@@ -179,10 +189,10 @@ export default function Navbar() {
               })}
               {isAdmin && (
                 <Link
-                  to={adminHref}
+                  href={adminHref}
                   className={cn(
                     'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors',
-                    location.pathname.startsWith(adminHref)
+                    pathname.startsWith(adminHref)
                       ? 'bg-amber-50 text-amber-700'
                       : 'text-slate-700 hover:bg-amber-50/60'
                   )}
@@ -192,10 +202,10 @@ export default function Navbar() {
                 </Link>
               )}
               <Link
-                to='/cart'
+                href='/cart'
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors',
-                  location.pathname === '/cart'
+                  pathname === '/cart'
                     ? 'bg-amber-50 text-amber-700'
                     : 'text-slate-700 hover:bg-amber-50/60'
                 )}

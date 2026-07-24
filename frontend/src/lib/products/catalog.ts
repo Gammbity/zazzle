@@ -46,7 +46,7 @@ export interface ProductAngle {
   alt: string;
   /** Print-safe zone specific to this angle */
   printableArea: PrintableArea;
-  /** Overlay bounding box for legacy compatibility */
+  /** Overlay bounding box for product preview placement */
   overlayBox?: OverlayBox;
 }
 
@@ -60,11 +60,11 @@ export interface Product {
   thumbnail: string;
   /** Gallery images (different angles) with per-angle printable areas */
   angles: ProductAngle[];
-  /** Bounding box for the design overlay on the base image (legacy) */
+  /** Bounding box for the design overlay on the base image */
   overlayBox: OverlayBox;
   /** Recommended canvas aspect ratio */
   canvasAspect: number;
-  /** Base image used for the mock preview (legacy) */
+  /** Base image used for the mock preview */
   previewBase: string;
   /** Visual style hint for the preview renderer */
   previewStyle: 'flat' | 'perspective';
@@ -121,6 +121,52 @@ export const catalog: Product[] = [
     previewBase: '/products/t-shirt/front.jpg',
     previewStyle: 'flat',
     tags: ['apparel', 'cotton', 'unisex'],
+  },
+  {
+    slug: 'hoodie',
+    name: 'Hoodie',
+    tagline: 'Iliq va o‘ziga xos',
+    description:
+      'Yumshoq hoodie ustiga rasm, logo yoki yozuv joylashtiring. Old va orqa tomonni 3D ko‘rinishda tekshirib, o‘zingizga mos dizayn yarating.',
+    startingPrice: '160 000 UZS',
+    thumbnail: '/generated/hoodie.png',
+    angles: [
+      {
+        id: 'front',
+        label: 'Old tomoni',
+        src: '/generated/hoodie.png',
+        alt: 'Hoodiening old tomoni',
+        printableArea: {
+          x: 8,
+          y: 8,
+          width: 84,
+          height: 84,
+          defaultScale: 1,
+          defaultRotation: 0,
+        },
+        overlayBox: { x: 24, y: 26, width: 52, height: 46 },
+      },
+      {
+        id: 'back',
+        label: 'Orqa tomoni',
+        src: '/generated/hoodie.png',
+        alt: 'Hoodiening orqa tomoni',
+        printableArea: {
+          x: 8,
+          y: 8,
+          width: 84,
+          height: 84,
+          defaultScale: 1,
+          defaultRotation: 0,
+        },
+        overlayBox: { x: 24, y: 26, width: 52, height: 46 },
+      },
+    ],
+    overlayBox: { x: 24, y: 26, width: 52, height: 46 },
+    canvasAspect: 0.87,
+    previewBase: '/generated/hoodie.png',
+    previewStyle: 'flat',
+    tags: ['apparel', 'hoodie', 'unisex'],
   },
   {
     slug: 'mug',
@@ -292,6 +338,37 @@ export const catalog: Product[] = [
     previewBase: '/products/pen/side.svg',
     previewStyle: 'perspective',
     tags: ['office', 'branding', 'gift'],
+  },
+  {
+    slug: 'shopper-bag',
+    name: 'Xarid sumkasi',
+    tagline: "Brendingizni o'zingiz bilan olib yuring",
+    description:
+      "Xarid sumkasi yuzasiga logo, rasm yoki yozuv joylashtiring va tayyor ko'rinishni oldindan tekshiring.",
+    startingPrice: '45 000 UZS',
+    thumbnail: '/products/shopper_bag/front.jpg',
+    angles: [
+      {
+        id: 'front',
+        label: 'Old tomoni',
+        src: '/products/shopper_bag/front.jpg',
+        alt: 'Xarid sumkasining old tomoni',
+        printableArea: {
+          x: 29,
+          y: 40,
+          width: 42,
+          height: 56,
+          defaultScale: 0.8,
+          defaultRotation: 0,
+        },
+        overlayBox: { x: 29, y: 40, width: 42, height: 56 },
+      },
+    ],
+    overlayBox: { x: 29, y: 40, width: 42, height: 56 },
+    canvasAspect: 0.75,
+    previewBase: '/products/shopper_bag/front.jpg',
+    previewStyle: 'flat',
+    tags: ['bag', 'branding', 'gift'],
   },
 ];
 

@@ -139,7 +139,12 @@ export default function RevenueTrendChart({ data }: RevenueTrendChartProps) {
         })}
 
         {areaPath && (
-          <path d={areaPath} fill='currentColor' fillOpacity={0.12} stroke='none' />
+          <path
+            d={areaPath}
+            fill='currentColor'
+            fillOpacity={0.12}
+            stroke='none'
+          />
         )}
 
         <path

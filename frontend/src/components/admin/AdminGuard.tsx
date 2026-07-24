@@ -1,12 +1,15 @@
+'use client';
+
 import { useEffect, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { useCurrentUser, useIsAdmin, useIsSuperAdmin } from '@/hooks/queries';
 import { isAuthenticated } from '@/lib/commerce';
-import { navigate } from '@/lib/router';
 import AdminLoginGate from '@/components/admin/AdminLoginGate';
 import { useAdminBase } from '@/components/admin/AdminBaseContext';
 
 export default function AdminGuard({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const { data: user, isLoading } = useCurrentUser();
   const authed = isAuthenticated();
   // useIsAdmin() covers is_staff and any manager — page/nav-level checks
@@ -27,9 +30,9 @@ export default function AdminGuard({ children }: { children: ReactNode }) {
     // Logged in but without admin/manager access — no login form can fix
     // that, so bounce home instead of looping back to the same form.
     if (authed && !canEnterAdminPanel) {
-      navigate('/', { replace: true });
+      router.replace('/');
     }
-  }, [isLoading, authed, canEnterAdminPanel]);
+  }, [isLoading, authed, canEnterAdminPanel, router]);
 
   if (!authed) {
     return <AdminLoginGate />;
@@ -61,7 +64,7 @@ export default function AdminGuard({ children }: { children: ReactNode }) {
           </p>
           <button
             type='button'
-            onClick={() => navigate(ownPath, { replace: true })}
+            onClick={() => router.replace(ownPath)}
             className='mt-6 w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700'
           >
             O&apos;z panelimga o&apos;tish

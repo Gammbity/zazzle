@@ -1,4 +1,4 @@
-import { Link } from '@/lib/router';
+import Link from 'next/link';
 
 const PRODUCT_LINKS = [
   { to: '/products/t-shirt', label: 'Futbolka' },
@@ -19,9 +19,12 @@ export default function Footer() {
     <footer className='mt-auto w-full bg-brand-surface-low'>
       <div className='mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-10 sm:grid-cols-3 sm:px-6 lg:px-8'>
         <div className='flex flex-col gap-4'>
-          <span className='text-xl font-extrabold text-brand'>Zazzle Uzbekistan</span>
+          <span className='text-xl font-extrabold text-brand'>
+            Zazzle Uzbekistan
+          </span>
           <p className='text-sm leading-6 text-brand-muted'>
-            © {new Date().getFullYear()} Zazzle Uzbekistan. Barcha huquqlar himoyalangan.
+            © {new Date().getFullYear()} Zazzle Uzbekistan. Barcha huquqlar
+            himoyalangan.
           </p>
         </div>
 
@@ -30,7 +33,7 @@ export default function Footer() {
           {CONTACT_LINKS.map(link => (
             <span
               key={link.label}
-              className='text-sm text-brand-muted transition-colors hover:text-brand cursor-pointer'
+              className='cursor-pointer text-sm text-brand-muted transition-colors hover:text-brand'
             >
               {link.label}
             </span>
@@ -42,7 +45,7 @@ export default function Footer() {
           {PRODUCT_LINKS.map(link => (
             <Link
               key={link.to}
-              to={link.to}
+              href={link.to}
               className='text-sm text-brand-muted transition-colors hover:text-brand'
             >
               {link.label}

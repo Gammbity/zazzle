@@ -41,7 +41,10 @@ const GARMENT_ASSETS: Record<GarmentType, Partial<Record<GarmentSide, GarmentSid
   hoodie: {
     front: {
       image: '/generated/hoodie.png',
-      printArea: { top: 24, left: 36, width: 28, height: 42 },
+      // Already centered (36% each side); lowered further from the hood/
+      // collar the same way the t-shirt print area was, keeping the bottom
+      // edge fixed so it still clears the kangaroo pocket.
+      printArea: { top: 31, left: 36, width: 28, height: 35 },
       tintable: true,
     },
   },

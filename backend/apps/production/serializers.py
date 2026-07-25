@@ -16,15 +16,26 @@ class ProductionCenterSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductionCenter
         fields = [
-            'id', 'name', 'slug', 'type', 'address', 'latitude', 'longitude',
-            'phone', 'email', 'is_active', 'supports_pickup', 'supports_delivery',
-            'sort_order', 'distance_km',
+            "id",
+            "name",
+            "slug",
+            "type",
+            "address",
+            "latitude",
+            "longitude",
+            "phone",
+            "email",
+            "is_active",
+            "supports_pickup",
+            "supports_delivery",
+            "sort_order",
+            "distance_km",
         ]
         read_only_fields = fields
 
     def get_distance_km(self, obj):
-        lat = self.context.get('lat')
-        lng = self.context.get('lng')
+        lat = self.context.get("lat")
+        lng = self.context.get("lng")
         if lat is None or lng is None:
             return None
         return obj.distance_km(lat, lng)
@@ -36,24 +47,45 @@ class AdminProductionCenterSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductionCenter
         fields = [
-            'id', 'name', 'slug', 'type', 'address', 'latitude', 'longitude',
-            'phone', 'email', 'is_active', 'supports_pickup', 'supports_delivery',
-            'sort_order', 'created_at', 'updated_at',
+            "id",
+            "name",
+            "slug",
+            "type",
+            "address",
+            "latitude",
+            "longitude",
+            "phone",
+            "email",
+            "is_active",
+            "supports_pickup",
+            "supports_delivery",
+            "sort_order",
+            "created_at",
+            "updated_at",
         ]
-        read_only_fields = ['id', 'slug', 'created_at', 'updated_at']
+        read_only_fields = ["id", "slug", "created_at", "updated_at"]
 
 
 class CenterEmployeeSerializer(serializers.ModelSerializer):
     """Read view of an employee (production_admin/production_manager) of a center."""
 
-    role_display = serializers.ReadOnlyField(source='get_role_display')
-    full_name = serializers.ReadOnlyField(source='get_full_name')
+    role_display = serializers.ReadOnlyField(source="get_role_display")
+    full_name = serializers.ReadOnlyField(source="get_full_name")
 
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name', 'full_name',
-            'role', 'role_display', 'is_active', 'production_center', 'created_at',
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "full_name",
+            "role",
+            "role_display",
+            "is_active",
+            "production_center",
+            "created_at",
         ]
         read_only_fields = fields
 
@@ -71,7 +103,7 @@ class CenterEmployeeCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'first_name', 'last_name']
+        fields = ["id", "username", "email", "password", "first_name", "last_name"]
 
     def validate_password(self, value):
         try:
@@ -82,12 +114,12 @@ class CenterEmployeeCreateSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError('A user with this email already exists.')
+            raise serializers.ValidationError("A user with this email already exists.")
         return value
 
     def create(self, validated_data):
-        password = validated_data.pop('password')
-        production_center = self.context['production_center']
+        password = validated_data.pop("password")
+        production_center = self.context["production_center"]
         user = User.objects.create_user(
             role=User.Role.PRODUCTION_MANAGER,
             production_center=production_center,

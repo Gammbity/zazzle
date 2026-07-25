@@ -1,126 +1,156 @@
-from django.db import models
-from django.contrib.auth import get_user_model
-from django.utils.translation import gettext_lazy as _
-from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
-from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 User = get_user_model()
 
 
 class Order(models.Model):
     """Main order model."""
-    
+
     ORDER_STATUS = [
-        ('NEW', _('New')),
-        ('PAYMENT_PENDING', _('Payment Pending')),
-        ('PAID', _('Paid')),
-        ('READY_FOR_PRODUCTION', _('Ready for Production')),
-        ('IN_PRODUCTION', _('In Production')),
-        ('QUALITY_CHECK', _('Quality Check')),
-        ('READY_FOR_PICKUP', _('Ready for Pickup')),
-        ('READY_FOR_DELIVERY', _('Ready for Delivery')),
-        ('COMPLETED', _('Completed')),
-        ('CANCELLED', _('Cancelled')),
+        ("NEW", _("New")),
+        ("PAYMENT_PENDING", _("Payment Pending")),
+        ("PAID", _("Paid")),
+        ("READY_FOR_PRODUCTION", _("Ready for Production")),
+        ("IN_PRODUCTION", _("In Production")),
+        ("QUALITY_CHECK", _("Quality Check")),
+        ("READY_FOR_PICKUP", _("Ready for Pickup")),
+        ("READY_FOR_DELIVERY", _("Ready for Delivery")),
+        ("COMPLETED", _("Completed")),
+        ("CANCELLED", _("Cancelled")),
     ]
 
     class DeliveryMethod(models.TextChoices):
-        DELIVERY = 'DELIVERY', _('Delivery')
-        PICKUP = 'PICKUP', _('Pickup')
+        DELIVERY = "DELIVERY", _("Delivery")
+        PICKUP = "PICKUP", _("Pickup")
 
     # Order identification
-    order_number = models.CharField(_('order number'), max_length=20, unique=True, blank=True)
-    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
-    
+    order_number = models.CharField(
+        _("order number"), max_length=20, unique=True, blank=True
+    )
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="orders")
+
     # Order status
-    status = models.CharField(_('status'), max_length=32, choices=ORDER_STATUS, default='NEW')
-    
+    status = models.CharField(
+        _("status"), max_length=32, choices=ORDER_STATUS, default="NEW"
+    )
+
     # Pricing
-    subtotal = models.DecimalField(_('subtotal'), max_digits=10, decimal_places=2, default=0)
-    tax_amount = models.DecimalField(_('tax amount'), max_digits=10, decimal_places=2, default=0)
-    shipping_cost = models.DecimalField(_('shipping cost'), max_digits=10, decimal_places=2, default=0)
-    discount_amount = models.DecimalField(_('discount amount'), max_digits=10, decimal_places=2, default=0)
-    total_amount = models.DecimalField(_('total amount'), max_digits=10, decimal_places=2, default=0)
-    
+    subtotal = models.DecimalField(
+        _("subtotal"), max_digits=10, decimal_places=2, default=0
+    )
+    tax_amount = models.DecimalField(
+        _("tax amount"), max_digits=10, decimal_places=2, default=0
+    )
+    shipping_cost = models.DecimalField(
+        _("shipping cost"), max_digits=10, decimal_places=2, default=0
+    )
+    discount_amount = models.DecimalField(
+        _("discount amount"), max_digits=10, decimal_places=2, default=0
+    )
+    total_amount = models.DecimalField(
+        _("total amount"), max_digits=10, decimal_places=2, default=0
+    )
+
     # Delivery method
     delivery_method = models.CharField(
-        _('delivery method'), max_length=16,
-        choices=DeliveryMethod.choices, default=DeliveryMethod.DELIVERY,
+        _("delivery method"),
+        max_length=16,
+        choices=DeliveryMethod.choices,
+        default=DeliveryMethod.DELIVERY,
     )
-    latitude = models.DecimalField(_('latitude'), max_digits=9, decimal_places=6, null=True, blank=True)
-    longitude = models.DecimalField(_('longitude'), max_digits=9, decimal_places=6, null=True, blank=True)
+    latitude = models.DecimalField(
+        _("latitude"), max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    longitude = models.DecimalField(
+        _("longitude"), max_digits=9, decimal_places=6, null=True, blank=True
+    )
     # Every order belongs to exactly one production center regardless of
     # delivery method — the generic fulfillment concept this whole system
     # routes through, whether that center is an external partner or (later)
     # one of our own factories. PROTECT: a center with live orders can be
     # deactivated (is_active=False) but not deleted out from under them.
     production_center = models.ForeignKey(
-        'production.ProductionCenter',
+        "production.ProductionCenter",
         on_delete=models.PROTECT,
-        related_name='orders',
+        related_name="orders",
     )
 
     # Shipping information
-    shipping_name = models.CharField(_('shipping name'), max_length=100)
-    shipping_email = models.EmailField(_('shipping email'))
-    shipping_phone = models.CharField(_('shipping phone'), max_length=20, blank=True)
-    shipping_address = models.TextField(_('shipping address'), blank=True)
-    shipping_city = models.CharField(_('shipping city'), max_length=100, blank=True)
-    shipping_state = models.CharField(_('shipping state'), max_length=100, blank=True)
-    shipping_postal_code = models.CharField(_('shipping postal code'), max_length=20, blank=True)
-    shipping_country = models.CharField(_('shipping country'), max_length=100, default='Uzbekistan')
-    
+    shipping_name = models.CharField(_("shipping name"), max_length=100)
+    shipping_email = models.EmailField(_("shipping email"))
+    shipping_phone = models.CharField(_("shipping phone"), max_length=20, blank=True)
+    shipping_address = models.TextField(_("shipping address"), blank=True)
+    shipping_city = models.CharField(_("shipping city"), max_length=100, blank=True)
+    shipping_state = models.CharField(_("shipping state"), max_length=100, blank=True)
+    shipping_postal_code = models.CharField(
+        _("shipping postal code"), max_length=20, blank=True
+    )
+    shipping_country = models.CharField(
+        _("shipping country"), max_length=100, default="Uzbekistan"
+    )
+
     # Order notes
-    customer_notes = models.TextField(_('customer notes'), blank=True)
-    admin_notes = models.TextField(_('admin notes'), blank=True)
-    
+    customer_notes = models.TextField(_("customer notes"), blank=True)
+    admin_notes = models.TextField(_("admin notes"), blank=True)
+
     # Tracking
-    tracking_number = models.CharField(_('tracking number'), max_length=100, blank=True)
-    carrier = models.CharField(_('carrier'), max_length=50, blank=True)
-    
+    tracking_number = models.CharField(_("tracking number"), max_length=100, blank=True)
+    carrier = models.CharField(_("carrier"), max_length=50, blank=True)
+
     # Timestamps
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
-    shipped_at = models.DateTimeField(_('shipped at'), null=True, blank=True)
-    delivered_at = models.DateTimeField(_('delivered at'), null=True, blank=True)
-    
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+    shipped_at = models.DateTimeField(_("shipped at"), null=True, blank=True)
+    delivered_at = models.DateTimeField(_("delivered at"), null=True, blank=True)
+
     class Meta:
-        verbose_name = _('Order')
-        verbose_name_plural = _('Orders')
-        ordering = ['-created_at']
+        verbose_name = _("Order")
+        verbose_name_plural = _("Orders")
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['customer', 'status']),
-            models.Index(fields=['status', 'created_at']),
-            models.Index(fields=['order_number']),
-            models.Index(fields=['-created_at']),
+            models.Index(fields=["customer", "status"]),
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["order_number"]),
+            models.Index(fields=["-created_at"]),
             # User order history (my-orders page) — newest-first per customer.
-            models.Index(fields=['customer', '-created_at'], name='orders_order_cust_recent_idx'),
+            models.Index(
+                fields=["customer", "-created_at"], name="orders_order_cust_recent_idx"
+            ),
         ]
-        
+
     def __str__(self):
         return f"Order {self.order_number} - {self.customer.email}"
-    
+
     def save(self, *args, **kwargs):
         """Generate order number if not exists."""
         if not self.order_number:
             self.order_number = self._generate_order_number()
         super().save(*args, **kwargs)
-    
+
     def _generate_order_number(self):
         """Generate unique order number."""
         import random
         import string
+
         while True:
-            number = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            number = "".join(
+                random.choices(string.ascii_uppercase + string.digits, k=8)
+            )
             if not Order.objects.filter(order_number=number).exists():
                 return f"ZAZ{number}"
-    
+
     def calculate_total(self):
         """Recalculate order totals."""
         self.subtotal = sum(item.total_price for item in self.items.all())
-        self.total_amount = self.subtotal + self.tax_amount + self.shipping_cost - self.discount_amount
-        self.save(update_fields=['subtotal', 'total_amount'])
-        
+        self.total_amount = (
+            self.subtotal + self.tax_amount + self.shipping_cost - self.discount_amount
+        )
+        self.save(update_fields=["subtotal", "total_amount"])
+
     @property
     def item_count(self):
         """Get total number of items."""
@@ -131,110 +161,112 @@ class ProductionFile(models.Model):
     """Print-ready file generated for a specific order item."""
 
     class FileType(models.TextChoices):
-        PNG_300_DPI = 'png_300', _('PNG 300 DPI')
-        PDF = 'pdf', _('PDF')
-        OTHER = 'other', _('Other')
+        PNG_300_DPI = "png_300", _("PNG 300 DPI")
+        PDF = "pdf", _("PDF")
+        OTHER = "other", _("Other")
 
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
-        related_name='production_files',
+        related_name="production_files",
     )
     order_item = models.ForeignKey(
-        'OrderItem',
+        "OrderItem",
         on_delete=models.CASCADE,
-        related_name='production_files',
+        related_name="production_files",
     )
 
     file_type = models.CharField(
-        _('file type'),
+        _("file type"),
         max_length=32,
         choices=FileType.choices,
         default=FileType.PNG_300_DPI,
     )
-    s3_key = models.CharField(_('S3 key'), max_length=500)
-    dpi = models.PositiveIntegerField(_('DPI'), default=300)
+    s3_key = models.CharField(_("S3 key"), max_length=500)
+    dpi = models.PositiveIntegerField(_("DPI"), default=300)
 
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
 
     class Meta:
-        verbose_name = _('Production File')
-        verbose_name_plural = _('Production Files')
-        ordering = ['created_at']
+        verbose_name = _("Production File")
+        verbose_name_plural = _("Production Files")
+        ordering = ["created_at"]
         indexes = [
-            models.Index(fields=['order', 'order_item']),
+            models.Index(fields=["order", "order_item"]),
         ]
 
     def __str__(self):
-        return f"{self.order.order_number} - item {self.order_item_id} ({self.file_type})"
+        return (
+            f"{self.order.order_number} - item {self.order_item_id} ({self.file_type})"
+        )
 
 
 class OrderItem(models.Model):
     """Order item model for individual products in an order."""
-    
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
+
     # Product information (store at time of purchase)
-    product_name = models.CharField(_('product name'), max_length=200)
-    product_type = models.CharField(_('product type'), max_length=50)
-    product_sku = models.CharField(_('product SKU'), max_length=100, blank=True)
-    
+    product_name = models.CharField(_("product name"), max_length=200)
+    product_type = models.CharField(_("product type"), max_length=50)
+    product_sku = models.CharField(_("product SKU"), max_length=100, blank=True)
+
     # Variant information
-    size = models.CharField(_('size'), max_length=20)
-    color = models.CharField(_('color'), max_length=50)
-    
+    size = models.CharField(_("size"), max_length=20)
+    color = models.CharField(_("color"), max_length=50)
+
     # Design information
     design = models.ForeignKey(
-        'designs.Design', 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        "designs.Design",
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        related_name='order_items'
+        related_name="order_items",
     )
-    design_title = models.CharField(_('design title'), max_length=200, blank=True)
-    design_file_url = models.URLField(_('design file URL'), blank=True)
-    
+    design_title = models.CharField(_("design title"), max_length=200, blank=True)
+    design_file_url = models.URLField(_("design file URL"), blank=True)
+
     # Pricing
-    unit_price = models.DecimalField(_('unit price'), max_digits=10, decimal_places=2)
-    quantity = models.PositiveIntegerField(_('quantity'), default=1)
-    total_price = models.DecimalField(_('total price'), max_digits=10, decimal_places=2)
-    
+    unit_price = models.DecimalField(_("unit price"), max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField(_("quantity"), default=1)
+    total_price = models.DecimalField(_("total price"), max_digits=10, decimal_places=2)
+
     # Production specifications
     print_specifications = models.JSONField(
-        _('print specifications'),
+        _("print specifications"),
         default=dict,
-        help_text="Print specifications and positioning"
+        help_text="Print specifications and positioning",
     )
-    
+
     # Status tracking for individual items
     production_status = models.CharField(
-        _('production status'),
+        _("production status"),
         max_length=20,
         choices=[
-            ('pending', _('Pending')),
-            ('designing', _('Designing')),
-            ('ready', _('Ready for Print')),
-            ('printing', _('Printing')),
-            ('quality_check', _('Quality Check')),
-            ('completed', _('Completed')),
-            ('failed', _('Failed')),
+            ("pending", _("Pending")),
+            ("designing", _("Designing")),
+            ("ready", _("Ready for Print")),
+            ("printing", _("Printing")),
+            ("quality_check", _("Quality Check")),
+            ("completed", _("Completed")),
+            ("failed", _("Failed")),
         ],
-        default='pending'
+        default="pending",
     )
-    
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
-    
+
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+
     class Meta:
-        verbose_name = _('Order Item')
-        verbose_name_plural = _('Order Items')
+        verbose_name = _("Order Item")
+        verbose_name_plural = _("Order Items")
         indexes = [
-            models.Index(fields=['order', 'production_status']),
+            models.Index(fields=["order", "production_status"]),
         ]
-        
+
     def __str__(self):
         return f"{self.product_name} ({self.size}, {self.color}) x{self.quantity}"
-    
+
     def save(self, *args, **kwargs):
         """Calculate total price."""
         self.total_price = self.unit_price * self.quantity
@@ -243,52 +275,60 @@ class OrderItem(models.Model):
 
 class Payment(models.Model):
     """Payment model for tracking order payments."""
-    
+
     PAYMENT_STATUS = [
-        ('pending', _('Pending')),
-        ('processing', _('Processing')),
-        ('completed', _('Completed')),
-        ('failed', _('Failed')),
-        ('cancelled', _('Cancelled')),
-        ('refunded', _('Refunded')),
+        ("pending", _("Pending")),
+        ("processing", _("Processing")),
+        ("completed", _("Completed")),
+        ("failed", _("Failed")),
+        ("cancelled", _("Cancelled")),
+        ("refunded", _("Refunded")),
     ]
-    
+
     PAYMENT_METHODS = [
-        ('stripe', _('Stripe')),
-        ('paypal', _('PayPal')),
-        ('bank_transfer', _('Bank Transfer')),
-        ('cash_on_delivery', _('Cash on Delivery')),
+        ("stripe", _("Stripe")),
+        ("paypal", _("PayPal")),
+        ("bank_transfer", _("Bank Transfer")),
+        ("cash_on_delivery", _("Cash on Delivery")),
     ]
-    
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payments')
-    payment_id = models.CharField(_('payment ID'), max_length=100, unique=True, blank=True)
-    
-    payment_method = models.CharField(_('payment method'), max_length=20, choices=PAYMENT_METHODS)
-    status = models.CharField(_('status'), max_length=20, choices=PAYMENT_STATUS, default='pending')
-    
-    amount = models.DecimalField(_('amount'), max_digits=10, decimal_places=2)
-    currency = models.CharField(_('currency'), max_length=3, default='USD')
-    
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="payments")
+    payment_id = models.CharField(
+        _("payment ID"), max_length=100, unique=True, blank=True
+    )
+
+    payment_method = models.CharField(
+        _("payment method"), max_length=20, choices=PAYMENT_METHODS
+    )
+    status = models.CharField(
+        _("status"), max_length=20, choices=PAYMENT_STATUS, default="pending"
+    )
+
+    amount = models.DecimalField(_("amount"), max_digits=10, decimal_places=2)
+    currency = models.CharField(_("currency"), max_length=3, default="USD")
+
     # Payment gateway information
-    gateway_transaction_id = models.CharField(_('gateway transaction ID'), max_length=200, blank=True)
-    gateway_response = models.JSONField(_('gateway response'), default=dict, blank=True)
-    
+    gateway_transaction_id = models.CharField(
+        _("gateway transaction ID"), max_length=200, blank=True
+    )
+    gateway_response = models.JSONField(_("gateway response"), default=dict, blank=True)
+
     # Timestamps
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    processed_at = models.DateTimeField(_('processed at'), null=True, blank=True)
-    
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    processed_at = models.DateTimeField(_("processed at"), null=True, blank=True)
+
     class Meta:
-        verbose_name = _('Payment')
-        verbose_name_plural = _('Payments')
-        ordering = ['-created_at']
+        verbose_name = _("Payment")
+        verbose_name_plural = _("Payments")
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['order', 'status']),
-            models.Index(fields=['payment_method', 'status']),
+            models.Index(fields=["order", "status"]),
+            models.Index(fields=["payment_method", "status"]),
         ]
-        
+
     def __str__(self):
         return f"Payment {self.payment_id} - {self.amount} {self.currency}"
-    
+
     def save(self, *args, **kwargs):
         """Generate payment ID if not exists."""
         if not self.payment_id:
@@ -300,77 +340,77 @@ class PaymentTransaction(models.Model):
     """Generic payment transaction for local providers."""
 
     class Providers(models.TextChoices):
-        PAYME = 'payme', _('Payme')
-        CLICK = 'click', _('Click')
-        UZCARD_HUMO = 'uzcard_humo', _('Uzcard/Humo Direct')
+        PAYME = "payme", _("Payme")
+        CLICK = "click", _("Click")
+        UZCARD_HUMO = "uzcard_humo", _("Uzcard/Humo Direct")
 
     class Status(models.TextChoices):
-        NEW = 'NEW', _('New')
-        INITIATED = 'INITIATED', _('Initiated')
-        SUCCESS = 'SUCCESS', _('Success')
-        FAILED = 'FAILED', _('Failed')
-        CANCELLED = 'CANCELLED', _('Cancelled')
+        NEW = "NEW", _("New")
+        INITIATED = "INITIATED", _("Initiated")
+        SUCCESS = "SUCCESS", _("Success")
+        FAILED = "FAILED", _("Failed")
+        CANCELLED = "CANCELLED", _("Cancelled")
 
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
-        related_name='payment_transactions',
+        related_name="payment_transactions",
     )
 
     provider = models.CharField(
-        _('provider'),
+        _("provider"),
         max_length=32,
         choices=Providers.choices,
     )
     amount_uzs = models.DecimalField(
-        _('amount (UZS)'),
+        _("amount (UZS)"),
         max_digits=14,
         decimal_places=0,
     )
     currency = models.CharField(
-        _('currency'),
+        _("currency"),
         max_length=3,
-        default='UZS',
+        default="UZS",
     )
     status = models.CharField(
-        _('status'),
+        _("status"),
         max_length=16,
         choices=Status.choices,
         default=Status.NEW,
     )
     external_id = models.CharField(
-        _('external transaction id'),
+        _("external transaction id"),
         max_length=128,
         blank=True,
     )
     idempotency_key = models.CharField(
-        _('idempotency key'),
+        _("idempotency key"),
         max_length=64,
         unique=True,
     )
     raw_payload = models.JSONField(
-        _('raw payload'),
+        _("raw payload"),
         default=dict,
         blank=True,
     )
 
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
 
     class Meta:
-        verbose_name = _('Payment Transaction')
-        verbose_name_plural = _('Payment Transactions')
-        ordering = ['-created_at']
+        verbose_name = _("Payment Transaction")
+        verbose_name_plural = _("Payment Transactions")
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['order', 'status']),
+            models.Index(fields=["order", "status"]),
         ]
         constraints = [
             # Webhook lookups rely on (provider, external_id) being unique.
             # Enforcing at the DB prevents a second provider row from
             # hijacking an existing transaction's callbacks.
             models.UniqueConstraint(
-                fields=['provider', 'external_id'],
-                name='uniq_payment_provider_external_id',
+                fields=["provider", "external_id"],
+                name="uniq_payment_provider_external_id",
             ),
         ]
 
@@ -384,37 +424,37 @@ class OrderAssignment(models.Model):
     order = models.OneToOneField(
         Order,
         on_delete=models.CASCADE,
-        related_name='assignment',
+        related_name="assignment",
     )
     production_center = models.ForeignKey(
-        'production.ProductionCenter',
+        "production.ProductionCenter",
         on_delete=models.CASCADE,
-        related_name='order_assignments',
+        related_name="order_assignments",
     )
     manager = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='assigned_orders',
+        related_name="assigned_orders",
     )
     assigned_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='order_assignments_made',
+        related_name="order_assignments_made",
     )
     # Named `created_at` at the DB/model level (matches the rest of the
     # codebase's timestamp convention); exposed as `assigned_at` in the API
     # per the spec's field name via OrderAssignmentSerializer.
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
 
     class Meta:
-        verbose_name = _('Order Assignment')
-        verbose_name_plural = _('Order Assignments')
+        verbose_name = _("Order Assignment")
+        verbose_name_plural = _("Order Assignments")
         indexes = [
-            models.Index(fields=['manager']),
-            models.Index(fields=['production_center']),
+            models.Index(fields=["manager"]),
+            models.Index(fields=["production_center"]),
         ]
 
     def __str__(self):
@@ -427,20 +467,20 @@ class InternalNote(models.Model):
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
-        related_name='internal_notes',
+        related_name="internal_notes",
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='order_internal_notes',
+        related_name="order_internal_notes",
     )
-    text = models.TextField(_('note'))
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    text = models.TextField(_("note"))
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
 
     class Meta:
-        verbose_name = _('Internal Note')
-        verbose_name_plural = _('Internal Notes')
-        ordering = ['created_at']
+        verbose_name = _("Internal Note")
+        verbose_name_plural = _("Internal Notes")
+        ordering = ["created_at"]
 
     def __str__(self):
         return f"Note for {self.order.order_number} by {self.author.email}"
@@ -448,33 +488,35 @@ class InternalNote(models.Model):
 
 class ShippingMethod(models.Model):
     """Shipping method configuration."""
-    
-    name = models.CharField(_('name'), max_length=100)
-    description = models.TextField(_('description'), blank=True)
-    
+
+    name = models.CharField(_("name"), max_length=100)
+    description = models.TextField(_("description"), blank=True)
+
     # Pricing
-    base_cost = models.DecimalField(_('base cost'), max_digits=10, decimal_places=2)
-    cost_per_item = models.DecimalField(_('cost per item'), max_digits=10, decimal_places=2, default=0)
-    
+    base_cost = models.DecimalField(_("base cost"), max_digits=10, decimal_places=2)
+    cost_per_item = models.DecimalField(
+        _("cost per item"), max_digits=10, decimal_places=2, default=0
+    )
+
     # Delivery
-    min_delivery_days = models.PositiveIntegerField(_('min delivery days'))
-    max_delivery_days = models.PositiveIntegerField(_('max delivery days'))
-    
+    min_delivery_days = models.PositiveIntegerField(_("min delivery days"))
+    max_delivery_days = models.PositiveIntegerField(_("max delivery days"))
+
     # Availability
-    is_active = models.BooleanField(_('is active'), default=True)
-    available_countries = models.JSONField(_('available countries'), default=list)
-    
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    
+    is_active = models.BooleanField(_("is active"), default=True)
+    available_countries = models.JSONField(_("available countries"), default=list)
+
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+
     class Meta:
-        verbose_name = _('Shipping Method')
-        verbose_name_plural = _('Shipping Methods')
-        ordering = ['base_cost']
-        
+        verbose_name = _("Shipping Method")
+        verbose_name_plural = _("Shipping Methods")
+        ordering = ["base_cost"]
+
     def __str__(self):
         return f"{self.name} ({self.min_delivery_days}-{self.max_delivery_days} days)"
-    
-    def calculate_cost(self, item_count=1, country='Uzbekistan'):
+
+    def calculate_cost(self, item_count=1, country="Uzbekistan"):
         """Calculate shipping cost for given parameters."""
         if country not in self.available_countries and self.available_countries:
             return None
@@ -483,91 +525,103 @@ class ShippingMethod(models.Model):
 
 class Coupon(models.Model):
     """Discount coupon model."""
-    
+
     DISCOUNT_TYPES = [
-        ('percentage', _('Percentage')),
-        ('fixed', _('Fixed Amount')),
-        ('free_shipping', _('Free Shipping')),
+        ("percentage", _("Percentage")),
+        ("fixed", _("Fixed Amount")),
+        ("free_shipping", _("Free Shipping")),
     ]
-    
-    code = models.CharField(_('coupon code'), max_length=50, unique=True)
-    name = models.CharField(_('name'), max_length=100)
-    description = models.TextField(_('description'), blank=True)
-    
-    discount_type = models.CharField(_('discount type'), max_length=20, choices=DISCOUNT_TYPES)
-    discount_value = models.DecimalField(_('discount value'), max_digits=10, decimal_places=2)
-    
-    # Usage limits
-    usage_limit = models.PositiveIntegerField(_('usage limit'), null=True, blank=True)
-    usage_count = models.PositiveIntegerField(_('usage count'), default=0)
-    per_user_limit = models.PositiveIntegerField(_('per user limit'), null=True, blank=True)
-    
-    # Validity
-    valid_from = models.DateTimeField(_('valid from'))
-    valid_to = models.DateTimeField(_('valid to'))
-    
-    # Conditions
-    minimum_amount = models.DecimalField(_('minimum amount'), max_digits=10, decimal_places=2, default=0)
-    applicable_products = models.ManyToManyField(
-        'products.ProductType', 
-        blank=True,
-        related_name='coupons'
+
+    code = models.CharField(_("coupon code"), max_length=50, unique=True)
+    name = models.CharField(_("name"), max_length=100)
+    description = models.TextField(_("description"), blank=True)
+
+    discount_type = models.CharField(
+        _("discount type"), max_length=20, choices=DISCOUNT_TYPES
     )
-    
-    is_active = models.BooleanField(_('is active'), default=True)
-    
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
-    
+    discount_value = models.DecimalField(
+        _("discount value"), max_digits=10, decimal_places=2
+    )
+
+    # Usage limits
+    usage_limit = models.PositiveIntegerField(_("usage limit"), null=True, blank=True)
+    usage_count = models.PositiveIntegerField(_("usage count"), default=0)
+    per_user_limit = models.PositiveIntegerField(
+        _("per user limit"), null=True, blank=True
+    )
+
+    # Validity
+    valid_from = models.DateTimeField(_("valid from"))
+    valid_to = models.DateTimeField(_("valid to"))
+
+    # Conditions
+    minimum_amount = models.DecimalField(
+        _("minimum amount"), max_digits=10, decimal_places=2, default=0
+    )
+    applicable_products = models.ManyToManyField(
+        "products.ProductType", blank=True, related_name="coupons"
+    )
+
+    is_active = models.BooleanField(_("is active"), default=True)
+
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+
     class Meta:
-        verbose_name = _('Coupon')
-        verbose_name_plural = _('Coupons')
-        ordering = ['-created_at']
-        
+        verbose_name = _("Coupon")
+        verbose_name_plural = _("Coupons")
+        ordering = ["-created_at"]
+
     def __str__(self):
         return f"{self.code} - {self.name}"
-    
+
     def is_valid(self, user=None, order_amount=0):
         """Check if coupon is valid for use."""
         from django.utils import timezone
+
         now = timezone.now()
-        
+
         # Basic checks
         if not self.is_active:
             return False, "Coupon is not active"
-        
+
         if now < self.valid_from or now > self.valid_to:
             return False, "Coupon is expired"
-        
+
         if self.usage_limit and self.usage_count >= self.usage_limit:
             return False, "Coupon usage limit reached"
-        
+
         if order_amount < self.minimum_amount:
             return False, f"Minimum order amount is {self.minimum_amount}"
-        
+
         # Per-user limit check
         if user and self.per_user_limit:
             user_usage = Order.objects.filter(
                 customer=user,
                 coupon_code=self.code,
-                status__in=['paid', 'processing', 'shipped', 'delivered']
+                status__in=["paid", "processing", "shipped", "delivered"],
             ).count()
             if user_usage >= self.per_user_limit:
                 return False, "Coupon usage limit per user reached"
-        
+
         return True, "Coupon is valid"
-    
+
     def calculate_discount(self, order_amount):
         """Calculate discount amount."""
-        if self.discount_type == 'percentage':
+        if self.discount_type == "percentage":
             return (order_amount * self.discount_value) / 100
-        elif self.discount_type == 'fixed':
+        elif self.discount_type == "fixed":
             return min(self.discount_value, order_amount)
-        elif self.discount_type == 'free_shipping':
+        elif self.discount_type == "free_shipping":
             return 0  # Handle in shipping calculation
         return 0
 
 
 # Add coupon_code field to Order model
-Order.add_to_class('coupon_code', models.CharField(_('coupon code'), max_length=50, blank=True))
-Order.add_to_class('shipping_method', models.ForeignKey(ShippingMethod, on_delete=models.SET_NULL, null=True, blank=True))
+Order.add_to_class(
+    "coupon_code", models.CharField(_("coupon code"), max_length=50, blank=True)
+)
+Order.add_to_class(
+    "shipping_method",
+    models.ForeignKey(ShippingMethod, on_delete=models.SET_NULL, null=True, blank=True),
+)

@@ -118,7 +118,7 @@ if [[ "$DOMAIN" != "localhost" ]] && [[ "$DOMAIN" != "127.0.0.1" ]]; then
     CERT_EXPIRY_EPOCH=$(date -d "$CERT_EXPIRY" +%s)
     CURRENT_EPOCH=$(date +%s)
     DAYS_UNTIL_EXPIRY=$(( (CERT_EXPIRY_EPOCH - CURRENT_EPOCH) / 86400 ))
-    
+
     if [ $DAYS_UNTIL_EXPIRY -gt 30 ]; then
         print_status "✅ SSL certificate is valid ($DAYS_UNTIL_EXPIRY days remaining)"
     elif [ $DAYS_UNTIL_EXPIRY -gt 7 ]; then

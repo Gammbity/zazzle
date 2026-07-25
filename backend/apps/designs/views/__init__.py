@@ -3,6 +3,7 @@ designs.views — split across focused submodules but re-exported here so
 `urls.py` and other callers importing `from apps.designs import views`
 keep working without edits.
 """
+
 from .catalog import (  # noqa: F401
     DesignCategoryListView,
     DesignCollectionDetailView,

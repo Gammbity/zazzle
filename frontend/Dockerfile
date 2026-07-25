@@ -1,7 +1,6 @@
-# Development Dockerfile for the Next.js frontend
-FROM node:20-alpine
+# Development Dockerfile for the Nuxt frontend
+FROM node:22-alpine
 
-# Set environment variables
 ENV NODE_ENV=development
 
 WORKDIR /app
@@ -9,18 +8,14 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies
 RUN npm ci
 
-# Copy app source
 COPY . .
 
-# Expose port
 EXPOSE 3000
 
-# Health check
 HEALTHCHECK --interval=10s --timeout=5s --start-period=120s --retries=10 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
-# Start the Next.js development server on the container network
-CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
+# Start the Nuxt dev server on the container network
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

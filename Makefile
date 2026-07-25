@@ -140,8 +140,8 @@ status: ## Show status of all services
 	docker-compose --env-file $(ENV_FILE) ps
 
 # Package management
-backend-requirements: ## Update backend requirements
-	docker-compose --env-file $(ENV_FILE) exec backend pip freeze > requirements.txt
+backend-requirements: ## Update backend lockfile (uv.lock)
+	docker-compose --env-file $(ENV_FILE) exec backend uv lock
 
 frontend-deps: ## Show frontend dependencies
 	docker-compose --env-file $(ENV_FILE) exec frontend npm list --depth=0

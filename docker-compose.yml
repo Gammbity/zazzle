@@ -128,19 +128,24 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    command: sh -c "npm run dev -- --hostname 0.0.0.0 --webpack"
+    command: sh -c "npm run dev -- --host 0.0.0.0"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-      - /app/.next
+      - /app/.nuxt
+      - /app/.output
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
-      - VITE_API_URL=${VITE_API_URL}
+      # Server-side (SSR / routeRules proxy in nuxt.config.ts, runs inside
+      # this container) must reach the backend via the compose service name.
+      - BACKEND_URL=http://backend:8000
+      # Client-side (runs in the user's browser) must reach the backend via
+      # the port published on the host.
+      - NUXT_PUBLIC_MEDIA_URL=http://localhost:${BACKEND_PORT:-8000}/media
+      - NUXT_PUBLIC_STATIC_URL=http://localhost:${BACKEND_PORT:-8000}/static
+      - NUXT_PUBLIC_SITE_URL=http://localhost:${FRONTEND_PORT:-3000}
       - CHOKIDAR_USEPOLLING=true
-      - CHOKIDAR_INTERVAL=300
-      - VITE_USE_POLLING=true
-      - VITE_POLL_INTERVAL=300
     healthcheck:
       test: ["CMD-SHELL", "wget --header='Host: frontend' --no-verbose --tries=1 --spider http://127.0.0.1:3000 || exit 1"]
       interval: 10s

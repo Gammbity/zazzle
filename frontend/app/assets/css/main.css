@@ -1,0 +1,127 @@
+@import 'tailwindcss';
+
+/* Design tokens — ported 1:1 from the previous frontend's tailwind.config.js
+   so the visual language (brand colors, radii, motion) stays identical
+   while the framework changes underneath. */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+
+  /* Site-wide content container — every `max-w-7xl` (Navbar, Footer, all
+     landing sections) picks this up automatically. 1400px matches the
+     brand's old `2xl` container breakpoint, a bit roomier than Tailwind's
+     stock 1280px default on large screens. */
+  --container-7xl: 87.5rem;
+
+  --color-brand: #8d4b00;
+  --color-brand-dim: #6e3900;
+  --color-brand-bg: #fbf9f8;
+  --color-brand-surface: #efedec;
+  --color-brand-surface-low: #f5f3f2;
+  --color-brand-muted: #554336;
+  --color-brand-border: #dbc2b0;
+
+  --color-primary-50: #fffbeb;
+  --color-primary-100: #fef3c7;
+  --color-primary-200: #fde68a;
+  --color-primary-300: #fcd34d;
+  --color-primary-400: #fbbf24;
+  --color-primary-500: #f59e0b;
+  --color-primary-600: #8d4b00;
+  --color-primary-700: #6e3900;
+  --color-primary-800: #92400e;
+  --color-primary-900: #78350f;
+
+  --color-secondary-50: #fff7ed;
+  --color-secondary-100: #ffedd5;
+  --color-secondary-200: #fed7aa;
+  --color-secondary-300: #fdba74;
+  --color-secondary-400: #fb923c;
+  --color-secondary-500: #f97316;
+  --color-secondary-600: #ea580c;
+  --color-secondary-700: #c2410c;
+  --color-secondary-800: #9a3412;
+  --color-secondary-900: #7c2d12;
+
+  --color-accent-50: #fff7ed;
+  --color-accent-100: #ffedd5;
+  --color-accent-200: #fed7aa;
+  --color-accent-300: #fdba74;
+  --color-accent-400: #fb923c;
+  --color-accent-500: #f97316;
+  --color-accent-600: #ea580c;
+  --color-accent-700: #c2410c;
+  --color-accent-800: #9a3412;
+  --color-accent-900: #7c2d12;
+
+  /* `amber-*` is overridden to the Stitch primary scale so existing
+     `amber-600`-style utility classes read as brand color, matching the
+     previous frontend's override. */
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #8d4b00;
+  --color-amber-700: #6e3900;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+
+  --animate-fade-in: fadeIn 0.5s ease-in-out;
+  --animate-slide-up: slideUp 0.3s ease-out;
+  --animate-slide-down: slideDown 0.3s ease-out;
+  --animate-scale-in: scaleIn 0.2s ease-out;
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+body {
+  background-color: var(--color-brand-bg);
+  font-family: var(--font-sans);
+}
+
+/* Nuxt's built-in page-transition hook — see layouts/default.vue */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

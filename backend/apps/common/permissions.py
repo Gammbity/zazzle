@@ -5,12 +5,13 @@ Use these instead of hand-rolled `if request.user == obj.user` checks inside
 views. They fail closed: any object lacking the expected owner attribute is
 denied rather than silently allowed.
 """
+
 from rest_framework import permissions
 
 
 def _get_owner(obj):
     """Return the user who owns `obj`, or None if no known owner attribute exists."""
-    for attr in ('user', 'owner', 'customer', 'created_by'):
+    for attr in ("user", "owner", "customer", "created_by"):
         owner = getattr(obj, attr, None)
         if owner is not None:
             return owner

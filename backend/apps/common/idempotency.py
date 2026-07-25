@@ -8,24 +8,26 @@ re-executing — preventing double-charges when a client retries a timeout.
 
 Only successful (2xx) responses are cached; failures are allowed to retry.
 """
+
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from django.core.cache import cache
 from rest_framework.response import Response
 
-HEADER_NAME = 'HTTP_IDEMPOTENCY_KEY'
-KEY_PREFIX = 'idem'
+HEADER_NAME = "HTTP_IDEMPOTENCY_KEY"
+KEY_PREFIX = "idem"
 DEFAULT_TTL = 60 * 60 * 24  # 24h
 
 
 def _cache_key(user_id: int, endpoint: str, client_key: str) -> str:
-    return f'{KEY_PREFIX}:{endpoint}:{user_id}:{client_key}'
+    return f"{KEY_PREFIX}:{endpoint}:{user_id}:{client_key}"
 
 
-def get_key(request) -> Optional[str]:
-    raw = request.META.get(HEADER_NAME, '').strip()
+def get_key(request) -> str | None:
+    raw = request.META.get(HEADER_NAME, "").strip()
     return raw or None
 
 
@@ -55,7 +57,7 @@ def run(
 
     # Cache status + payload — DRF Response instances aren't safely pickleable
     # once rendered, so we rehydrate a fresh Response on cache hit.
-    status_code = getattr(result, 'status_code', 200)
+    status_code = getattr(result, "status_code", 200)
     if 200 <= status_code < 300:
         cache.set(cache_key, (status_code, result.data), ttl)
     return result

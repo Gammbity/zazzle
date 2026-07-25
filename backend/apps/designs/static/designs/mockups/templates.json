@@ -16,7 +16,7 @@
   },
   {
     "name": "Back View",
-    "product_type": "Classic T-Shirt", 
+    "product_type": "Classic T-Shirt",
     "image_file": "tshirt_back.png",
     "design_area": {
       "x": 150,
@@ -48,7 +48,7 @@
   {
     "name": "Front Layout",
     "product_type": "Business Card",
-    "image_file": "business_card_front.png", 
+    "image_file": "business_card_front.png",
     "design_area": {
       "x": 50,
       "y": 50,

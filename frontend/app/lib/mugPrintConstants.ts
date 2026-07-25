@@ -1,0 +1,3 @@
+export const MUG_EDITOR_CANVAS_WIDTH = 540;
+export const MUG_EDITOR_CANVAS_HEIGHT = 200;
+export const MUG_HANDLE_MARGIN_PX = 18;

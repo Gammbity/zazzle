@@ -18,10 +18,10 @@ User = get_user_model()
 
 
 def _filter_by_delivery_method(queryset, request):
-    delivery_method = request.query_params.get('delivery_method')
-    if delivery_method == 'PICKUP':
+    delivery_method = request.query_params.get("delivery_method")
+    if delivery_method == "PICKUP":
         return queryset.filter(supports_pickup=True)
-    if delivery_method == 'DELIVERY':
+    if delivery_method == "DELIVERY":
         return queryset.filter(supports_delivery=True)
     return queryset
 
@@ -58,13 +58,16 @@ class ProductionCenterNearestView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        lat = request.query_params.get('lat')
-        lng = request.query_params.get('lng')
+        lat = request.query_params.get("lat")
+        lng = request.query_params.get("lng")
         try:
             lat = float(lat) if lat is not None else None
             lng = float(lng) if lng is not None else None
         except ValueError:
-            return Response({'detail': 'lat/lng must be numeric.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "lat/lng must be numeric."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         queryset = _filter_by_delivery_method(
             ProductionCenter.objects.filter(is_active=True), request
@@ -73,10 +76,16 @@ class ProductionCenterNearestView(APIView):
         centers = list(queryset)
         if lat is not None and lng is not None:
             centers.sort(
-                key=lambda c: (c.distance_km(lat, lng) if c.distance_km(lat, lng) is not None else float('inf'))
+                key=lambda c: (
+                    c.distance_km(lat, lng)
+                    if c.distance_km(lat, lng) is not None
+                    else float("inf")
+                )
             )
 
-        serializer = ProductionCenterSerializer(centers, many=True, context={'lat': lat, 'lng': lng})
+        serializer = ProductionCenterSerializer(
+            centers, many=True, context={"lat": lat, "lng": lng}
+        )
         return Response(serializer.data)
 
 
@@ -107,30 +116,32 @@ class AdminCenterEmployeeListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsProductionAdminOrSuper]
 
     def get_center(self):
-        center = get_object_or_404(ProductionCenter, pk=self.kwargs['center_id'])
+        center = get_object_or_404(ProductionCenter, pk=self.kwargs["center_id"])
         if not self.request.user.manages_center(center.id):
-            self.permission_denied(self.request, message='Not your production center.')
+            self.permission_denied(self.request, message="Not your production center.")
         return center
 
     def get_queryset(self):
         center = self.get_center()
-        return User.objects.filter(production_center=center).order_by('-created_at')
+        return User.objects.filter(production_center=center).order_by("-created_at")
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.request.method == "POST":
             return CenterEmployeeCreateSerializer
         return CenterEmployeeSerializer
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context['production_center'] = self.get_center()
+        context["production_center"] = self.get_center()
         return context
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        return Response(CenterEmployeeSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(
+            CenterEmployeeSerializer(user).data, status=status.HTTP_201_CREATED
+        )
 
 
 class AdminCenterEmployeeDetailView(generics.RetrieveUpdateAPIView):
@@ -140,21 +151,21 @@ class AdminCenterEmployeeDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsProductionAdminOrSuper]
 
     def get_queryset(self):
-        center = get_object_or_404(ProductionCenter, pk=self.kwargs['center_id'])
+        center = get_object_or_404(ProductionCenter, pk=self.kwargs["center_id"])
         if not self.request.user.manages_center(center.id):
-            self.permission_denied(self.request, message='Not your production center.')
+            self.permission_denied(self.request, message="Not your production center.")
         return User.objects.filter(production_center=center)
 
     def get_serializer(self, *args, **kwargs):
         # Only is_active is meaningfully editable here — role/center changes
         # go through the super-admin-only users/admin/<id>/role/ endpoint.
-        kwargs['partial'] = True
+        kwargs["partial"] = True
         return super().get_serializer(*args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        is_active = request.data.get('is_active')
+        is_active = request.data.get("is_active")
         if is_active is not None:
             instance.is_active = bool(is_active)
-            instance.save(update_fields=['is_active'])
+            instance.save(update_fields=["is_active"])
         return Response(CenterEmployeeSerializer(instance).data)

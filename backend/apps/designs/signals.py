@@ -5,6 +5,7 @@ Design creation triggers asynchronous metadata extraction + optimized-version
 generation. The save() method is deliberately kept free of blocking I/O so
 request latency is independent of image size.
 """
+
 from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver

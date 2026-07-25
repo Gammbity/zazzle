@@ -6,11 +6,12 @@ All S3 access in the codebase should go through this module. Reasons:
 - one place to enforce the "fail fast on missing secrets" invariant
 - consistent key prefix conventions for user-scoped uploads
 """
+
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -24,7 +25,7 @@ class S3ConfigurationError(RuntimeError):
 @dataclass(frozen=True)
 class PresignedPost:
     url: str
-    fields: Dict[str, str]
+    fields: dict[str, str]
 
 
 def _require(name: str) -> str:
@@ -36,15 +37,15 @@ def _require(name: str) -> str:
 
 def get_client():
     return boto3.client(
-        's3',
-        aws_access_key_id=_require('AWS_ACCESS_KEY_ID'),
-        aws_secret_access_key=_require('AWS_SECRET_ACCESS_KEY'),
-        region_name=getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1'),
+        "s3",
+        aws_access_key_id=_require("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=_require("AWS_SECRET_ACCESS_KEY"),
+        region_name=getattr(settings, "AWS_S3_REGION_NAME", "us-east-1"),
     )
 
 
 def bucket() -> str:
-    return _require('AWS_STORAGE_BUCKET_NAME')
+    return _require("AWS_STORAGE_BUCKET_NAME")
 
 
 def user_scoped_key(prefix: str, user_id: int, filename: str) -> str:
@@ -57,7 +58,7 @@ def generate_upload_post(
     content_type: str,
     max_size: int,
     expires_in: int = 3600,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate a presigned POST for direct-to-S3 browser uploads.
 
     Conditions enforce content-type and max size server-side so a malicious
@@ -67,21 +68,25 @@ def generate_upload_post(
     return client.generate_presigned_post(
         Bucket=bucket(),
         Key=key,
-        Fields={'Content-Type': content_type},
+        Fields={"Content-Type": content_type},
         Conditions=[
-            {'Content-Type': content_type},
-            ['content-length-range', 1, max_size],
+            {"Content-Type": content_type},
+            ["content-length-range", 1, max_size],
         ],
         ExpiresIn=expires_in,
     )
 
 
-def head_object(key: str) -> Optional[Dict[str, Any]]:
+def head_object(key: str) -> dict[str, Any] | None:
     """Return S3 HEAD metadata for `key` or None if missing."""
     try:
         return get_client().head_object(Bucket=bucket(), Key=key)
     except ClientError as exc:
-        if exc.response.get('Error', {}).get('Code') in ('404', 'NoSuchKey', 'NotFound'):
+        if exc.response.get("Error", {}).get("Code") in (
+            "404",
+            "NoSuchKey",
+            "NotFound",
+        ):
             return None
         raise
 
@@ -92,7 +97,7 @@ def delete_object(key: str) -> None:
 
 def generate_download_url(key: str, expires_in: int = 300) -> str:
     return get_client().generate_presigned_url(
-        'get_object',
-        Params={'Bucket': bucket(), 'Key': key},
+        "get_object",
+        Params={"Bucket": bucket(), "Key": key},
         ExpiresIn=expires_in,
     )

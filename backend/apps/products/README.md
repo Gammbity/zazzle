@@ -61,7 +61,7 @@ GET /api/products/search/?q=<query>   # Search products
 - **Key Fields**: name, category, dimensions, print_area, available_sizes, available_colors
 - **Business Logic**: Controls variant availability, design requirements
 
-### ProductVariant  
+### ProductVariant
 - **Purpose**: Specific product configurations with pricing
 - **Key Fields**: size, color, color_hex, sale_price, production_cost, sku
 - **Pricing**: UZS currency only, admin-controlled
@@ -77,7 +77,7 @@ GET /api/products/search/?q=<query>   # Search products
 
 ### Enhanced Django Admin Features
 - **Color-coded category badges** for visual product identification
-- **Pricing display** with profit margin calculations  
+- **Pricing display** with profit margin calculations
 - **Bulk actions** for activating/deactivating variants
 - **Template preview** with image thumbnails
 - **Inline editing** for variants and templates
@@ -215,7 +215,7 @@ python manage.py migrate
 The migration automatically creates the 4 MVP product types with variants:
 - 20 T-shirt variants (5 sizes × 4 colors)
 - 1 Mug variant
-- 1 Business card variant  
+- 1 Business card variant
 - 1 Desk calendar variant
 
 ### 3. Admin Access
@@ -285,7 +285,7 @@ curl http://localhost:8000/api/products/filters/
 
 ### Key Files
 - `models.py`: Core data models with business logic
-- `admin.py`: Enhanced Django admin with visual features  
+- `admin.py`: Enhanced Django admin with visual features
 - `serializers.py`: API data formatting and validation
 - `views.py`: API endpoints and business logic
 - `urls.py`: API routing configuration

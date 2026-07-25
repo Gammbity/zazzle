@@ -6,16 +6,15 @@ is valid. Bypassing `transition()` is possible but discouraged — any new
 status write should go through this function so we get a consistent audit
 trail and reject illegal moves (e.g. DONE -> NEW).
 """
-from __future__ import annotations
 
-from typing import Dict, Set
+from __future__ import annotations
 
 from django.db import transaction as db_transaction
 
 
 class InvalidTransition(Exception):
     def __init__(self, from_status: str, to_status: str):
-        super().__init__(f'Illegal order transition: {from_status} -> {to_status}')
+        super().__init__(f"Illegal order transition: {from_status} -> {to_status}")
         self.from_status = from_status
         self.to_status = to_status
 
@@ -23,19 +22,19 @@ class InvalidTransition(Exception):
 # Graph of legal forward transitions. Cancellation is allowed from any
 # pre-production state. Post-production cancellations require admin override
 # (not modelled here — add a separate `admin_cancel` call when needed).
-ALLOWED_TRANSITIONS: Dict[str, Set[str]] = {
-    'NEW': {'PAYMENT_PENDING', 'CANCELLED'},
-    'PAYMENT_PENDING': {'PAID', 'CANCELLED'},
-    'PAID': {'READY_FOR_PRODUCTION', 'CANCELLED'},
-    'READY_FOR_PRODUCTION': {'IN_PRODUCTION', 'CANCELLED'},
-    'IN_PRODUCTION': {'QUALITY_CHECK'},
+ALLOWED_TRANSITIONS: dict[str, set[str]] = {
+    "NEW": {"PAYMENT_PENDING", "CANCELLED"},
+    "PAYMENT_PENDING": {"PAID", "CANCELLED"},
+    "PAID": {"READY_FOR_PRODUCTION", "CANCELLED"},
+    "READY_FOR_PRODUCTION": {"IN_PRODUCTION", "CANCELLED"},
+    "IN_PRODUCTION": {"QUALITY_CHECK"},
     # A failed quality check sends the order back into production rather
     # than forward — the only backward edge in the graph.
-    'QUALITY_CHECK': {'READY_FOR_PICKUP', 'READY_FOR_DELIVERY', 'IN_PRODUCTION'},
-    'READY_FOR_PICKUP': {'COMPLETED'},
-    'READY_FOR_DELIVERY': {'COMPLETED'},
-    'COMPLETED': set(),
-    'CANCELLED': set(),
+    "QUALITY_CHECK": {"READY_FOR_PICKUP", "READY_FOR_DELIVERY", "IN_PRODUCTION"},
+    "READY_FOR_PICKUP": {"COMPLETED"},
+    "READY_FOR_DELIVERY": {"COMPLETED"},
+    "COMPLETED": set(),
+    "CANCELLED": set(),
 }
 
 
@@ -65,4 +64,4 @@ def transition(order, to_status: str, *, save: bool = True) -> None:
 
         order.status = to_status
         if save and order.pk:
-            order.save(update_fields=['status', 'updated_at'])
+            order.save(update_fields=["status", "updated_at"])

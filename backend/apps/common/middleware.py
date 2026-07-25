@@ -6,12 +6,13 @@ the `X-Request-ID` response header, and exposes it to logging via a
 contextvar so JSON log lines can be correlated across backend + frontend +
 third-party integrations.
 """
+
 import uuid
 
 from .logging import request_id_ctx
 
-REQUEST_ID_HEADER = 'HTTP_X_REQUEST_ID'
-RESPONSE_HEADER = 'X-Request-ID'
+REQUEST_ID_HEADER = "HTTP_X_REQUEST_ID"
+RESPONSE_HEADER = "X-Request-ID"
 
 
 class RequestIDMiddleware:
@@ -21,7 +22,7 @@ class RequestIDMiddleware:
     def __call__(self, request):
         # Honour upstream-provided IDs (nginx, load balancer, FE client)
         # so a single request can be traced end-to-end.
-        incoming = request.META.get(REQUEST_ID_HEADER, '').strip()
+        incoming = request.META.get(REQUEST_ID_HEADER, "").strip()
         request_id = incoming or uuid.uuid4().hex
         request.request_id = request_id
         token = request_id_ctx.set(request_id)

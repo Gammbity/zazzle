@@ -8,7 +8,7 @@ This directory contains the base mockup template images and configuration for th
 mockups/
 ├── templates.json          # Configuration file defining all mockup templates
 ├── tshirt_front.png       # T-shirt front view mockup
-├── tshirt_back.png        # T-shirt back view mockup  
+├── tshirt_back.png        # T-shirt back view mockup
 ├── mug_standard.png       # Coffee mug standard view mockup
 ├── business_card_front.png # Business card front layout mockup
 ├── calendar_monthly.png   # Desk calendar monthly view mockup
@@ -122,14 +122,14 @@ You can have multiple mockup templates for the same product:
     "sort_order": 1
   },
   {
-    "name": "Back View", 
+    "name": "Back View",
     "product_type": "Classic T-Shirt",
     "image_file": "tshirt_back.png",
     "sort_order": 2
   },
   {
     "name": "Flat Lay",
-    "product_type": "Classic T-Shirt", 
+    "product_type": "Classic T-Shirt",
     "image_file": "tshirt_flat.png",
     "sort_order": 3
   }

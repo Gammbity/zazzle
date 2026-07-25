@@ -37,7 +37,7 @@ RENDERING_FONTS = {
         'fallback': ['roboto-regular.ttf', 'system-default']
     },
     'serif': {
-        'regular': 'fonts/source-serif-regular.ttf', 
+        'regular': 'fonts/source-serif-regular.ttf',
         'bold': 'fonts/source-serif-bold.ttf',
         'fallback': ['playfair-regular.ttf', 'system-default']
     },
@@ -105,7 +105,7 @@ This ensures text renders even if specific fonts are missing.
 ## Management Commands
 
 - `install_fonts`: Download and install Google Fonts
-- `test_font_rendering`: Test font rendering with sample text  
+- `test_font_rendering`: Test font rendering with sample text
 - `optimize_fonts`: Subset fonts to reduce file sizes
 
 For detailed options: `python manage.py <command> --help`

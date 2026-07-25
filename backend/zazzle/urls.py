@@ -13,49 +13,63 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.urls import path, include
+
 from django.conf import settings
 from django.conf.urls.static import static
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from django.http import HttpResponse, JsonResponse
+from django.urls import include, path
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
+
 from apps.orders import views as order_views
 
 api_urlpatterns = [
-    path('auth/', include('apps.users.auth_urls')),
-    path('users/', include('apps.users.urls')),
-    path('products/', include('apps.products.urls')),
-    path('orders/', include('apps.orders.urls')),
-    path('', include('apps.production.urls')),
-    path('designs/', include('apps.designs.urls')),
-    path('cart/', include('apps.cart.urls')),
-    path('support/', include('apps.support.urls')),
+    path("auth/", include("apps.users.auth_urls")),
+    path("users/", include("apps.users.urls")),
+    path("products/", include("apps.products.urls")),
+    path("orders/", include("apps.orders.urls")),
+    path("", include("apps.production.urls")),
+    path("designs/", include("apps.designs.urls")),
+    path("cart/", include("apps.cart.urls")),
+    path("support/", include("apps.support.urls")),
 ]
 
 urlpatterns = [
     # API
-    path('api/', include(api_urlpatterns)),
-    path('api/checkout/', order_views.checkout, name='api-checkout'),
-    path('api/payments/init/', order_views.payment_init, name='api-payment-init'),
-    path('api/payments/<str:provider>/callback/', order_views.payment_callback, name='api-payment-callback'),
-    
+    path("api/", include(api_urlpatterns)),
+    path("api/checkout/", order_views.checkout, name="api-checkout"),
+    path("api/payments/init/", order_views.payment_init, name="api-payment-init"),
+    path(
+        "api/payments/<str:provider>/callback/",
+        order_views.payment_callback,
+        name="api-payment-callback",
+    ),
     # API Documentation
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-    
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     # API Health check
-    path('api/health/', lambda request: JsonResponse({'status': 'ok'}), name='api_health'),
-    
+    path(
+        "api/health/", lambda request: JsonResponse({"status": "ok"}), name="api_health"
+    ),
     # Health check
-    path('health/', lambda request: HttpResponse('OK'), name='health_check'),
+    path("health/", lambda request: HttpResponse("OK"), name="health_check"),
 ]
 
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    
+
     # Debug toolbar
-    if 'debug_toolbar' in settings.INSTALLED_APPS:
+    if "debug_toolbar" in settings.INSTALLED_APPS:
         import debug_toolbar
-        urlpatterns = [path('__debug__/', include(debug_toolbar.urls))] + urlpatterns
+
+        urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns

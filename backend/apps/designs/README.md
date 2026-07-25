@@ -23,12 +23,12 @@ class Draft(models.Model):
     customer = models.ForeignKey(User)  # Owner
     product_type = models.ForeignKey(ProductType)  # Base product
     product_variant = models.ForeignKey(ProductVariant)  # Specific variant
-    
+
     # Design content
     name = models.CharField()  # Optional name
     text_layers = models.JSONField()  # Text elements
     editor_state = models.JSONField()  # Complete editor state
-    
+
     # Status tracking
     status = models.CharField()  # DRAFT, PREVIEW_RENDERING, PREVIEW_READY, ARCHIVED
     preview_image_s3_key = models.CharField()  # Generated preview
@@ -45,17 +45,17 @@ Individual uploaded files within a draft (images, graphics, etc.)
 class DraftAsset(models.Model):
     uuid = models.UUIDField()  # Public identifier
     draft = models.ForeignKey(Draft)  # Parent draft
-    
+
     # File information
     original_filename = models.CharField()  # Sanitized filename
     s3_key = models.CharField()  # S3 location
     content_type = models.CharField()  # MIME type
     file_size = models.PositiveIntegerField()  # Bytes
-    
+
     # Image metadata
     width = models.PositiveIntegerField()  # Pixels
     height = models.PositiveIntegerField()  # Pixels
-    
+
     # Editor properties
     asset_type = models.CharField()  # IMAGE, GRAPHIC, LOGO, BACKGROUND
     transform = models.JSONField()  # Position, scale, rotation
@@ -70,13 +70,13 @@ class UploadSession(models.Model):
     session_id = models.UUIDField()  # Unique session identifier
     user = models.ForeignKey(User)  # Uploader
     draft = models.ForeignKey(Draft, null=True)  # Optional draft association
-    
+
     # Upload details
     s3_key = models.CharField()  # Target S3 location
     original_filename = models.CharField()  # Sanitized name
     expected_size = models.PositiveIntegerField()  # Expected bytes
     content_type = models.CharField()  # Expected MIME type
-    
+
     # Session management
     is_confirmed = models.BooleanField()  # Upload completed
     expires_at = models.DateTimeField()  # Session expiry
@@ -299,7 +299,7 @@ Authorization: Bearer <token>
 
 ### Supported File Types
 - **PNG**: `image/png`, `.png`
-- **JPEG**: `image/jpeg`, `.jpg`, `.jpeg`  
+- **JPEG**: `image/jpeg`, `.jpg`, `.jpeg`
 - **WebP**: `image/webp`, `.webp`
 
 ### File Size Limits
@@ -328,7 +328,7 @@ import { useState, useEffect } from 'react';
 const DraftEditor = ({ draftUuid }) => {
   const [draft, setDraft] = useState(null);
   const [editorState, setEditorState] = useState({});
-  
+
   // Load draft
   useEffect(() => {
     const loadDraft = async () => {
@@ -339,10 +339,10 @@ const DraftEditor = ({ draftUuid }) => {
       setDraft(draftData);
       setEditorState(draftData.editor_state);
     };
-    
+
     loadDraft();
   }, [draftUuid]);
-  
+
   // Auto-save function
   const saveDraft = async () => {
     await fetch(`/api/designs/drafts/${draftUuid}/`, {
@@ -357,13 +357,13 @@ const DraftEditor = ({ draftUuid }) => {
       })
     });
   };
-  
+
   // Auto-save every 30 seconds
   useEffect(() => {
     const interval = setInterval(saveDraft, 30000);
     return () => clearInterval(interval);
   }, [editorState]);
-  
+
   return <div>/* Editor UI */</div>;
 };
 ```
@@ -372,10 +372,10 @@ const DraftEditor = ({ draftUuid }) => {
 ```javascript
 const FileUploader = ({ draftUuid, onUploadComplete }) => {
   const [uploading, setUploading] = useState(false);
-  
+
   const handleFileUpload = async (file) => {
     setUploading(true);
-    
+
     try {
       // 1. Request presigned URL
       const presignResponse = await fetch('/api/designs/uploads/presign/', {
@@ -391,21 +391,21 @@ const FileUploader = ({ draftUuid, onUploadComplete }) => {
           draft_uuid: draftUuid
         })
       });
-      
+
       const { session_id, presigned_upload } = await presignResponse.json();
-      
+
       // 2. Upload to S3
       const formData = new FormData();
       Object.keys(presigned_upload.fields).forEach(key => {
         formData.append(key, presigned_upload.fields[key]);
       });
       formData.append('file', file);
-      
+
       await fetch(presigned_upload.url, {
         method: 'POST',
         body: formData
       });
-      
+
       // 3. Confirm upload
       const confirmResponse = await fetch('/api/designs/uploads/confirm/', {
         method: 'POST',
@@ -421,20 +421,20 @@ const FileUploader = ({ draftUuid, onUploadComplete }) => {
           }
         })
       });
-      
+
       const { asset } = await confirmResponse.json();
       onUploadComplete(asset);
-      
+
     } catch (error) {
       console.error('Upload failed:', error);
     } finally {
       setUploading(false);
     }
   };
-  
+
   return (
-    <input 
-      type="file" 
+    <input
+      type="file"
       accept=".png,.jpg,.jpeg,.webp"
       onChange={(e) => handleFileUpload(e.target.files[0])}
       disabled={uploading}

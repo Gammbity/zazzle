@@ -11,34 +11,34 @@ from datetime import timedelta
 
 from django.conf import settings
 
-ACCESS_COOKIE = 'access_token'
-REFRESH_COOKIE = 'refresh_token'
-SESSION_MARKER_COOKIE = 'zazzle_session'
+ACCESS_COOKIE = "access_token"
+REFRESH_COOKIE = "refresh_token"
+SESSION_MARKER_COOKIE = "zazzle_session"
 
 # Refresh cookie is scoped to auth paths so it isn't sent on every API call.
-REFRESH_COOKIE_PATH = '/api/auth/'
+REFRESH_COOKIE_PATH = "/api/auth/"
 
 
 def _access_lifetime_seconds() -> int:
-    lifetime: timedelta = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
+    lifetime: timedelta = settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"]
     return int(lifetime.total_seconds())
 
 
 def _refresh_lifetime_seconds() -> int:
-    lifetime: timedelta = settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME']
+    lifetime: timedelta = settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"]
     return int(lifetime.total_seconds())
 
 
 def _cookie_secure() -> bool:
-    return bool(getattr(settings, 'AUTH_COOKIE_SECURE', not settings.DEBUG))
+    return bool(getattr(settings, "AUTH_COOKIE_SECURE", not settings.DEBUG))
 
 
 def _cookie_samesite() -> str:
-    return getattr(settings, 'AUTH_COOKIE_SAMESITE', 'Lax')
+    return getattr(settings, "AUTH_COOKIE_SAMESITE", "Lax")
 
 
 def _cookie_domain() -> str | None:
-    return getattr(settings, 'AUTH_COOKIE_DOMAIN', None)
+    return getattr(settings, "AUTH_COOKIE_DOMAIN", None)
 
 
 def set_auth_cookies(response, *, access: str, refresh: str | None = None) -> None:
@@ -54,7 +54,7 @@ def set_auth_cookies(response, *, access: str, refresh: str | None = None) -> No
         httponly=True,
         secure=secure,
         samesite=samesite,
-        path='/',
+        path="/",
         domain=domain,
     )
 
@@ -73,12 +73,12 @@ def set_auth_cookies(response, *, access: str, refresh: str | None = None) -> No
     # Non-HttpOnly marker so the SPA knows it has a session (sync check).
     response.set_cookie(
         SESSION_MARKER_COOKIE,
-        '1',
+        "1",
         max_age=_refresh_lifetime_seconds(),
         httponly=False,
         secure=secure,
         samesite=samesite,
-        path='/',
+        path="/",
         domain=domain,
     )
 
@@ -88,10 +88,10 @@ def clear_auth_cookies(response) -> None:
     domain = _cookie_domain()
     samesite = _cookie_samesite()
 
-    response.delete_cookie(ACCESS_COOKIE, path='/', domain=domain, samesite=samesite)
+    response.delete_cookie(ACCESS_COOKIE, path="/", domain=domain, samesite=samesite)
     response.delete_cookie(
         REFRESH_COOKIE, path=REFRESH_COOKIE_PATH, domain=domain, samesite=samesite
     )
     response.delete_cookie(
-        SESSION_MARKER_COOKIE, path='/', domain=domain, samesite=samesite
+        SESSION_MARKER_COOKIE, path="/", domain=domain, samesite=samesite
     )

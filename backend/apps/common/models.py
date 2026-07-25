@@ -2,6 +2,7 @@
 Abstract model mixins reused across apps. Keep this module thin — domain
 models should inherit the smallest set of behaviours they actually need.
 """
+
 import uuid
 
 from django.db import models
@@ -24,7 +25,9 @@ class UUIDModel(models.Model):
     serializers; keep the integer PK for joins.
     """
 
-    public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    public_id = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True, db_index=True
+    )
 
     class Meta:
         abstract = True
@@ -72,8 +75,9 @@ class SoftDeleteModel(models.Model):
 
     def delete(self, using=None, keep_parents=False):
         from django.utils import timezone
+
         self.deleted_at = timezone.now()
-        self.save(update_fields=['deleted_at'])
+        self.save(update_fields=["deleted_at"])
 
     def hard_delete(self, using=None, keep_parents=False):
         return super().delete(using=using, keep_parents=keep_parents)
